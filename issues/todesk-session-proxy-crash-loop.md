@@ -3,8 +3,8 @@
 
 | | |
 |---|---|
-| **Status** | 🟡 Mitigated (disabled the daemons) — app-side bug, not Apple framework |
-| **macOS** | 27.0 beta (`26A5353q`) |
+| **Status** | 🟢 **Fixed in ToDesk 4.9.7.2 (build 2064)** — was an app-side bug, not Apple framework |
+| **macOS** | 27.0 beta (`26A5353q` → still fixed on beta2 `26A5368g`) |
 | **Component** | **ToDesk 4.9.7.1 (build 2017)** — `ToDesk_Session_Proxy` (uses Breakpad) |
 | **Report** | ToDesk vendor support (no public GitHub tracker) |
 
@@ -44,3 +44,5 @@ launchctl bootout gui/501/com.youqu.todesk.client.startup
 ## Notes / 备注
 
 Likely a beta-triggered crash in the session/notification path; report to ToDesk vendor with a dump sample.
+
+**Retest 2026-06-26 beta2 26A5368g — FIXED in 4.9.7.2 (build 2064):** updated from 4.9.7.1. `ToDesk_Session_Proxy` now stays alive (observed 3m28s+ uptime — the old build crashed every ~10s so it could never exceed ~10s). `/Library/Application Support/ToDesk/dumps` has **0 new dumps** (the old build would have produced ~20 in that window); no ToDesk crash in `~/Library/Logs/DiagnosticReports` in the last hour. The new installer auto-re-registered the launchd daemons (`com.youqu.todesk.service`, `…desktop`) and they now run fine — no need to keep them disabled anymore.

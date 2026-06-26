@@ -28,7 +28,7 @@ If a Google/GitHub search for a crash signature or a process eating CPU on macOS
 | 4 | [Weather.app VFX thread spins ~36% CPU in background](issues/apple-weather-vfx-cpu-spin.md) | Apple Weather.app 6.0 | 🟢 fixed in beta2 | (was) `killall Weather` | resolved on 26A5368g |
 | 5 | [OrbStack SwiftUI Charts → AttributeGraph abort](issues/orbstack-charts-attributegraph-crash.md) | Apple SwiftUI ↔ OrbStack 2.2.1 | 🟡 | don't keep usage-chart window open | [orbstack#2526](https://github.com/orbstack/orbstack/issues/2526) + Feedback `FB____` |
 | 6 | [Chrome crash via MediaRemote Now-Playing nil](issues/chrome-mediaremote-nowplaying-crash.md) | Apple MediaRemote ↔ Chrome | ⚪ | disable `#hardware-media-key-handling` flag | Feedback: `FB________` |
-| 7 | [ToDesk 10s crash-loop → "repeated logout"](issues/todesk-session-proxy-crash-loop.md) | ToDesk 4.9.7.1 (app bug) | 🟡 | `launchctl bootout` the 3 labels | ToDesk support · n/a GitHub |
+| 7 | [ToDesk 10s crash-loop → "repeated logout"](issues/todesk-session-proxy-crash-loop.md) | ToDesk 4.9.7.1 (app bug) | 🟢 fixed in 4.9.7.2 | update to 4.9.7.2 (build 2064) | resolved |
 | 8 | [Codex Dock-tile plugin infinite recursion crash](issues/codex-docktile-recursion-crash.md) | Codex.app (app bug) | 🔴 | harmless; Dock auto-restarts XPC | [openai/codex#27694](https://github.com/openai/codex/issues/27694) |
 | 9 | [Telegram (MAS) sluggish / slow to respond](issues/telegram-mas-lag.md) | Telegram 12.8 (282010) MAS | ⚪ | use non-MAS build? (untested) | n/a yet |
 | 10 | [WeChat (MAS) crash on launch — FIXED in 4.1.10](issues/wechat-mas-crash-fixed.md) | WeChat 4.1.9 MAS | 🟢 | update to 4.1.10 (or use official build) | resolved |
