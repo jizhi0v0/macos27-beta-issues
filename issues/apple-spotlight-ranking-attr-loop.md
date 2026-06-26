@@ -41,6 +41,20 @@ plus continuous `(SpotlightUIInternal) [com.apple.spotlight.ui:WindowExpansion] 
 - **Expected:** ranking attributes inserted at valid indices, no error; responsive typing.
 - **Actual:** `Attempted to insert ranking attr at NSNotFound` ~60×/sec while typing, search UI laggy.
 
+## Candidate sets being ranked (from the 484-error window) / 报错窗口里的候选规模
+
+`[SpotlightRanking] <Model> preparing N items for bundle …` during the burst:
+
+| candidates | bundle |
+|---|---|
+| **395** | **com.apple.systempreferences** ← by far the largest |
+| 104 / 59 / 29 / 25 / 20 | `<private>` (redacted content types) |
+| 21 | com.apple.applications |
+| 2 | com.apple.Notes |
+| 1 | com.apple.spotlight.tophits |
+
+Per keystroke the ranking model prepares ~395 **System Settings** items plus several hundred `<private>` items. The `insert ranking attr at NSNotFound` errors cluster while ranking these large candidate sets — suggesting the ranking-attribute array indexing fails (overflows to `NSNotFound`) on large sets, with **System Settings (systempreferences) the prime suspect source**. (To de-redact the `<private>` bundles, capture with `sudo log config --mode private_data:on`.)
+
 ## Notes / 备注
 
 - `Campo` is the macOS 27 Spotlight UI app (codename); confirmed by its log subsystems `com.apple.SpotlightServices` + `com.apple.spotlight.ui`.
