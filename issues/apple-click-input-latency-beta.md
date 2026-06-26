@@ -29,7 +29,15 @@ A macOS 27 **event-delivery / input-responsiveness regression**: click events re
 
 System-wide vs app-specific on the 27 machine: do clicks in **Finder / System Settings / Safari** also feel sluggish? If yes → system-wide event-delivery regression (file as such). If only Telegram → a Telegram-on-27 interaction (less likely given the idle main thread).
 
-## Notes / 备注
+## spindump 2026-06-26 — main thread is in the event loop (idle), NOT blocked; WeType was a red herring
 
-- Hard to capture in a `sample` precisely *because* the app main thread is idle — the latency is upstream (event delivery). The right artifact for Feedback is a **sysdiagnose taken right after experiencing the lag** + the "fine on macOS 26, laggy on 27, main thread idle" framing.
-- Cross-machine caveat: the macOS 26 machine is different hardware/load; "fine on 26" is a strong but not airtight control. The decisive on-machine test is whether reducing WindowServer load (quit heavy-redraw apps) restores click responsiveness on the 27 machine.
+`sudo spindump Telegram 8` during continuous clicking:
+- The main thread's **stack** is 784/801 samples in `nextEventMatchingMask: → _DPSNextEvent → ReceiveNextEventCommon → RunCurrentEventLoopInMode` — i.e. parked in the AppKit event loop *waiting for events*. Only ~13 samples in `CA::Transaction::commit/flush` (light render). So the main thread is **idle/responsive**, not stuck.
+- spindump labeled the main thread `Thread name "(input method 910 com.tencent.inputmethod.wetype)"` — this only marks that the thread holds the **input-method (WeType) TSM connection** (every text-input app does); WeType runs in its own PID 910. The main-thread STACK contains no WeType code. **WeType is not the cause.**
+- TG worker threads (Postbox, mtproto, etc.) all had tiny CPU (≤25ms); thread-pool threads were parked ("last ran 59s/4483s ago"). Nothing is CPU-starved on a runnable queue.
+
+## Conclusion — load-induced event-delivery latency, downstream of the filed CPU bugs
+
+Not a Telegram bug, not TG's threading/QoS (SSignalKit is GCD-based, see below), not the "new scheduler vs custom threads" theory, not WeType. The click latency is **macOS 27 delivering input events late when the system is under heavy load**. Decisive corroboration from the user: **screen-recording OR sampling makes it dramatically worse** ("巨卡无比") — the responsiveness is load-sensitive and the system is near saturation. That load is largely the **beta CPU bugs filed from this same investigation** — CoreMedia loop (FB23411581), MenuBarAgent idle spin (FB23411741), Spotlight ranking loop (FB23412497), plus WindowServer compositing. macOS 26 lacks these → responsive.
+
+So this is a **downstream symptom of aggregate beta load**, not an independent root cause. Mitigation: kill the load sources (the filed bugs / heavy-redraw apps); fix is the underlying CPU bugs. Threading note: TG's SSignalKit `Queue` is GCD-based (`DispatchQueue.global(qos: .default/.background)`, no raw pthreads), so it does go through the system scheduler — the "TG's own wheels bypass the new scheduler" hypothesis does not hold.
