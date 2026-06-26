@@ -7,7 +7,7 @@
 | **macOS** | 27.0 beta2 `26A5368g` |
 | **Component** | Apple **MenuBarAgent** (`/System/Library/CoreServices/MenuBarAgent.app`, the macOS 27 menu-bar agent) |
 | **Hardware** | MacBook Pro `Mac15,11`, M3 Max, single internal display |
-| **Report** | Apple Feedback: `FB________` *(to be filed)* |
+| **Report** | Apple Feedback: **`FB23411741`** (filed 2026-06-26, Menu Bar → Incorrect/Unexpected Behavior; sysdiagnose + idle `sample` capture attached) |
 
 ## Symptom / 症状
 
