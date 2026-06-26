@@ -27,3 +27,5 @@ Mac App Store 版 Telegram（12.8 / 282010）在 macOS 27 beta2 上明显卡顿�
 
 - [ ] `sample` during a stall and attach the busiest stacks.
 - [ ] Compare MAS build vs telegram.org build on the same beta.
+
+**Retest 2026-06-26 beta2 26A5368g — characterized (not a main-thread stall):** Telegram (PID 5138) at ~18% CPU after 1h30m uptime. `sample` (3s): most threads parked in `__psynch_cvwait`/`mach_msg` (idle), so it's **not a deadlock**. The active work is continuous UI redraw + media: top non-wait UI frame is `-[NSView _recursiveTickleNeedsDisplay]` (recursive view-dirty marking), alongside live `CVDisplayLink`, `com.apple.coremedia.imagequeue.coreanimation.common` and `coremedia.videomediaconverter` threads. → Consistent with **animated stickers/emoji or auto-playing video/GIF continuously invalidating & re-rendering views** (bursty, hence high average but a mostly-idle instantaneous sample). The "sluggish" feel is redraw churn, not a hang. Next: test with animated-content auto-play disabled, and compare the telegram.org (non-MAS) build.

@@ -3,7 +3,7 @@
 
 | | |
 |---|---|
-| **Status** | 🔴 Open — vendor (OpenAI) app bug; low harm |
+| **Status** | 🟢 Likely fixed in Codex 26.623.31443 (0 crashes in 7 days) — was a vendor (OpenAI) app bug |
 | **macOS** | 27.0 beta (`26A5353q`) |
 | **Component** | **Codex.app 26.609.71450 (build 3965)** — `CodexDockTilePlugin.plugin` |
 | **Report** | Upstream: [openai/codex#27694](https://github.com/openai/codex/issues/27694) (dup #28438 filed by jizhi0v0, closed) |
@@ -30,3 +30,5 @@ Harmless in practice — the Dock auto-restarts the XPC host. Wait for an OpenAI
 ## Notes / 备注
 
 Duplicate issue #28438 (filed as jizhi0v0) was closed as a dup but left a "still reproduces on this build" data point on #27694.
+
+**Retest 2026-06-26 beta2 26A5368g — likely FIXED in Codex 26.623.31443 (build 4441):** Codex updated from 26.609.71450 → 26.623.31443. `com.apple.dock.external.extra.arm64` crash reports on disk are **0 in the last 7 days**; the last batch is all dated 2026-06-19. Previously this was high-frequency (235 reports). 7 days at zero across the update strongly suggests the recursion was fixed in the newer build. Not a hard confirmation (absence of crashes), but status downgraded from 🔴 to 🟢-pending.
