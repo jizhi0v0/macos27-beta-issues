@@ -43,3 +43,4 @@ None app-side that fully clears it (it persists with menu-bar apps removed). Red
 
 - Distinct from [WindowServer high CPU](apple-windowserver-invalid-window.md): that is broader CoreAnimation compositing (dominated by live-rendering apps); MenuBarAgent's ~10–14% is its own process and only a partial contributor to WindowServer.
 - Consistent across many measurements this session (~12–14%), independent of which apps are running → reads as a macOS 27 beta2 baseline, not app-fed.
+- **Strongest confirmation:** after the user quit nearly all menu-bar apps (only system `ControlCenter` + a couple icon-only items left, `log show` showing **0** status-item redraws), MenuBarAgent still held **12.5%**. With essentially nothing feeding it, the cost is MenuBarAgent's own — confirms a genuine beta2 regression rather than app-driven load.
