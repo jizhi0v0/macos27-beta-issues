@@ -1,4 +1,4 @@
-VERIFICATION: CONFIRMED — WindowServer 61.7% CPU / 18:16 cumulative TIME at uptime 39 min, and 159 `_CGXPackagesSetWindowConstraints: Invalid window` in `log show --last 60s` steady ~2.6/sec (2026-06-26 10:32 +0800, beta2 26A5368g).
+VERIFICATION: HOLD (downgraded 2026-06-26) — a spindump showed the high CPU is generic CoreAnimation compositing, NOT the `Invalid window` path (which appears in 0 hot stacks). A remote-capture (AweSun/ToDesk) hypothesis was checked and rejected. The sustained 47–73% may just be compositing workload (Liquid Glass + 243 windows + a playing video), not a distinct regression. DO NOT FILE the "high CPU" angle until re-tested on a quiesced desktop. The only clearly-anomalous item is the continuous `_CGXPackagesSetWindowConstraints: Invalid window` log spam (~2.6–4/sec) — that alone could be filed as a minor logging bug. Original (pre-downgrade) measurement: WindowServer 61.7% CPU / 18:16 cumulative at uptime 39 min, 159 Invalid-window/60s, beta2 26A5368g.
 
 # Title
 WindowServer sustains ~48–62% CPU with continuous `_CGXPackagesSetWindowConstraints: Invalid window` (SkyLight) on a single-internal-display Mac, long after boot

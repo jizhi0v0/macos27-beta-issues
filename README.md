@@ -24,7 +24,7 @@ If a Google/GitHub search for a crash signature or a process eating CPU on macOS
 |---|---|---|---|---|---|
 | 1 | [CoreMedia `fpSupport_GetVideoRange…` loop floods logd](issues/apple-coremedia-fpsupport-logd-spam.md) | Apple MediaToolbox / CoreMedia | 🟡 | quit the WebKit apps / silence subsystem log | Feedback: `FB________` |
 | 2 | [Shortcuts/Siri ToolKit action-registration storm](issues/apple-shortcuts-siri-toolkit-storm.md) | Apple Shortcuts / siriactionsd | 🟡 | self-settles post-boot; silence subsystem log | Feedback: `FB________` |
-| 3 | [WindowServer high CPU + `Invalid window` SkyLight loop](issues/apple-windowserver-invalid-window.md) | Apple WindowServer / SkyLight | 🟡 ✓confirmed | Reduce transparency/motion; restart offending app | Feedback: `FB________` |
+| 3 | [WindowServer high CPU + `Invalid window` SkyLight loop](issues/apple-windowserver-invalid-window.md) | Apple WindowServer / SkyLight | ⚪ CPU=compositing, not isolated | Reduce transparency/motion | HOLD (only log-spam is clear) |
 | 4 | [Weather.app VFX thread spins ~36% CPU in background](issues/apple-weather-vfx-cpu-spin.md) | Apple Weather.app 6.0 | 🟢 fixed (build 1435, incl. rain) | (was) `killall Weather` | resolved on 26A5368g |
 | 5 | [OrbStack SwiftUI Charts → AttributeGraph abort](issues/orbstack-charts-attributegraph-crash.md) | Apple SwiftUI ↔ OrbStack 2.2.1 | 🟡 | don't keep usage-chart window open | [orbstack#2526](https://github.com/orbstack/orbstack/issues/2526) + Feedback `FB____` |
 | 6 | [Chrome crash via MediaRemote Now-Playing nil](issues/chrome-mediaremote-nowplaying-crash.md) | Apple MediaRemote ↔ Chrome | ⚪ | disable `#hardware-media-key-handling` flag | Feedback: `FB________` |
@@ -37,12 +37,13 @@ If a Google/GitHub search for a crash signature or a process eating CPU on macOS
 
 Each Apple bug was re-tested live on the machine before drafting Feedback, so we don't file stale/wrong reports. Ready drafts live in [`feedback/`](feedback/).
 
-- ✅ **Ready to file** (confirmed reproducing on beta2): **CoreMedia loop** ([draft](feedback/coremedia.md)) · **WindowServer Invalid-window** ([draft](feedback/windowserver.md))
+- ✅ **Ready to file** (confirmed reproducing on beta2): **CoreMedia loop** ([draft](feedback/coremedia.md))
 - ⏸ **Intermittent** — fires post-boot then self-settles; file with the captured boot-time evidence: **Shortcuts/Siri storm** ([draft](feedback/shortcuts.md))
 - ⛔ **HOLD — do not file yet** (no fresh evidence on beta2):
   - **Weather VFX** — now **0.9–1.9% CPU**, VFX threads parked in `__psynch_cvwait`; **appears fixed/throttled in beta2**. ([note](feedback/weather.md))
   - **OrbStack** — no `OrbStack*.ips` on disk (beta1 crash purged); needs a fresh beta2 crash. ([note](feedback/orbstack.md))
   - **Chrome MediaRemote** — only crashed on .115/beta1; now on **149.0.7827.201** with no crash captured; retest first. ([note](feedback/chrome.md))
+  - **WindowServer high CPU** — spindump showed it's generic CoreAnimation compositing, not the `Invalid window` path; remote-capture hypothesis rejected. Only the `Invalid window` log spam is clearly anomalous. Re-test on a quiesced desktop before filing. ([draft](feedback/windowserver.md))
 
 ## How to contribute / 如何补充
 
