@@ -34,12 +34,14 @@ If a Google/GitHub search for a crash signature or a process eating CPU on macOS
 | 10 | [WeChat (MAS) crash on launch — FIXED in 4.1.10](issues/wechat-mas-crash-fixed.md) | WeChat 4.1.9 MAS | 🟢 | update to 4.1.10 (or use official build) | resolved |
 | 11 | [Swift Charts `if/else` fails to build under macOS 27 SDK](issues/swift-charts-conditionalcontent-macos27-sdk.md) | Apple Swift Charts (SDK/build) | 🟡 | use bare `if` / ternary, avoid `if/else` in chart builders | SDK behavior |
 | 12 | [MenuBarAgent ~10–14% CPU at idle (static menu bar)](issues/apple-menubaragent-idle-cpu.md) | Apple MenuBarAgent | ✅ confirmed | none (beta regression) | **[FB23411741](https://feedbackassistant.apple.com/feedback/23411741)** |
+| 13 | [Spotlight `insert ranking attr at NSNotFound` ~60×/sec while typing](issues/apple-spotlight-ranking-attr-loop.md) | Apple Spotlight ("Campo" UI) | ✅ confirmed | none (beta regression) | Feedback: `FB________` |
 
 ## Filing readiness / 提交就绪度 (re-verified 2026-06-26, beta2 `26A5368g`)
 
 Each Apple bug was re-tested live on the machine before drafting Feedback, so we don't file stale/wrong reports. Ready drafts live in [`feedback/`](feedback/).
 
 - ✅ **Filed to Apple** (confirmed beta2 bugs): **CoreMedia loop** → [FB23411581](https://feedbackassistant.apple.com/feedback/23411581) · **MenuBarAgent idle ~10–14% CPU** → [FB23411741](https://feedbackassistant.apple.com/feedback/23411741)
+- 🟠 **Confirmed, to file:** **Spotlight `insert ranking attr at NSNotFound` ~60×/sec while typing** (idle=0, typing=484/3s; correlates with search lag) → `FB________`
 - ⏸ **Intermittent** — fires post-boot then self-settles; file with the captured boot-time evidence: **Shortcuts/Siri storm** ([draft](feedback/shortcuts.md))
 - 🟢 **Not reproducing on beta2 — likely fixed** (verified by live repro attempts, no Feedback needed):
   - **Weather VFX** — backgrounded (incl. rain) at ~1% CPU, VFX threads parked; resolved in Weather build 1435.
