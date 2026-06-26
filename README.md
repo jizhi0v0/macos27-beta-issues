@@ -32,6 +32,7 @@ If a Google/GitHub search for a crash signature or a process eating CPU on macOS
 | 8 | [Codex Dock-tile plugin infinite recursion crash](issues/codex-docktile-recursion-crash.md) | Codex.app (app bug) | 🟢 likely fixed in 26.623.31443 | update Codex (0 crashes in 7 days) | [openai/codex#27694](https://github.com/openai/codex/issues/27694) |
 | 9 | [Telegram (MAS) sluggish / slow to respond](issues/telegram-mas-lag.md) | Telegram 12.8 (282010) MAS | ⚪ | use non-MAS build? (untested) | n/a yet |
 | 10 | [WeChat (MAS) crash on launch — FIXED in 4.1.10](issues/wechat-mas-crash-fixed.md) | WeChat 4.1.9 MAS | 🟢 | update to 4.1.10 (or use official build) | resolved |
+| 11 | [Swift Charts `if/else` fails to build under macOS 27 SDK](issues/swift-charts-conditionalcontent-macos27-sdk.md) | Apple Swift Charts (SDK/build) | 🟡 | use bare `if` / ternary, avoid `if/else` in chart builders | SDK behavior |
 
 ## Filing readiness / 提交就绪度 (re-verified 2026-06-26, beta2 `26A5368g`)
 
