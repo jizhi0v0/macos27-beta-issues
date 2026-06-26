@@ -36,11 +36,9 @@ System-wide vs app-specific on the 27 machine: do clicks in **Finder / System Se
 - spindump labeled the main thread `Thread name "(input method 910 com.tencent.inputmethod.wetype)"` — this only marks that the thread holds the **input-method (WeType) TSM connection** (every text-input app does); WeType runs in its own PID 910. The main-thread STACK contains no WeType code. **WeType is not the cause.**
 - TG worker threads (Postbox, mtproto, etc.) all had tiny CPU (≤25ms); thread-pool threads were parked ("last ran 59s/4483s ago"). Nothing is CPU-starved on a runnable queue.
 
-## Conclusion — load-induced event-delivery latency, downstream of the filed CPU bugs
+## What it is NOT (ruled out)
 
-Not a Telegram bug, not TG's threading/QoS (SSignalKit is GCD-based, see below), not the "new scheduler vs custom threads" theory, not WeType. The click latency is **macOS 27 delivering input events late when the system is under heavy load**. Decisive corroboration from the user: **screen-recording OR sampling makes it dramatically worse** ("巨卡无比") — the responsiveness is load-sensitive and the system is near saturation. That load is largely the **beta CPU bugs filed from this same investigation** — CoreMedia loop (FB23411581), MenuBarAgent idle spin (FB23411741), Spotlight ranking loop (FB23412497), plus WindowServer compositing. macOS 26 lacks these → responsive.
-
-So this is a **downstream symptom of aggregate beta load**, not an independent root cause. Mitigation: kill the load sources (the filed bugs / heavy-redraw apps); fix is the underlying CPU bugs. Threading note: TG's SSignalKit `Queue` is GCD-based (`DispatchQueue.global(qos: .default/.background)`, no raw pthreads), so it does go through the system scheduler — the "TG's own wheels bypass the new scheduler" hypothesis does not hold.
+Not a Telegram bug, not TG's threading/QoS (SSignalKit is GCD-based, see below), not the "new scheduler vs custom threads" theory, not WeType. An early hypothesis that it was **load-induced** (the system under heavy load from the filed CPU bugs) was **tested and disproved** — see the *Decisive Update* below: it persists with the system **80% idle**, so it is not a load/saturation problem. The "screen-recording / sampling makes it worse" observation just reflects extra work landing on the already-bottlenecked single WindowServer thread, not overall CPU saturation. Threading note: TG's SSignalKit `Queue` is GCD-based (`DispatchQueue.global(qos: .default/.background)`, no raw pthreads), so it does go through the system scheduler — the "TG's own wheels bypass the new scheduler" hypothesis does not hold.
 
 ## DECISIVE UPDATE 2026-06-26 — it is NOT load; it's a WindowServer single-thread regression
 
