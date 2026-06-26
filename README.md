@@ -24,7 +24,7 @@ If a Google/GitHub search for a crash signature or a process eating CPU on macOS
 |---|---|---|---|---|---|
 | 1 | [CoreMedia `fpSupport_GetVideoRange…` loop floods logd](issues/apple-coremedia-fpsupport-logd-spam.md) | Apple MediaToolbox / CoreMedia | 🟡 | quit the WebKit apps / silence subsystem log | Feedback: `FB________` |
 | 2 | [Shortcuts/Siri ToolKit action-registration storm](issues/apple-shortcuts-siri-toolkit-storm.md) | Apple Shortcuts / siriactionsd | 🟡 | self-settles post-boot; silence subsystem log | Feedback: `FB________` |
-| 3 | [WindowServer high CPU + `Invalid window` SkyLight loop](issues/apple-windowserver-invalid-window.md) | Apple WindowServer / SkyLight | ⚪ CPU=compositing, not isolated | Reduce transparency/motion | HOLD (only log-spam is clear) |
+| 3 | [WindowServer high CPU + `Invalid window` SkyLight loop](issues/apple-windowserver-invalid-window.md) | Apple WindowServer / SkyLight | 🟢 was load (Telegram redraw); not a bug | quit/limit animated-content apps | resolved as load |
 | 4 | [Weather.app VFX thread spins ~36% CPU in background](issues/apple-weather-vfx-cpu-spin.md) | Apple Weather.app 6.0 | 🟢 fixed (build 1435, incl. rain) | (was) `killall Weather` | resolved on 26A5368g |
 | 5 | [OrbStack SwiftUI Charts → AttributeGraph abort](issues/orbstack-charts-attributegraph-crash.md) | Apple SwiftUI ↔ OrbStack 2.2.1 | 🟢 not repro on beta2 (3h21m) | — | [orbstack#2526](https://github.com/orbstack/orbstack/issues/2526) |
 | 6 | [Chrome crash via MediaRemote Now-Playing nil](issues/chrome-mediaremote-nowplaying-crash.md) | Apple MediaRemote ↔ Chrome | 🟢 not repro on .201 (2h churn) | — | resolved on .201 |
@@ -45,7 +45,7 @@ Each Apple bug was re-tested live on the machine before drafting Feedback, so we
   - **Weather VFX** — backgrounded (incl. rain) at ~1% CPU, VFX threads parked; resolved in Weather build 1435.
   - **OrbStack Charts** — kept on the Activity Monitor view **3h21m**, RSS plateaued ~150–185 MB (no runaway), no crash.
   - **Chrome MediaRemote** — **1h45m** of heavy Now-Playing churn on .201 (up to 640 events/min), no crash.
-  - **WindowServer high CPU** — spindump showed it's generic CoreAnimation compositing, not the `Invalid window` path; remote-capture hypothesis rejected. Only the `Invalid window` log spam is clearly anomalous. Re-test on a quiesced desktop before filing. ([draft](feedback/windowserver.md))
+  - **WindowServer high CPU** — RESOLVED as load: quitting Telegram (continuous animated-content redraw) dropped it to single digits. Not a regression — was the sum of continuously-redrawing apps. Only the `Invalid window` log spam is a minor leftover. ([details](issues/apple-windowserver-invalid-window.md))
 
 ## How to contribute / 如何补充
 
