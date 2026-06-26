@@ -7,7 +7,7 @@
 | **macOS** | 27.0 beta2 `26A5368g` |
 | **Component** | Apple **Spotlight** — `com.apple.SpotlightServices` / `com.apple.spotlight.ui`; the macOS 27 Spotlight UI process is **`Campo`** (`/System/Applications/Campo.app`) |
 | **Hardware** | MacBook Pro `Mac15,11`, M3 Max |
-| **Report** | Apple Feedback: `FB________` *(to be filed)* |
+| **Report** | Apple Feedback: **`FB23412497`** (filed 2026-06-26, Spotlight → Incorrect/Unexpected Behavior; sysdiagnose + before/after capture attached) |
 
 ## Symptom / 症状
 
