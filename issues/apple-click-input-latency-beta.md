@@ -3,7 +3,7 @@
 
 | | |
 |---|---|
-| **Status** | 🟠 Confirmed macOS-27 regression, NOT load-related — **persists with the system 80% idle** (after killing the 49% appstoreagent loop, clicks still lag). Bottleneck is WindowServer's single `ws_main_thread` serializing event delivery behind compositing. Fine on macOS 26. |
+| **Status** | 🟠 Narrowed: NOT general input latency. It's a **compositing stutter on one specific heavy view transition** — Telegram's group-title → group-details → **back** (dismissing the heavy/blurred details panel). NOT load (80% idle), NOT Telegram main-thread CPU (idle during it). Other apps & other Telegram navigation are fine; macOS 26 is fine. |
 | **macOS** | 27.0 beta2 `26A5368g` (NOT present on macOS 26 — same app, same hardware-class, responsive) |
 | **Component** | Apple — input/event delivery / responsiveness (suspect: WindowServer/event pipeline under load) |
 | **Hardware** | MacBook Pro `Mac15,11`, M3 Max |
@@ -48,3 +48,11 @@ A whole-system `spindump` (10s) + killing the top load source disproves the "loa
 - Same app/actions are responsive on **macOS 26** → macOS 27 regressed how WindowServer prioritises event delivery vs compositing on its main thread.
 
 **Conclusion: a genuine macOS 27 WindowServer/event-delivery regression, independent of system load.** Local mitigation only shaves it (Reduce transparency + Reduce motion; quit continuously-redrawing apps to lighten ws_main_thread). Real fix is Apple's. Worth a standalone Feedback (evidence: whole-system spindump showing ws_main_thread serialization + the macOS-26 control + "persists at 80% idle").
+
+## NARROWED 2026-06-26 — it's a compositing stutter on ONE specific heavy transition, not general input latency
+
+The user pinpointed the repro: **only** "click group title → open group-details → **Back**" is laggy. Plain message navigation, other Telegram actions, and other native apps are all responsive. So this is NOT general input/event latency (that earlier framing is too broad).
+
+A `sample` taken *specifically during the Back transition* (3rd targeted attempt) again shows Telegram's **main thread idle** (overwhelmingly `__psynch_cvwait`/`mach_msg`; active leaves single digits) → the lag is **not** Telegram main-thread CPU. Combined with the user's observation that **screen-recording makes the lag dramatically worse**, the signal points to a **CoreAnimation / WindowServer compositing stutter**: dismissing the group-details panel plays an animation, and that panel is heavy (member/media lists + blur/Liquid-Glass layers). Compositing that dismiss animation drops frames on macOS 27's WindowServer (`ws_main_thread`), while lighter transitions (message nav) are fine. Screen recording adds frame-capture load to the same compositor → the compositing-bound transition stutters more (confirms it's compositing-bound, not CPU/event).
+
+**Net:** macOS 27's WindowServer/CoreAnimation handles this heavy blurred-panel dismiss animation with dropped frames where macOS 26 did not — exposed specifically by Telegram's heavy group-details panel. Half macOS-27 compositor regression, half Telegram's heavy panel. Not Telegram main-thread CPU, not load, not WeType, not the scheduler. Proper proof would need a CoreAnimation/WindowServer frame trace timed to the ~300ms transition (a plain `sample` can't isolate such a brief one-shot burst).
