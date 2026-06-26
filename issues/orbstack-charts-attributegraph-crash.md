@@ -29,3 +29,5 @@ Crash originates in Apple's `AttributeGraph` / SwiftUI Charts stack, not OrbStac
 
 - Confirmed still present on beta2 by inference (no SwiftUI Charts fix in beta2 changelog); explicit beta2 reproduction TODO.
 - issue #2526 kept open as an anchor to track across betas.
+
+**Retest 2026-06-26 beta2 26A5368g:** HOLD / NO FRESH EVIDENCE — no OrbStack*.ips anywhere in `~/Library/Logs/DiagnosticReports/` or `Retired/`; grep for `AttributeGraph`/`OrbStack`/`Charts` across all reports returned zero hits. Newest crash report on disk is 2026-06-25 (non-OrbStack). The prior beta1 `26A5353q` crash report is no longer on disk (purged). OrbStack 2.2.1 still installed. No crash captured on beta2 — needs fresh repro before filing.

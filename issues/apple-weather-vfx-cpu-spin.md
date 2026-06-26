@@ -33,3 +33,5 @@ Don't leave the Weather window backgrounded for long periods.
 ## Notes / 备注
 
 Beta regression in a system app — can't be fixed locally; expect a fix in a later beta. The menu-bar `WeatherMenu` component was also seen emitting heavy logs (~560 lines/min) in the same period.
+
+**Retest 2026-06-26 beta2 26A5368g:** NOT-REPRODUCED — Weather backgrounded measured 0.9–1.9% CPU (not ~36%). `sample` still shows the two `com.apple.vfx.runtime-thread` threads, but they are now **parked**, not spinning: 2328/2337 and 2314/2337 samples sit in `_pthread_cond_wait` → `__psynch_cvwait` (blocked on a condvar), and `__psynch_cvwait` is the dominant leaf (4642 samples). Main thread idle in `mach_msg` as before. Looks fixed/throttled in beta2 — the VFX render loop is no longer free-running when backgrounded.

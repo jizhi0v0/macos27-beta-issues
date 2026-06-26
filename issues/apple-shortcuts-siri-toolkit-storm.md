@@ -40,3 +40,5 @@ BackgroundShortcutRunner  (WorkflowKit) [com.apple.shortcuts:ActionRegistry] -[W
 ## Notes / 备注
 
 Appears to be a beta inefficiency in the App Intents registration path rather than a user-installed runaway Shortcut (no looping automation was running on the test machine).
+
+**Retest 2026-06-26 beta2 26A5368g:** TRANSIENT — uptime 39 min; `log show --last 60s` = 0 `com.apple.shortcuts` lines, 0 `BackgroundShortcutRunner`, 0 `siriactionsd` ToolKit lines (the only 2 `siriactionsd` hits were RunningBoard connection records, not the storm). Only ToolKit/WorkflowKit traffic = duetexpertd enumerating an empty toolKit stream (0 events) + one ShortcutsViewService launch record. Storm fires post-boot then self-settles; cited prior evidence (BackgroundShortcutRunner 6186 / siriactionsd 4820 lines per 30s) stands as the captured signature. Not reproduced live at this uptime.

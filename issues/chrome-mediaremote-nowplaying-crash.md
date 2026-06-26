@@ -35,3 +35,5 @@ Cost: media keys / Control Center can no longer control Chrome playback — but 
 
 - The original crash report had `share_with_app_devs=0` (not auto-sent to Google).
 - ⚠️ **Retest on .201**: Chrome auto-updated past .115; confirm whether the media-tab crash still reproduces before/after filing.
+
+**Retest 2026-06-26 beta2 26A5368g:** HOLD / NOT-REPRODUCED-on-current — no "Google Chrome*.ips" anywhere in `~/Library/Logs/DiagnosticReports/` or `Retired/`; grep for `MRMediaRemoteSetNowPlayingInfoForPlayer`/`MPNowPlayingInfoCenter`/`NSInvalidArgumentException`/`com.google.Chrome` across all reports returned zero hits. Current installed Chrome is 149.0.7827.201; the only known crash was on .115 (beta1 `26A5353q`), and that report is no longer on disk. No crash on .201 / beta2 captured — retest required before filing.

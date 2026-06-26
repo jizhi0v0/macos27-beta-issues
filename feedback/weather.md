@@ -1,0 +1,2 @@
+HOLD — NOT-REPRODUCED on macOS 27.0 beta2 26A5368g (2026-06-26). Weather.app backgrounded measured 0.9–1.9% CPU (claim was ~36%); the two com.apple.vfx.runtime-thread threads are now parked in _pthread_cond_wait/__psynch_cvwait (2328/2337 + 2314/2337 samples), not spinning in the VFX render path.
+Do NOT file: the beta1 26A5353q regression appears fixed/throttled in beta2. Re-verify if CPU spikes return on a later beta; sample saved at scratchpad/weather.sample.
