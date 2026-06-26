@@ -21,9 +21,9 @@ Crash originates in Apple's `AttributeGraph` / SwiftUI Charts stack, not OrbStac
 
 ## Workaround / 临时规避
 
-**Don't keep the usage-chart window open long.** Closing/avoiding the charts view dodges the AttributeGraph path.
+**Don't sit on the charts view for hours.** The specific screen is the sidebar's **General → Activity Monitor** view — its bottom four panels (Total CPU / Memory / Network / Disk) are live SwiftUI Charts time-series that continuously re-render and accumulate AttributeGraph attributes. Switch back to any static list page (Containers / Images / Volumes / Pods / Machines) when done; those don't draw the live charts.
 
-不要让「使用率图表」窗口长期开着；避开 charts 视图即可绕过。
+具体界面是左侧栏 **General → Activity Monitor**：底部四块 Total CPU / Memory / Network / Disk 面板是 SwiftUI Charts 实时曲线，持续重绘会累积 AttributeGraph 属性 → 几小时后 abort。看完切回任意静态列表页（Containers/Images/Volumes/Pods/Machines）即可绕过；别把 OrbStack 长期停在 Activity Monitor 这一屏。
 
 ## Notes / 备注
 
