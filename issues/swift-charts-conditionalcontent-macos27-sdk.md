@@ -3,10 +3,10 @@
 
 | | |
 |---|---|
-| **Status** | 🟡 SDK behavior change — code-side workaround (no Apple fix expected) |
+| **Status** | 🟡 Apple-acknowledged **Known Issue** — official workaround exists |
 | **Toolchain** | Xcode 26 beta / macOS 27 SDK (building an app that still deploys to macOS 14 / iOS 18) |
 | **Component** | Apple **Swift Charts** (`@ChartContentBuilder`) |
-| **Report** | Likely intended availability tightening, not a bug — document + work around |
+| **Report** | **Apple radar `174168981`** — listed in the Xcode 26 / macOS 27 SDK release-notes *Known Issues*. Apple confirms it produces the conformance warning **and the app may crash at runtime when that content loads**. |
 
 ## Symptom / 症状
 
@@ -60,6 +60,29 @@ BarMark(...).foregroundStyle(cond ? .green : .red)
 ```
 
 Output is byte-for-byte identical. Avoid `if/else` and `if/else if` directly inside chart builders.
+
+### Apple's official workaround (radar 174168981) / Apple 官方解法
+
+Per Apple's Known-Issues note, you can **keep the `if/else`** — just move it out of the `Chart {}` closure into a separate function or computed property annotated `@ChartContentBuilder`:
+
+```swift
+Chart(dataPoints, id: \.index) { dataPoint in
+    marks(for: dataPoint)
+}
+
+@ChartContentBuilder
+private func marks(for dataPoint: DataPoint) -> some ChartContent {
+    if selectedMetric == "Rate" {
+        LineMark(x: .value("X", dataPoint.index), y: .value("Y", dataPoint.rate))
+            .foregroundStyle(.blue)
+    } else {
+        LineMark(x: .value("X", dataPoint.index), y: .value("Y", dataPoint.signal))
+            .foregroundStyle(.green)
+    }
+}
+```
+
+把 `if/else` 抽到一个标了 `@ChartContentBuilder` 的独立函数/计算属性里(保留 if/else),Chart 闭包里只调它即可。这是 Apple 官方推荐的解法 —— 比上面"改写成裸 if/ternary"可读性更好,适合分支逻辑复杂时用。两种都能消除 `_ConditionalContent` 触发的报错/运行时崩溃。
 
 ## Notes / 备注
 
