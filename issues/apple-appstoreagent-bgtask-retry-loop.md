@@ -6,7 +6,7 @@
 | **Status** | 🟠 Confirmed beta2 — internal retry loop (NOT network / NOT a proxy app) |
 | **macOS** | 27.0 beta2 `26A5368g` |
 | **Component** | Apple **appstoreagent** + **dasd** (DuetActivityScheduler) / BGTaskScheduler, around **App Store / Apple Arcade AppUsage** reporting |
-| **Report** | Apple Feedback: `FB________` *(candidate)* |
+| **Report** | Apple Feedback: **`FB23413997`** (filed 2026-06-26, App Store → Incorrect/Unexpected Behavior; sysdiagnose + log capture attached) |
 
 ## Symptom / 症状
 
