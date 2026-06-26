@@ -7,7 +7,7 @@
 | **macOS** | 27.0 beta2 `26A5368g` (also beta1 `26A5353q`) |
 | **Component** | Apple **MediaToolbox / CoreMedia** (`com.apple.coremedia`) |
 | **Hardware** | MacBook Pro `Mac15,11`, M3 Max, single built-in Liquid Retina XDR display |
-| **Report** | Apple Feedback: `FB________` *(to be filed)* |
+| **Report** | Apple Feedback: **`FB23411581`** (filed 2026-06-26, Displays & Graphics → Incorrect/Unexpected Behavior; sysdiagnose + 90s flood capture attached) |
 
 ## Symptom / 症状
 
