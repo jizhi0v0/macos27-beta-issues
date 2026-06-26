@@ -55,6 +55,8 @@ plus continuous `(SpotlightUIInternal) [com.apple.spotlight.ui:WindowExpansion] 
 
 Per keystroke the ranking model prepares ~395 **System Settings** items plus several hundred `<private>` items. The `insert ranking attr at NSNotFound` errors cluster while ranking these large candidate sets — suggesting the ranking-attribute array indexing fails (overflows to `NSNotFound`) on large sets, with **System Settings (systempreferences) the prime suspect source**. (To de-redact the `<private>` bundles, capture with `sudo log config --mode private_data:on`.)
 
+**Correction 2026-06-26 — systempreferences was a RED HERRING; categories don't gate the error:** disabled the **System Settings + Clipboard + Developer** result categories (so `systempreferences`'s 395 items no longer enter ranking — confirmed gone from the `preparing … bundle` lines) and re-tested. The `insert ranking attr at NSNotFound` rate did **not** drop — **1233 occurrences in a ~9s typing window (~137/sec, same as the ~160/sec seen before)**, now while ranking `com.apple.applications` / `tophits` / `<private>` / syndicatedPhotos instead. So the error is **intrinsic to the ranking code and independent of which candidate bundles are present** — no Settings/category toggle reduces it. The user *did* perceive Spotlight as snappier with System Settings off, but that is **fewer results to render**, not fewer ranking errors — a usability tweak, not a fix. Net: the only real workaround remains a third-party launcher; the bug is Apple's to fix.
+
 ## Notes / 备注
 
 - `Campo` is the macOS 27 Spotlight UI app (codename); confirmed by its log subsystems `com.apple.SpotlightServices` + `com.apple.spotlight.ui`.
