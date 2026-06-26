@@ -3,7 +3,7 @@
 
 | | |
 |---|---|
-| **Status** | 🟠 Confirmed macOS-27-specific regression; exact scope (system-wide vs app-specific) being narrowed |
+| **Status** | 🔵 Intermittent / load-conditional — NOT a pervasive daily issue (reporter says day-to-day other apps don't lag); appears under heavy load (e.g. while screen-recording/sampling). Downstream of the filed CPU bugs. |
 | **macOS** | 27.0 beta2 `26A5368g` (NOT present on macOS 26 — same app, same hardware-class, responsive) |
 | **Component** | Apple — input/event delivery / responsiveness (suspect: WindowServer/event pipeline under load) |
 | **Hardware** | MacBook Pro `Mac15,11`, M3 Max |
