@@ -35,7 +35,8 @@ If a Google/GitHub search for a crash signature or a process eating CPU on macOS
 | 11 | [Swift Charts `if/else` fails to build under macOS 27 SDK](issues/swift-charts-conditionalcontent-macos27-sdk.md) | Apple Swift Charts (SDK/build) | 🟡 | use bare `if` / ternary, avoid `if/else` in chart builders | SDK behavior |
 | 12 | [MenuBarAgent ~10–14% CPU at idle (static menu bar)](issues/apple-menubaragent-idle-cpu.md) | Apple MenuBarAgent | ✅ confirmed | none (beta regression) | **[FB23411741](https://feedbackassistant.apple.com/feedback/23411741)** |
 | 13 | [Spotlight `insert ranking attr at NSNotFound` ~60–160×/sec while typing](issues/apple-spotlight-ranking-attr-loop.md) | Apple Spotlight ("Campo" UI) | ✅ confirmed | use Raycast/Alfred (no Settings fix) | **[FB23412497](https://feedbackassistant.apple.com/feedback/23412497)** |
-| 14 | [Click/input latency — WindowServer `ws_main_thread` serializes events (persists at 80% idle)](issues/apple-click-input-latency-beta.md) | macOS 27 WindowServer / event delivery | 🟠 confirmed 27 regression (fine on 26, not load) | Reduce transparency/motion; quit redraw-heavy apps | Feedback candidate `FB____` |
+| 14 | [Click/input latency — WindowServer `ws_main_thread` serializes events (persists at 80% idle)](issues/apple-click-input-latency-beta.md) | macOS 27 WindowServer / event delivery | 🟠 narrowed: compositing stutter on Telegram's heavy panel dismiss (fine on 26) | Reduce transparency/motion | Feedback candidate `FB____` |
+| 15 | [appstoreagent + dasd retry-loop (Arcade BG task rejected `Code=8`, no backoff) floods log/CPU](issues/apple-appstoreagent-bgtask-retry-loop.md) | Apple appstoreagent / dasd / BGTaskScheduler | 🟠 confirmed (not network/Surge) | `killall` = temporary; internal bug | Feedback candidate `FB____` |
 
 ## Filing readiness / 提交就绪度 (re-verified 2026-06-26, beta2 `26A5368g`)
 
