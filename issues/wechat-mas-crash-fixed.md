@@ -1,6 +1,8 @@
 # WeChat (Mac App Store build) crash on launch — FIXED in 4.1.10
 # 微信（Mac App Store 版）启动崩溃 —— 4.1.10 已修复
 
+> 🔗 **Track / 关注此问题:** [#10 — watch & discuss on GitHub](https://github.com/jizhi0v0/macos27-beta-issues/issues/10)
+
 | | |
 |---|---|
 | **Status** | 🟢 Fixed |

@@ -1,6 +1,8 @@
 # Chrome crash: `NSInvalidArgumentException` via Apple MediaRemote Now-Playing (nil in NSArray)
 # Chrome 崩溃：经 Apple MediaRemote 推送「正在播放」时往 NSArray 塞 nil
 
+> 🔗 **Track / 关注此问题:** [#6 — watch & discuss on GitHub](https://github.com/jizhi0v0/macos27-beta-issues/issues/6)
+
 | | |
 |---|---|
 | **Status** | ⚪ Needs retest on 149.0.7827.201 (originally seen on .115) |

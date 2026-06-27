@@ -1,6 +1,8 @@
 # Telegram (Mac App Store build) sluggish / slow to respond
 # Telegram（Mac App Store 版）异常卡顿、响应慢
 
+> 🔗 **Track / 关注此问题:** [#9 — watch & discuss on GitHub](https://github.com/jizhi0v0/macos27-beta-issues/issues/9)
+
 | | |
 |---|---|
 | **Status** | ⚪ Open — needs more characterization |

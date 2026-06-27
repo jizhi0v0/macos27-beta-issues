@@ -1,6 +1,8 @@
 # CoreMedia `fpSupport_GetVideoRangeForCoreDisplayWithPreference` loop floods `logd`
 # CoreMedia 查显示色域死循环刷爆 logd / 多个 WebKit app 后台空转
 
+> 🔗 **Track / 关注此问题:** [#1 — watch & discuss on GitHub](https://github.com/jizhi0v0/macos27-beta-issues/issues/1)
+
 | | |
 |---|---|
 | **Status** | 🟡 Mitigated (workaround) — present in beta1 **and** beta2 |

@@ -1,6 +1,8 @@
 # Weather.app VFX render thread spins ~36% CPU when backgrounded
 # 天气 app 的 VFX 渲染线程后台空转吃 ~36% CPU
 
+> 🔗 **Track / 关注此问题:** [#4 — watch & discuss on GitHub](https://github.com/jizhi0v0/macos27-beta-issues/issues/4)
+
 | | |
 |---|---|
 | **Status** | 🟡 Mitigated — beta regression in a system app |

@@ -1,6 +1,8 @@
 # WindowServer high CPU + repeating `_CGXPackagesSetWindowConstraints: Invalid window`
 # WindowServer 持续高 CPU + SkyLight 反复报 Invalid window
 
+> 🔗 **Track / 关注此问题:** [#3 — watch & discuss on GitHub](https://github.com/jizhi0v0/macos27-beta-issues/issues/3)
+
 | | |
 |---|---|
 | **Status** | ⚪ Needs more isolation |

@@ -1,6 +1,8 @@
 # MenuBarAgent sustains ~10–14% CPU at idle with a static menu bar
 # MenuBarAgent 在静态菜单栏下 idle 空转 ~10–14% CPU
 
+> 🔗 **Track / 关注此问题:** [#12 — watch & discuss on GitHub](https://github.com/jizhi0v0/macos27-beta-issues/issues/12)
+
 | | |
 |---|---|
 | **Status** | ✅ CONFIRMED beta2 — likely a macOS 27 MenuBarAgent regression (upstream sender unidentified) |

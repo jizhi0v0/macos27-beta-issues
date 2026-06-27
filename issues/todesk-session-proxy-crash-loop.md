@@ -1,6 +1,8 @@
 # ToDesk "repeated logout" is actually a 10-second crash-loop (`ToDesk_Session_Proxy`)
 # ToDesk「反复退出登录」真相：ToDesk_Session_Proxy 每 10 秒崩一次的崩溃循环
 
+> 🔗 **Track / 关注此问题:** [#7 — watch & discuss on GitHub](https://github.com/jizhi0v0/macos27-beta-issues/issues/7)
+
 | | |
 |---|---|
 | **Status** | 🟢 **Fixed in ToDesk 4.9.7.2 (build 2064)** — was an app-side bug, not Apple framework |

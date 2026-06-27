@@ -1,6 +1,8 @@
 # appstoreagent + dasd retry-loop: Arcade usage-summary background task rejected (`BGSystemTaskSchedulerErrorDomain Code=8`) with no backoff → log flood + CPU spikes
 # appstoreagent 后台任务被拒(Code=8)无退避死重试 → 刷爆日志 + CPU 阵发飙高
 
+> 🔗 **Track / 关注此问题:** [#15 — watch & discuss on GitHub](https://github.com/jizhi0v0/macos27-beta-issues/issues/15)
+
 | | |
 |---|---|
 | **Status** | 🟠 Confirmed beta2 — internal retry loop (NOT network / NOT a proxy app) |

@@ -1,6 +1,8 @@
 # Click / input responsiveness regression on macOS 27 beta2 (clicks slow to react; app main thread is idle)
 # macOS 27 beta2 点击/输入响应回归:点按钮反应迟钝,但 app 主线程是空闲的
 
+> 🔗 **Track / 关注此问题:** [#14 — watch & discuss on GitHub](https://github.com/jizhi0v0/macos27-beta-issues/issues/14)
+
 | | |
 |---|---|
 | **Status** | 🟠 Narrowed: NOT general input latency. It's a **compositing stutter on one specific heavy view transition** — Telegram's group-title → group-details → **back** (dismissing the heavy/blurred details panel). NOT load (80% idle), NOT Telegram main-thread CPU (idle during it). Other apps & other Telegram navigation are fine; macOS 26 is fine. |

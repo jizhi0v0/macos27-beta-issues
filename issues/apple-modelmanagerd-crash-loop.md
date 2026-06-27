@@ -1,6 +1,8 @@
 # `modelmanagerd` crash-loops (`EXC_BREAKPOINT`) on an Apple-Intelligence-ineligible device
 # `modelmanagerd` 在不符合 Apple Intelligence 资格的设备上反复崩溃（`EXC_BREAKPOINT`）
 
+> 🔗 **Track / 关注此问题:** [#16 — watch & discuss on GitHub](https://github.com/jizhi0v0/macos27-beta-issues/issues/16)
+
 | | |
 |---|---|
 | **Status** | 🔴 Open · confirmed, reproduces across reboot — Apple system bug |

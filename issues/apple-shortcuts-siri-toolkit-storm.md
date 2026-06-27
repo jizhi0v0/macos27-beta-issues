@@ -1,6 +1,8 @@
 # Shortcuts/Siri `ToolKit` action-registration storm (BackgroundShortcutRunner + siriactionsd)
 # 快捷指令/Siri 动作注册风暴：BackgroundShortcutRunner + siriactionsd 刷爆日志
 
+> 🔗 **Track / 关注此问题:** [#2 — watch & discuss on GitHub](https://github.com/jizhi0v0/macos27-beta-issues/issues/2)
+
 | | |
 |---|---|
 | **Status** | 🟡 Mitigated — self-settles post-boot |

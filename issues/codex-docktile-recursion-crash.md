@@ -1,6 +1,8 @@
 # Codex.app Dock-tile plugin: infinite recursion → stack overflow → `EXC_BAD_ACCESS`
 # Codex.app Dock 角标插件无限递归 → 爆栈 → EXC_BAD_ACCESS
 
+> 🔗 **Track / 关注此问题:** [#8 — watch & discuss on GitHub](https://github.com/jizhi0v0/macos27-beta-issues/issues/8)
+
 | | |
 |---|---|
 | **Status** | 🟢 Likely fixed in Codex 26.623.31443 (0 crashes in 7 days) — was a vendor (OpenAI) app bug |

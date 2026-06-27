@@ -1,6 +1,8 @@
 # Swift Charts: `if/else` in a chart builder fails to build under the macOS 27 SDK
 # Swift Charts：chart builder 里的 `if/else` 在 macOS 27 SDK 下编译不过
 
+> 🔗 **Track / 关注此问题:** [#11 — watch & discuss on GitHub](https://github.com/jizhi0v0/macos27-beta-issues/issues/11)
+
 | | |
 |---|---|
 | **Status** | 🟡 Apple-acknowledged **Known Issue** — official workaround exists |

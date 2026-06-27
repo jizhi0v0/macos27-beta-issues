@@ -1,6 +1,8 @@
 # OrbStack crash: SwiftUI Charts → `AttributeGraph` extended-attribute alloc abort
 # OrbStack 崩溃：SwiftUI Charts 触发 AttributeGraph 属性分配失败 abort
 
+> 🔗 **Track / 关注此问题:** [#5 — watch & discuss on GitHub](https://github.com/jizhi0v0/macos27-beta-issues/issues/5)
+
 | | |
 |---|---|
 | **Status** | 🟡 Mitigated — Apple framework regression, no app-side fix |

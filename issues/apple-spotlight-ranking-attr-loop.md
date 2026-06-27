@@ -1,6 +1,8 @@
 # Spotlight ("Campo") spams `Attempted to insert ranking attr at NSNotFound` ~60×/sec while typing → search lag
 # 新版 Spotlight 打字时狂报 `insert ranking attr at NSNotFound`(~60次/秒)→ 搜索卡顿
 
+> 🔗 **Track / 关注此问题:** [#13 — watch & discuss on GitHub](https://github.com/jizhi0v0/macos27-beta-issues/issues/13)
+
 | | |
 |---|---|
 | **Status** | ✅ CONFIRMED beta2 — clean idle-vs-typing contrast |
