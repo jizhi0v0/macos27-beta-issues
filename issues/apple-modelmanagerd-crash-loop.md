@@ -7,7 +7,7 @@
 | **macOS** | 27.0 beta2 `26A5368g` |
 | **Component** | Apple **`modelmanagerd`** (`/usr/libexec/modelmanagerd`) + `ModelManagerServices.framework` (private) |
 | **Hardware** | MacBook Pro `Mac15,11`, M3 Max (HW-eligible for Apple Intelligence; **region/account-ineligible**) |
-| **Report** | Apple Feedback: `FB________` (candidate) |
+| **Report** | Apple Feedback: **[FB23430737](https://feedbackassistant.apple.com/feedback/23430737)** (filed 2026-06-27 via Feedback Assistant — Apple Intelligence → Enabling Apple Intelligence features → "Error or issue using a feature"; sysdiagnose + crash `.ips` + live debug-log capture attached) |
 
 ## Symptom / 症状
 
