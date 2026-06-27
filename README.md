@@ -37,6 +37,7 @@ If a Google/GitHub search for a crash signature or a process eating CPU on macOS
 | 13 | [Spotlight `insert ranking attr at NSNotFound` ~60–160×/sec while typing](issues/apple-spotlight-ranking-attr-loop.md) | Apple Spotlight ("Campo" UI) | ✅ confirmed | use Raycast/Alfred (no Settings fix) | **[FB23412497](https://feedbackassistant.apple.com/feedback/23412497)** |
 | 14 | [Click/input latency — WindowServer `ws_main_thread` serializes events (persists at 80% idle)](issues/apple-click-input-latency-beta.md) | macOS 27 WindowServer / event delivery | 🟠 narrowed: compositing stutter on Telegram's heavy panel dismiss (fine on 26) | Reduce transparency/motion | Feedback candidate `FB____` |
 | 15 | [appstoreagent + dasd retry-loop (Arcade BG task rejected `Code=8`, no backoff) floods log/CPU](issues/apple-appstoreagent-bgtask-retry-loop.md) | Apple appstoreagent / dasd / BGTaskScheduler | ✅ confirmed (not network/Surge) | `killall` = temporary; internal bug | **[FB23413997](https://feedbackassistant.apple.com/feedback/23413997)** |
+| 16 | [`modelmanagerd` crash-loop (`EXC_BREAKPOINT`) on AI-ineligible device](issues/apple-modelmanagerd-crash-loop.md) | Apple modelmanagerd / ModelManagerServices | 🔴 confirmed (138×/4d, repros across reboot) | none (SIP daemon); mute in crash-notify | Feedback candidate `FB____` |
 
 ## Filing readiness / 提交就绪度 (re-verified 2026-06-26, beta2 `26A5368g`)
 
@@ -45,6 +46,7 @@ Each Apple bug was re-tested live on the machine before drafting Feedback, so we
 - ✅ **Filed to Apple** (confirmed beta2 bugs): **CoreMedia loop** → [FB23411581](https://feedbackassistant.apple.com/feedback/23411581) · **MenuBarAgent idle ~10–14% CPU** → [FB23411741](https://feedbackassistant.apple.com/feedback/23411741)
 - ✅ **Filed:** **Spotlight `insert ranking attr at NSNotFound` ~60–160×/sec while typing** (idle=0; intrinsic to ranking code, no Settings fix) → [FB23412497](https://feedbackassistant.apple.com/feedback/23412497)
 - ⏸ **Intermittent** — fires post-boot then self-settles; file with the captured boot-time evidence: **Shortcuts/Siri storm** ([draft](feedback/shortcuts.md))
+- 🔴 **Ready to file** — **`modelmanagerd` crash-loop** (`EXC_BREAKPOINT` on `background-qos.cooperative`, 138× in 4 days, reproduces ≤2.5 min after a clean reboot; `deviceNotEligible` region/account, HW-eligible M3 Max; trap is silent / binaries stripped, so no symbol or message to attach beyond the `.ips` + queue + asset-set context) ([details](issues/apple-modelmanagerd-crash-loop.md))
 - 🟢 **Not reproducing on beta2 — likely fixed** (verified by live repro attempts, no Feedback needed):
   - **Weather VFX** — backgrounded (incl. rain) at ~1% CPU, VFX threads parked; resolved in Weather build 1435.
   - **OrbStack Charts** — kept on the Activity Monitor view **3h21m**, RSS plateaued ~150–185 MB (no runaway), no crash.
