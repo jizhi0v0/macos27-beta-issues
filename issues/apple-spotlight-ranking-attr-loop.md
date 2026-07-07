@@ -5,9 +5,9 @@
 
 | | |
 |---|---|
-| **Status** | ✅ CONFIRMED beta2 — clean idle-vs-typing contrast |
-| **macOS** | 27.0 beta2 `26A5368g` |
-| **Component** | Apple **Spotlight** — `com.apple.SpotlightServices` / `com.apple.spotlight.ui`; the macOS 27 Spotlight UI process is **`Campo`** (`/System/Applications/Campo.app`) |
+| **Status** | 🟢 User-facing typing lag / ghosting FIXED on beta3 `26A5378j` (residual benign log spam remains); confirmed beta2 |
+| **macOS** | lag confirmed 27.0 beta2 `26A5368g`; lag gone on beta3 `26A5378j` (log line persists) |
+| **Component** | Apple **Spotlight** — `com.apple.SpotlightServices` / `com.apple.spotlight.ui`; UI app was **`Campo`** on beta2, **renamed to `Siri AI`** on beta3 (internal framework still `CampoUIServices`, same subsystems) |
 | **Hardware** | MacBook Pro `Mac15,11`, M3 Max |
 | **Report** | Apple Feedback: **`FB23412497`** (filed 2026-06-26, Spotlight → Incorrect/Unexpected Behavior; sysdiagnose + before/after capture attached) |
 
@@ -66,5 +66,21 @@ Per keystroke the ranking model prepares ~395 **System Settings** items plus sev
 - Distinct from `corespotlightd` AI-suggestion work (`Pommes_Suggestions`, background suggestions model) seen in the same period; the lag signal is the UI-side ranking-attr loop.
 
 **Workaround test 2026-06-26 — NOT the suggestions layer; no Settings fix:** disabling **System Settings → Spotlight → "Show Related Content"** (the Apple-partner/web-suggestions toggle) had **no effect** — typing still produced 498 occurrences (vs 484 with it on). With Related Content off, `Campo` is seen ranking basic `[com.apple.spotlight:Apps][Settings] found items` + CoreSpotlight query results and the `insert ranking attr at NSNotFound` error still fires. So the bug is in the **core query/result-ranking path**, not the suggestions/related-content layer, and cannot be tuned away in Settings. The only effective workaround is to avoid the Spotlight UI entirely (use a third-party launcher like Raycast/Alfred); real fix is up to Apple. This rules-out the suggestions layer — useful for the Feedback.
+
+## Retest on beta3 `26A5378j` (2026-07-07) — LAG/GHOSTING FIXED; log spam remains / 卡顿+残影已修,日志噪声还在
+
+**Correction to first pass:** the initial beta3 retest looked only at the *log signature* and wrongly called the bug "still present, worse." The log line **does** persist — a live capture around a real typing burst still produced **14,798** `insert ranking attr at NSNotFound`, peak **1,569/sec** (beta2 was ~60–160/sec), with ranking running (`[SpotlightRanking] preparing N items …`, incl. the ~369-item `systempreferences` sets). **But log volume was never the user-facing bug** — the felt symptom was typing lag + a result "ghost"/afterimage that lingered several seconds.
+
+**On the actual symptom, beta3 is fixed** — corroborated by the user (typing now feels smooth, no ghosting) *and* by an objective signal:
+
+| | beta2 `26A5368g` | beta3 `26A5378j` |
+|---|---|---|
+| Spotlight-UI **spin/hang reports** | **3× `Campo_*.spin` on 2026-07-06**, `Reason: Slow response to HID event`, heavy in `Campo` + `SpotlightUIShared` | **0** since boot (07:53), despite active typing |
+| Felt typing lag / multi-sec ghosting | yes (user-reported + spin reports) | **no** (user-reported) |
+| `insert ranking attr at NSNotFound` | ~60–160/sec while typing | still fires (peak 1569/sec) — **now benign** |
+
+The beta2 `.spin` reports (`Slow response to HID event`, stuck in `SpotlightUIShared`) are the objective fingerprint of the keyboard lag/ghosting. Beta3 produces none, so the UI no longer spins on keystrokes even though the ranking-attr line keeps logging → the log error is now **decoupled from UX / harmless log noise**, not the cause of lag.
+
+**Net:** user-impacting bug (the reason [FB23412497](https://feedbackassistant.apple.com/feedback/23412497) was filed) is **fixed on beta3**. What remains is a cosmetic `insert ranking attr at NSNotFound` log line at high rate — worth a note to Apple to clean up the logging, but no longer a perf/UX problem. UI app renamed **`Campo` → `Siri AI`** (PID 1513; internal framework still `CampoUIServices`).
 
 **Intermittency note 2026-06-26:** the error is **query/state-dependent, not every keystroke.** Repeated typing tests gave both ~484–498 occurrences in ~3s (heavy burst, ~60/sec) AND 0 in another typing window where Spotlight still ranked results normally (`[SpotlightRanking] <Model> preparing N items` present, no NSNotFound). So: idle = always 0; typing = intermittently bursts to ~60/sec on some queries, 0 on others. The residual lag the user still feels even on a 0-error query is likely the ranking-model work itself (`SpotlightRanking Model preparing items`), which runs regardless. (Also note: a "quit Mail" test was inconclusive — the Mail process was still alive despite closing its window.)

@@ -5,8 +5,8 @@
 
 | | |
 |---|---|
-| **Status** | 🔴 Open · confirmed, reproduces across reboot — Apple system bug |
-| **macOS** | 27.0 beta2 `26A5368g` |
+| **Status** | 🟢 FIXED on beta3 `26A5378j` (0 crashes ≥3h10 m, trigger unchanged) — was 🔴 confirmed beta2 |
+| **macOS** | confirmed 27.0 beta2 `26A5368g`; not reproducing on beta3 `26A5378j` |
 | **Component** | Apple **`modelmanagerd`** (`/usr/libexec/modelmanagerd`) + `ModelManagerServices.framework` (private) |
 | **Hardware** | MacBook Pro `Mac15,11`, M3 Max (HW-eligible for Apple Intelligence; **region/account-ineligible**) |
 | **Report** | Apple Feedback: **[FB23430737](https://feedbackassistant.apple.com/feedback/23430737)** (filed 2026-06-27 via Feedback Assistant — Apple Intelligence → Enabling Apple Intelligence features → "Error or issue using a feature"; sysdiagnose + crash `.ips` + live debug-log capture attached) |
@@ -67,5 +67,13 @@ None that stops the crashes (can't `kill`/`kickstart` the daemon — SIP-protect
 - Related but **distinct** from the widely-reported Apple-Intelligence-on-beta breakage (Apple Dev Forums [thread 788960](https://developer.apple.com/forums/thread/788960): `ModelManagerServices.ModelManagerError 1019`, "stuck at 100%" downloads). Those are *stuck*/error states; this is a hard **crash-loop**, for which no public report was found — likely an under-reported variant tied to the ineligible-device + empty-catalog state.
 - `libswift_Concurrency` `EXC_BREAKPOINT` is a common class on these betas (e.g. [Maccy #1380](https://github.com/p0deje/Maccy/issues/1380), macOS 26.4.1) — but on `modelmanagerd` specifically, in a loop, is what's novel here.
 - `modelmanagerd` is not Apple-Intelligence-only: it also serves Xcode's local predictive code-completion model ([WWDC24](https://www.threads.com/@hoitab/post/C8Fwk0ooDWR)).
+
+## Retest on beta3 `26A5378j` (2026-07-07) — LIKELY FIXED (soak in progress) / 疑似已修(观察中)
+
+Beta3 was installed 07:54 and the machine booted 07:53. As of ~2h35m uptime, `modelmanagerd` (PID 830) has **run continuously with 0 crashes** — no new `modelmanagerd-*.ips` in `/Library/Logs/DiagnosticReports` (or `~/Library/…`) since boot, and no new `[CRASH] modelmanagerd` lines in `crash-notify.log`. On beta2 it crashed **within ~2.5 min of a clean reboot** and every ~20 min–2.5 h thereafter, so 2h35m clean is already a qualitative change.
+
+**Critically, the trigger condition is unchanged**, which rules out "the device just became eligible": `/var/db/com.apple.modelcatalog/` still holds only empty `sideload`/`tokenStore` (no real LLM catalog — the same empty-catalog state that trapped on beta2), and the device is still Apple-Intelligence-ineligible. So the daemon is hitting the same reconcile path without trapping → this reads as an actual fix to the crashing `background-qos.cooperative` async path, not a change in inputs.
+
+**Soak result:** extended to **≥3h10m uptime, same PID 830, still 0 crashes** (checked 11:04) — comfortably past beta2's 2.5 h max crash interval, so this is no longer an "edge of interval" fluke. Ongoing watch is passive and durable: the OS keeps writing any crash to `/Library/Logs/DiagnosticReports/modelmanagerd-*.ips`, and the user's launchd-registered `com.jizhi.crash-notify` agent logs every `EXC_BREAKPOINT` to `~/Library/Logs/crash-notify.log` independent of any session — so a late-tail crash can't be missed. If one appears, this entry flips back to 🔴; as of this write, beta3 reads **fixed**.
 
 **Captured 2026-06-27 beta2 26A5368g** via a temporary user LaunchAgent running `log stream --level debug` on `process == "modelmanagerd" OR senderImagePath CONTAINS "ModelManager"` across a reboot — confirmed crash within 2.5 min of boot, on `background-qos.cooperative`, with no emitted error message (trap is silent). Symbolication blocked by stripped binaries.

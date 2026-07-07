@@ -11,7 +11,7 @@ If a Google/GitHub search for a crash signature or a process eating CPU on macOS
 | | |
 |---|---|
 | Machine | MacBook Pro `Mac15,11` — Apple M3 Max, 36 GB |
-| OS | macOS **27.0** beta — builds seen: `26A5353q` (beta1), `26A5368g` (beta2) |
+| OS | macOS **27.0** beta — builds seen: `26A5353q` (beta1), `26A5368g` (beta2), `26A5378j` (beta3) |
 | Reporter | [@jizhi0v0](https://github.com/jizhi0v0) |
 
 ## Status legend / 状态
@@ -37,15 +37,24 @@ If a Google/GitHub search for a crash signature or a process eating CPU on macOS
 | [9](https://github.com/jizhi0v0/macos27-beta-issues/issues/9) | [Telegram lag = animated-content redraw (not MAS-specific)](issues/telegram-mas-lag.md) | Telegram-macOS 12.8 (native) | 🟢 explained | disable auto-play/animated stickers (any build) | not a build/Apple bug |
 | [10](https://github.com/jizhi0v0/macos27-beta-issues/issues/10) | [WeChat (MAS) crash on launch — FIXED in 4.1.10](issues/wechat-mas-crash-fixed.md) | WeChat 4.1.9 MAS | 🟢 | update to 4.1.10 (or use official build) | resolved |
 | [11](https://github.com/jizhi0v0/macos27-beta-issues/issues/11) | [Swift Charts `if/else` fails to build under macOS 27 SDK](issues/swift-charts-conditionalcontent-macos27-sdk.md) | Apple Swift Charts (SDK/build) | 🟡 | use bare `if` / ternary, avoid `if/else` in chart builders | SDK behavior |
-| [12](https://github.com/jizhi0v0/macos27-beta-issues/issues/12) | [MenuBarAgent ~10–14% CPU at idle (static menu bar)](issues/apple-menubaragent-idle-cpu.md) | Apple MenuBarAgent | ✅ confirmed | none (beta regression) | **[FB23411741](https://feedbackassistant.apple.com/feedback/23411741)** |
-| [13](https://github.com/jizhi0v0/macos27-beta-issues/issues/13) | [Spotlight `insert ranking attr at NSNotFound` ~60–160×/sec while typing](issues/apple-spotlight-ranking-attr-loop.md) | Apple Spotlight ("Campo" UI) | ✅ confirmed | use Raycast/Alfred (no Settings fix) | **[FB23412497](https://feedbackassistant.apple.com/feedback/23412497)** |
+| [12](https://github.com/jizhi0v0/macos27-beta-issues/issues/12) | [MenuBarAgent ~10–14% CPU at idle (static menu bar)](issues/apple-menubaragent-idle-cpu.md) | Apple MenuBarAgent | 🟢 fixed on beta3 (`26A5378j`) | (was) none | **[FB23411741](https://feedbackassistant.apple.com/feedback/23411741)** |
+| [13](https://github.com/jizhi0v0/macos27-beta-issues/issues/13) | [Spotlight typing lag / ghosting (`insert ranking attr at NSNotFound`)](issues/apple-spotlight-ranking-attr-loop.md) | Apple Spotlight (UI app `Campo`→`Siri AI` on beta3) | 🟢 lag/ghosting fixed on beta3 (log line persists, now benign) | (was) use Raycast/Alfred | **[FB23412497](https://feedbackassistant.apple.com/feedback/23412497)** |
 | [14](https://github.com/jizhi0v0/macos27-beta-issues/issues/14) | [Click/input latency — WindowServer `ws_main_thread` serializes events (persists at 80% idle)](issues/apple-click-input-latency-beta.md) | macOS 27 WindowServer / event delivery | 🟠 narrowed: compositing stutter on Telegram's heavy panel dismiss (fine on 26) | Reduce transparency/motion | Feedback candidate `FB____` |
-| [15](https://github.com/jizhi0v0/macos27-beta-issues/issues/15) | [appstoreagent + dasd retry-loop (Arcade BG task rejected `Code=8`, no backoff) floods log/CPU](issues/apple-appstoreagent-bgtask-retry-loop.md) | Apple appstoreagent / dasd / BGTaskScheduler | ✅ confirmed (not network/Surge) | `killall` = temporary; internal bug | **[FB23413997](https://feedbackassistant.apple.com/feedback/23413997)** |
-| [16](https://github.com/jizhi0v0/macos27-beta-issues/issues/16) | [`modelmanagerd` crash-loop (`EXC_BREAKPOINT`) on AI-ineligible device](issues/apple-modelmanagerd-crash-loop.md) | Apple modelmanagerd / ModelManagerServices | 🔴 confirmed (138×/4d, repros across reboot) | none (SIP daemon); mute in crash-notify | **[FB23430737](https://feedbackassistant.apple.com/feedback/23430737)** |
+| [15](https://github.com/jizhi0v0/macos27-beta-issues/issues/15) | [appstoreagent + dasd retry-loop (Arcade BG task rejected `Code=8`, no backoff) floods log/CPU](issues/apple-appstoreagent-bgtask-retry-loop.md) | Apple appstoreagent / dasd / BGTaskScheduler | ⚪ not reproduced in beta3 window (conditional) | `killall` = temporary; internal bug | **[FB23413997](https://feedbackassistant.apple.com/feedback/23413997)** |
+| [16](https://github.com/jizhi0v0/macos27-beta-issues/issues/16) | [`modelmanagerd` crash-loop (`EXC_BREAKPOINT`) on AI-ineligible device](issues/apple-modelmanagerd-crash-loop.md) | Apple modelmanagerd / ModelManagerServices | 🟢 fixed on beta3 (0 crashes ≥3h10m, trigger unchanged) | (was) none (SIP daemon) | **[FB23430737](https://feedbackassistant.apple.com/feedback/23430737)** |
 
 ## Filing readiness / 提交就绪度 (re-verified 2026-06-26, beta2 `26A5368g`)
 
 Each Apple bug was re-tested live on the machine before drafting Feedback, so we don't file stale/wrong reports. Ready drafts live in [`feedback/`](feedback/).
+
+### Beta3 retest / beta3 复验 (2026-07-07, `26A5378j`, ~2.5 h uptime)
+
+Re-ran the still-open Apple bugs on beta3 (installed 07:54, booted 07:53). Verdicts by live measurement, not changelog:
+
+- 🟢 **#12 MenuBarAgent idle CPU — fixed.** 0.0% now, **43 s cumulative CPU TIME over 2h35m** (≈0.28% avg); beta2 held 10–14% sustained. Cumulative-TIME can't be faked → confirmed fix.
+- 🟢 **#16 `modelmanagerd` crash-loop — fixed.** Daemon PID 830 alive **≥3h10m with 0 crashes** (past beta2's 2.5 h max interval); beta2 crashed ≤2.5 min after a clean reboot and every 20 min–2.5 h. **Trigger condition unchanged** — still `deviceNotEligible`, `/var/db/com.apple.modelcatalog/` still only empty `sideload`/`tokenStore` — so the daemon hits the same reconcile path without trapping = a real fix, not changed inputs. Passive durable watch continues (OS `.ips` + launchd `com.jizhi.crash-notify` log every crash); flips back to 🔴 if a late-tail crash appears.
+- 🟢 **#13 Spotlight typing lag / ghosting — fixed** (log line persists, now benign). The user-facing bug was **typing lag + a result "ghost" that lingered several seconds**, not the log volume. Beta3: user reports smooth typing, no ghosting, and — objectively — **0 Spotlight-UI spin reports** since boot vs **3× `Campo_*.spin` (`Slow response to HID event`) on beta2 (2026-07-06)**. The `insert ranking attr at NSNotFound` line still logs (peak 1569/sec) but is now **decoupled from UX / benign spam**. UI app renamed **`Campo` → `Siri AI`**.
+- ⚪ **#15 appstoreagent / #1 CoreMedia / #2 Shortcuts — not reproduced in this window (conditional triggers).** Since boot: **0** appstoreagent lines / **0** `Code=8`; **0** CoreMedia `fpSupport` spam; **0** Shortcuts-storm lines. These fire only under specific conditions (Arcade BG task rejection / WebKit DRM video / early post-boot), which didn't occur in the window — "not reproduced," not "confirmed fixed."
 
 - ✅ **Filed to Apple** (confirmed beta2 bugs): **CoreMedia loop** → [FB23411581](https://feedbackassistant.apple.com/feedback/23411581) · **MenuBarAgent idle ~10–14% CPU** → [FB23411741](https://feedbackassistant.apple.com/feedback/23411741)
 - ✅ **Filed:** **Spotlight `insert ranking attr at NSNotFound` ~60–160×/sec while typing** (idle=0; intrinsic to ranking code, no Settings fix) → [FB23412497](https://feedbackassistant.apple.com/feedback/23412497)

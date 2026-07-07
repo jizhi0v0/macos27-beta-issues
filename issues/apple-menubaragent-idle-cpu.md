@@ -5,8 +5,8 @@
 
 | | |
 |---|---|
-| **Status** | ✅ CONFIRMED beta2 — likely a macOS 27 MenuBarAgent regression (upstream sender unidentified) |
-| **macOS** | 27.0 beta2 `26A5368g` |
+| **Status** | 🟢 FIXED on beta3 `26A5378j` (was ✅ CONFIRMED beta2 regression) |
+| **macOS** | seen on 27.0 beta2 `26A5368g`; fixed on beta3 `26A5378j` |
 | **Component** | Apple **MenuBarAgent** (`/System/Library/CoreServices/MenuBarAgent.app`, the macOS 27 menu-bar agent) |
 | **Hardware** | MacBook Pro `Mac15,11`, M3 Max, single internal display |
 | **Report** | Apple Feedback: **`FB23411741`** (filed 2026-06-26, Menu Bar → Incorrect/Unexpected Behavior; sysdiagnose + idle `sample` capture attached) |
@@ -46,3 +46,7 @@ None app-side that fully clears it (it persists with menu-bar apps removed). Red
 - Distinct from [WindowServer high CPU](apple-windowserver-invalid-window.md): that is broader CoreAnimation compositing (dominated by live-rendering apps); MenuBarAgent's ~10–14% is its own process and only a partial contributor to WindowServer.
 - Consistent across many measurements this session (~12–14%), independent of which apps are running → reads as a macOS 27 beta2 baseline, not app-fed.
 - **Strongest confirmation:** after the user quit nearly all menu-bar apps (only system `ControlCenter` + a couple icon-only items left, `log show` showing **0** status-item redraws), MenuBarAgent still held **12.5%**. With essentially nothing feeding it, the cost is MenuBarAgent's own — confirms a genuine beta2 regression rather than app-driven load.
+
+## Retest on beta3 `26A5378j` (2026-07-07) — FIXED / 已修
+
+Re-measured on beta3 (installed 07:54, booted 07:53). MenuBarAgent (PID 1172) reads **0.0% CPU** in a `top -l 2` sample, and — the metric that can't be gamed — **43.5 s of cumulative CPU TIME over 2h35m of uptime (≈0.28% average)**. On beta2 the ~10–14% floor would have burned roughly **18+ minutes** of CPU in the same span. So the idle spin is gone: this is a real fix in beta3, not a quiet moment. No Feedback follow-up needed beyond noting the fix on [FB23411741](https://feedbackassistant.apple.com/feedback/23411741).

@@ -61,3 +61,5 @@ isBuiltinPanel=YES externalPanel=YES prefersHDR10=NO
 - The `<<<< Alt >>>>` prefix is CoreMedia's internal subsystem tag — unrelated to the AltTab app.
 
 **Retest 2026-06-26 beta2 26A5368g:** CONFIRMED — uptime 39 min; `log show --last 60s` = 1192 lines of `fpSupport_GetVideoRangeForCoreDisplayWithPreference`, all `externalPanel=YES` (wrong param, machine has only internal panel). Per-app rate: WeType[910] 480/60s (~8/s), DingTalk[2782] 472/60s (~8/s), Bob[1000] 240/60s (~4/s); Mail not emitting this run. logd 0.8% / 3:30 cum at sample. Still active well past boot, not self-settled.
+
+**Retest 2026-07-07 beta3 26A5378j:** ⚪ not reproduced this window — **0** `fpSupport_GetVideoRange…` lines since boot (07:53, ~2.5 h). Conditional signature (needs a WebKit/WebProcess client doing display/HDR capability detection); none of the emitting apps hit the path in this window. "Not reproduced," not "confirmed fixed" — recheck with the WebKit apps active.

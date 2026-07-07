@@ -5,8 +5,8 @@
 
 | | |
 |---|---|
-| **Status** | 🟠 Confirmed beta2 — internal retry loop (NOT network / NOT a proxy app) |
-| **macOS** | 27.0 beta2 `26A5368g` |
+| **Status** | ⚪ Not reproduced in beta3 `26A5378j` window (conditional trigger); confirmed beta2 |
+| **macOS** | confirmed 27.0 beta2 `26A5368g`; not observed in a beta3 `26A5378j` window |
 | **Component** | Apple **appstoreagent** + **dasd** (DuetActivityScheduler) / BGTaskScheduler, around **App Store / Apple Arcade AppUsage** reporting |
 | **Report** | Apple Feedback: **`FB23413997`** (filed 2026-06-26, App Store → Incorrect/Unexpected Behavior; sysdiagnose + log capture attached) |
 
@@ -44,3 +44,7 @@ Checked explicitly: `appstoreagent`'s log has **no** `nw_`/CFNetwork/timeout/TLS
 
 - Same family as the [Shortcuts/Siri ToolKit storm](apple-shortcuts-siri-toolkit-storm.md): a system service stuck in a retry/scheduling loop on beta.
 - Decisive evidence for Feedback: the `BGSystemTaskSchedulerErrorDomain Code=8` ×3724/3min + the ~171k-lines/3min log volume + dasd at ~30%, from a `log show` capture / sysdiagnose.
+
+## Retest on beta3 `26A5378j` (2026-07-07) — not reproduced this window / 本窗口未复现
+
+Since the beta3 boot (07:53, ~2.5 h): **0** `appstoreagent` log lines, **0** `BGSystemTaskSchedulerErrorDomain Code=8`, **0** `usage-summary` mentions. So the retry-loop is **not currently running**. Caveat: this bug is **conditional** — it fires when `appstoreagent` actually tries to schedule the Arcade usage-summary BG task and gets rejected. That trigger simply didn't occur in this window, so this is **"not reproduced," not "confirmed fixed."** To settle it, force the Arcade summary path (or watch across a longer span that includes one of its scheduling attempts) and recheck for `Code=8`.
