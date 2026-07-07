@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | 🟡 Apple-acknowledged **Known Issue** — official workaround exists |
+| **Status** | 🟢 Closed / by-design — an **intentional macOS 27 SDK availability tightening**, not a tracked bug. Apple-acknowledged **Known Issue** (radar 174168981) with an official workaround; won't change per macOS beta (verified still present on beta3 SDK, Xcode 27.0 `27A5194q`). Kept as reference, tracked *closed* like other explained entries (cf. [#9](telegram-mas-lag.md)). |
 | **Toolchain** | Xcode 26 beta / macOS 27 SDK (building an app that still deploys to macOS 14 / iOS 18) |
 | **Component** | Apple **Swift Charts** (`@ChartContentBuilder`) |
 | **Report** | **Apple radar `174168981`** — listed in the Xcode 26 / macOS 27 SDK release-notes *Known Issues*. Apple confirms it produces the conformance warning **and the app may crash at runtime when that content loads**. |
