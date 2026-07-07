@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | ⚪ Open — needs more characterization |
+| **Status** | 🟢 Closed / explained — Telegram's own continuous CVDisplayLink redraw loop (app-side inefficiency), **not a build/Apple bug** (see analysis below). The user-perceived Telegram stutter was actually the [#14](apple-click-input-latency-beta.md) panel-dismiss compositing regression — **fixed on beta3 `26A5378j`**. |
 | **macOS** | 27.0 beta2 `26A5368g` |
 | **Component** | **Telegram 12.8 (282010)** — Mac App Store build |
 | **Report** | none yet |

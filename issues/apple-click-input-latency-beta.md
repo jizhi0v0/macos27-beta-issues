@@ -5,8 +5,8 @@
 
 | | |
 |---|---|
-| **Status** | 🟠 Narrowed: NOT general input latency. It's a **compositing stutter on one specific heavy view transition** — Telegram's group-title → group-details → **back** (dismissing the heavy/blurred details panel). NOT load (80% idle), NOT Telegram main-thread CPU (idle during it). Other apps & other Telegram navigation are fine; macOS 26 is fine. |
-| **macOS** | 27.0 beta2 `26A5368g` (NOT present on macOS 26 — same app, same hardware-class, responsive) |
+| **Status** | 🟢 FIXED on beta3 `26A5378j` (user-confirmed 2026-07-08). Was 🟠 narrowed on beta2: a **compositing stutter on one specific heavy view transition** — Telegram's group-title → group-details → **back** (dismissing the heavy/blurred details panel); NOT load, NOT Telegram main-thread CPU, other apps/navigation fine, macOS 26 fine. |
+| **macOS** | present 27.0 beta2 `26A5368g`, absent on macOS 26; **fixed on beta3 `26A5378j`** |
 | **Component** | Apple — input/event delivery / responsiveness (suspect: WindowServer/event pipeline under load) |
 | **Hardware** | MacBook Pro `Mac15,11`, M3 Max |
 | **Report** | Apple Feedback: `FB________` *(pending scope confirmation)* |
@@ -58,3 +58,12 @@ The user pinpointed the repro: **only** "click group title → open group-detail
 A `sample` taken *specifically during the Back transition* (3rd targeted attempt) again shows Telegram's **main thread idle** (overwhelmingly `__psynch_cvwait`/`mach_msg`; active leaves single digits) → the lag is **not** Telegram main-thread CPU. Combined with the user's observation that **screen-recording makes the lag dramatically worse**, the signal points to a **CoreAnimation / WindowServer compositing stutter**: dismissing the group-details panel plays an animation, and that panel is heavy (member/media lists + blur/Liquid-Glass layers). Compositing that dismiss animation drops frames on macOS 27's WindowServer (`ws_main_thread`), while lighter transitions (message nav) are fine. Screen recording adds frame-capture load to the same compositor → the compositing-bound transition stutters more (confirms it's compositing-bound, not CPU/event).
 
 **Net:** macOS 27's WindowServer/CoreAnimation handles this heavy blurred-panel dismiss animation with dropped frames where macOS 26 did not — exposed specifically by Telegram's heavy group-details panel. Half macOS-27 compositor regression, half Telegram's heavy panel. Not Telegram main-thread CPU, not load, not WeType, not the scheduler. Proper proof would need a CoreAnimation/WindowServer frame trace timed to the ~300ms transition (a plain `sample` can't isolate such a brief one-shot burst).
+
+## Retest on beta3 `26A5378j` (2026-07-08) — FIXED / 已修
+
+**User confirms the stutter is gone on beta3.** The exact narrowed repro — group title → group-details → **Back** (dismissing the heavy blurred panel) — no longer drops frames. Two things make this a clean verdict rather than a vague "feels better":
+
+1. **It's the specific transition.** The user confirmed it's transition #1 (the group-details panel dismiss), i.e. the precise repro they originally pinpointed on beta2 — not a general "Telegram feels faster" impression.
+2. **Settings-independent.** Toggling Telegram's animation / auto-play settings makes **no difference** to it on beta3. On beta2 the stutter was already shown to be compositor-side (not content/animation), so "smooth regardless of settings" confirms the *system compositor path* changed — this is beta3's fix, not a Telegram-settings workaround.
+
+**Evidence class / why no log number here:** this is a ~300 ms one-shot compositing burst, so — unlike Spotlight's `Campo_*.spin` — it leaves no `.spin`/`.hang` report, and WindowServer CPU can't be read cleanly (the agent's own desktop-app rendering spikes WindowServer 30–50%, per the measurement caveat above). So user perception of the exact narrowed transition **is** the evidence — the same evidence class the #14 narrowing was built on in the first place. Fits the beta3 compositor-fix cluster alongside #12 (MenuBarAgent) and #13 (Spotlight ghosting). No Apple Feedback was filed (was still `FB____` pending scope) — nothing to file now that beta3 resolved it; noting it here for the record.
