@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | 🟡 Mitigated — self-settles post-boot |
+| **Status** | 🟡 Mitigated — self-settles post-boot; ⚪ not reproduced in a beta3 `26A5378j` window (post-boot transient) |
 | **macOS** | 27.0 beta2 `26A5368g` |
 | **Component** | Apple **Shortcuts / App Intents** (`com.apple.shortcuts`), `siriactionsd`, `BackgroundShortcutRunner` |
 | **Report** | Apple Feedback: `FB________` *(to be filed)* |

@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | 🟡 Mitigated (workaround) — present in beta1 **and** beta2 |
+| **Status** | 🟡 Mitigated (workaround) — present in beta1 **and** beta2; ⚪ not reproduced in a beta3 `26A5378j` window (conditional trigger) |
 | **macOS** | 27.0 beta2 `26A5368g` (also beta1 `26A5353q`) |
 | **Component** | Apple **MediaToolbox / CoreMedia** (`com.apple.coremedia`) |
 | **Hardware** | MacBook Pro `Mac15,11`, M3 Max, single built-in Liquid Retina XDR display |
