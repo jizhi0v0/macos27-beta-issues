@@ -86,6 +86,17 @@ private func marks(for dataPoint: DataPoint) -> some ChartContent {
 
 把 `if/else` 抽到一个标了 `@ChartContentBuilder` 的独立函数/计算属性里(保留 if/else),Chart 闭包里只调它即可。这是 Apple 官方推荐的解法 —— 比上面"改写成裸 if/ternary"可读性更好,适合分支逻辑复杂时用。两种都能消除 `_ConditionalContent` 触发的报错/运行时崩溃。
 
+## Retest on beta3 `26A5378j` (2026-07-08) — STILL PRESENT / 仍在
+
+Verified with a minimal repro built against the beta3 toolchain — **Xcode 27.0 (`27A5194q`), Apple Swift 6.4, macOS 27.0 SDK**. Still not fixed (as expected — it's an intentional SDK availability annotation, not a regression):
+
+- `if/else` inside a `Chart {}` body, deploy target `arm64-apple-macos14.0`, **Swift 6 mode → hard `error`**: `conformance of '_ConditionalContent<TrueContent, FalseContent>' to 'ChartContent' is only available in macOS 27.0 or newer`. (Default language mode downgrades it to the same-text *warning* that "is an error in the Swift 6 language mode".)
+- **Control 1** — same code, deploy target `arm64-apple-macos27.0` → **compiles clean**. Confirms it's a deployment-target availability tightening, nothing else.
+- **Control 2** — a **bare `if`** (no `else`) at target `macos14.0` → **compiles clean** (lowers to `Optional`, whose `ChartContent` conformance has no macOS-27 gate).
+- The `.swiftinterface` still carries it: `@available(iOS 27.0, macOS 27.0, tvOS 27.0, watchOS 27.0, visionOS 27.0, *)` directly above `extension _ConditionalContent : ChartContent` (vs `extension Optional : ChartContent` which has no such attribute).
+
+**Net:** persists on beta3 SDK; the workarounds below remain the answer. Not something a macOS beta bump would change — Apple's fix, if any, would come via a Swift Charts SDK update tied to radar 174168981.
+
 ## Notes / 备注
 
 - Real example: in the `ClaudeUsageMenuBar` app this hit 3 files (`UsageTrendChartView`, `MenuBarContentView`, `UsageDashboardView`) and blocked **both** the macOS and iOS builds until rewritten (shipped in v0.3.379, 2026-06-26).
