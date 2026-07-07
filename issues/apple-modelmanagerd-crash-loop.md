@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | 🟢 FIXED on beta3 `26A5378j` (0 crashes ≥3h10 m, trigger unchanged) — was 🔴 confirmed beta2 |
+| **Status** | 🟢 FIXED on beta3 `26A5378j` (0 crashes ≥11 h, trigger unchanged) — was 🔴 confirmed beta2 |
 | **macOS** | confirmed 27.0 beta2 `26A5368g`; not reproducing on beta3 `26A5378j` |
 | **Component** | Apple **`modelmanagerd`** (`/usr/libexec/modelmanagerd`) + `ModelManagerServices.framework` (private) |
 | **Hardware** | MacBook Pro `Mac15,11`, M3 Max (HW-eligible for Apple Intelligence; **region/account-ineligible**) |
@@ -74,6 +74,6 @@ Beta3 was installed 07:54 and the machine booted 07:53. As of ~2h35m uptime, `mo
 
 **Critically, the trigger condition is unchanged**, which rules out "the device just became eligible": `/var/db/com.apple.modelcatalog/` still holds only empty `sideload`/`tokenStore` (no real LLM catalog — the same empty-catalog state that trapped on beta2), and the device is still Apple-Intelligence-ineligible. So the daemon is hitting the same reconcile path without trapping → this reads as an actual fix to the crashing `background-qos.cooperative` async path, not a change in inputs.
 
-**Soak result:** extended to **≥3h10m uptime, same PID 830, still 0 crashes** (checked 11:04) — comfortably past beta2's 2.5 h max crash interval, so this is no longer an "edge of interval" fluke. Ongoing watch is passive and durable: the OS keeps writing any crash to `/Library/Logs/DiagnosticReports/modelmanagerd-*.ips`, and the user's launchd-registered `com.jizhi.crash-notify` agent logs every `EXC_BREAKPOINT` to `~/Library/Logs/crash-notify.log` independent of any session — so a late-tail crash can't be missed. If one appears, this entry flips back to 🔴; as of this write, beta3 reads **fixed**.
+**Soak result:** ran to **≥11 h uptime (07:53 → 18:57), same PID 830, still 0 crashes** — 0 `modelmanagerd-*.ips` since boot, 0 `[CRASH] modelmanagerd` lines in `crash-notify.log`, PID never changed (a crash would give a new PID). This is many multiples of beta2's 2.5 h max crash interval, so it is decisively **not** an "edge of interval" fluke — over the same 11 h span beta2 would have crashed on the order of a dozen-plus times. The passive durable watch (OS `.ips` + launchd `com.jizhi.crash-notify`) remains in place; if a late-tail crash ever appears this flips back to 🔴, but as of an 11 h soak beta3 reads **fixed**.
 
 **Captured 2026-06-27 beta2 26A5368g** via a temporary user LaunchAgent running `log stream --level debug` on `process == "modelmanagerd" OR senderImagePath CONTAINS "ModelManager"` across a reboot — confirmed crash within 2.5 min of boot, on `background-qos.cooperative`, with no emitted error message (trap is silent). Symbolication blocked by stripped binaries.
