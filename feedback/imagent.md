@@ -1,10 +1,23 @@
 VERIFICATION: CONFIRMED — 66,626 `error 159 - Sandbox restriction` lines from imagent in 7 h (peak 1,982/min; tightest second 265 lines ≈ 88 retries/s; retry interval 1–2 ms with no backoff), while imagent burns only 19.42 s of CPU over 6 h 53 m (≈0.08%). Captured 2026-07-16, beta3 revision 26A5378n, imagent 10.0 (1000). Episodic, not constant: most recent burst 16:42:21, 96 s after an AddressBookManager spawn at 16:40:45. **The sandbox profile is on disk and demonstrably lacks the global-name** — see below; this is not an inference.
 
 # Title
-imagent is entitled to `com.apple.AddressBook.ContactsAccountsService` but `com.apple.imagent.sb` omits it from `(allow mach-lookup)`, so every lookup is denied (`error 159`) — and the Contacts `PersistentStoreBuilder` failure path then retries every 1–2 ms with no backoff (66,626 error lines / 7 h)
+*(Feedback Assistant's title field is short — use this, 93 chars, plain ASCII hyphen so nothing mangles on paste:)*
 
-# Apple area / component to select
-Messages / IMCore (imagent). Sub-areas: App Sandbox (profile `com.apple.imagent.sb`) and Contacts (`PersistentStoreBuilder` / migration retry policy).
+```
+imagent: sandbox omits ContactsAccountsService lookup it is entitled to; retries every 1-2 ms
+```
+
+Fallback if that still won't fit (79 chars):
+
+```
+imagent: no-backoff retry loop on sandbox-denied ContactsAccountsService lookup
+```
+
+The full framing — *"…so every lookup is denied (`error 159`), and the Contacts `PersistentStoreBuilder` failure path retries with no backoff, 66,626 error lines / 7 h"* — goes in the Description field below, which has room.
+
+# Form fields
+- **Which area are you seeing an issue with?** → **Messages**. Rationale: the offending binary and the misconfigured profile are both IMCore's (`imagent.app`, `com.apple.imagent.sb`), so this routes to the team that owns the file that needs the one-line fix. (Alternatives, if Messages doesn't fit the picker: *Contacts* — the retry policy lives in Contacts' `PersistentStoreBuilder`; or a Security/Sandbox area if one is offered. Say so in the Description either way — the report names both components explicitly.)
+- **What type of issue are you reporting?** → **Incorrect/Unexpected Behavior.** (Not a performance report — imagent uses ~0.08% CPU. The defect is the denial plus the unbounded retry.)
 
 # Description
 On macOS 27.0 (26A5378n), `imagent` (10.0, build 1000) cannot look up `com.apple.AddressBook.ContactsAccountsService`. Every attempt is denied by its own sandbox, Contacts database preparation fails, and the failure path **retries immediately — at 1–2 ms intervals, with no backoff and no cap** — emitting **three persisted `E`-level lines per attempt**, forever.
