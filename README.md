@@ -11,7 +11,7 @@ If a Google/GitHub search for a crash signature or a process eating CPU on macOS
 | | |
 |---|---|
 | Machine | MacBook Pro `Mac15,11` — Apple M3 Max, 36 GB |
-| OS | macOS **27.0** beta — builds seen: `26A5353q` (beta1), `26A5368g` (beta2), `26A5378j` (beta3) |
+| OS | macOS **27.0** beta — builds seen: `26A5353q` (beta1), `26A5368g` (beta2), `26A5378j` (beta3), **`26A5378n`** (beta3 revision, installed 2026-07-14, live from that day's 10:58 reboot — **current**) |
 | Reporter | [@jizhi0v0](https://github.com/jizhi0v0) |
 
 ## Status legend / 状态
@@ -42,6 +42,8 @@ If a Google/GitHub search for a crash signature or a process eating CPU on macOS
 | [14](https://github.com/jizhi0v0/macos27-beta-issues/issues/14) | [Click/input latency — WindowServer `ws_main_thread` serializes events (persists at 80% idle)](issues/apple-click-input-latency-beta.md) | macOS 27 WindowServer / event delivery | 🟢 fixed on beta3 (Telegram panel-dismiss stutter gone; user-confirmed, settings-independent) | (was) Reduce transparency/motion | Feedback candidate `FB____` |
 | [15](https://github.com/jizhi0v0/macos27-beta-issues/issues/15) | [appstoreagent + dasd retry-loop (Arcade BG task rejected `Code=8`, no backoff) floods log/CPU](issues/apple-appstoreagent-bgtask-retry-loop.md) | Apple appstoreagent / dasd / BGTaskScheduler | ⚪ not reproduced in beta3 window (conditional) | `killall` = temporary; internal bug | **[FB23413997](https://feedbackassistant.apple.com/feedback/23413997)** |
 | [16](https://github.com/jizhi0v0/macos27-beta-issues/issues/16) | [`modelmanagerd` crash-loop (`EXC_BREAKPOINT`) on AI-ineligible device](issues/apple-modelmanagerd-crash-loop.md) | Apple modelmanagerd / ModelManagerServices | 🟢 fixed on beta3 (0 crashes ≥11h, trigger unchanged) | (was) none (SIP daemon) | **[FB23430737](https://feedbackassistant.apple.com/feedback/23430737)** |
+| [17](https://github.com/jizhi0v0/macos27-beta-issues/issues/17) | [ViewBridge `NSRemoteView` uncaught ObjC exception on sheet order-on-screen (WeChat image viewer + CleanShot X QuickLook)](issues/wechat-imageviewer-viewbridge-crash.md) | Apple ViewBridge / AppKit (`NSRemoteView`) — hits WeChat 4.1.11 (WeChatAppEx) **&** CleanShot X 4.8.9 (QuickLook) | 🔴 confirmed **cross-app**, **13 crashes** (WeChat ×12 + CleanShot X ×1, byte-identical signature) — **still crashing on `26A5378n`** | none confirmed (retry recovers; ~12×/week in practice) | Feedback candidate `FB____` |
+| [18](https://github.com/jizhi0v0/macos27-beta-issues/issues/18) | [contactsd self-sustaining change-history loop on CardDAV collection-groups](issues/apple-contactsd-carddav-group-changehistory-loop.md) | Apple contactsd `3837.100.1` / AddressBookManager / Contacts change-history | 🔴 confirmed on `26A5378n` — **~143% CPU bursts, 13% avg over 4 h**, 840k log lines; 7 CardDAV accounts affected, Exchange clean | **none** (loop is entirely Apple-internal — no app to quit) | Feedback candidate `FB____` |
 
 ## Filing readiness / 提交就绪度 (re-verified 2026-06-26, beta2 `26A5368g`)
 
@@ -56,6 +58,12 @@ Re-ran the still-open Apple bugs on beta3 (installed 07:54, booted 07:53). Verdi
 - 🟢 **#13 Spotlight typing lag / ghosting — fixed** (log line persists, now benign). The user-facing bug was **typing lag + a result "ghost" that lingered several seconds**, not the log volume. Beta3: user reports smooth typing, no ghosting, and — objectively — **0 Spotlight-UI spin reports** since boot vs **3× `Campo_*.spin` (`Slow response to HID event`) on beta2 (2026-07-06)**. The `insert ranking attr at NSNotFound` line still logs (peak 1569/sec) but is now **decoupled from UX / benign spam**. UI app renamed **`Campo` → `Siri AI`**.
 - 🟢 **#14 Telegram panel-dismiss compositing stutter — fixed** (user-confirmed 2026-07-08). The narrowed beta2 repro (group title → group-details → **Back**, dismissing the heavy blurred panel — a WindowServer/CoreAnimation frame-drop, fine on macOS 26) no longer stutters on beta3. User confirms it's the *specific* transition that's smooth now, and that **toggling Telegram's animation/auto-play settings makes no difference** — so it's the system compositor path that changed, not a content/settings workaround. Fits the beta3 compositor-fix cluster with #12/#13. (Objective note: this ~300 ms one-shot burst leaves no `.spin`/`.hang` report and WindowServer CPU is polluted by the agent's own rendering, so user perception of the exact narrowed repro is the evidence — same evidence class the #14 narrowing was built on.)
 - ⚪ **#15 appstoreagent / #1 CoreMedia / #2 Shortcuts — not reproduced in this window (conditional triggers).** Since boot: **0** appstoreagent lines / **0** `Code=8`; **0** CoreMedia `fpSupport` spam; **0** Shortcuts-storm lines. These fire only under specific conditions (Arcade BG task rejection / WebKit DRM video / early post-boot), which didn't occur in the window — "not reproduced," not "confirmed fixed."
+
+### New build `26A5378n` / 新 build(2026-07-14 装,10:58 重启生效)
+
+A beta3 revision **`26A5378n`** replaced `26A5378j` on 2026-07-14. **Every verdict in the retest above was measured on `…j` and has *not* been re-measured on `…n`** — treat them as carrying over unverified. The only entry re-checked on `…n` so far is **#17**, which **is still crashing** (5 crashes on `…n`, latest 07-15).
+
+`26A5378n` 于 2026-07-14 替换 `26A5378j`。**上面的复验结论全部测于 `…j`,尚未在 `…n` 上重测**,请视为"沿用但未验证"。目前唯一在 `…n` 上复验过的是 **#17 —— 仍在崩**(`…n` 上 5 次,最新 07-15)。
 
 - ✅ **Filed to Apple** (confirmed beta2 bugs): **CoreMedia loop** → [FB23411581](https://feedbackassistant.apple.com/feedback/23411581) · **MenuBarAgent idle ~10–14% CPU** → [FB23411741](https://feedbackassistant.apple.com/feedback/23411741)
 - ✅ **Filed:** **Spotlight `insert ranking attr at NSNotFound` ~60–160×/sec while typing** (idle=0; intrinsic to ranking code, no Settings fix) → [FB23412497](https://feedbackassistant.apple.com/feedback/23412497)
