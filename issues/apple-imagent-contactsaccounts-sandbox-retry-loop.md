@@ -38,7 +38,28 @@ imagent 被明确授权使用 `ContactsAccountsService`,但它自己的沙盒不
 
 imagent also carries `com.apple.Contacts.database-allow`, `com.apple.private.contacts`, and `kTCCServiceAddressBook` under its TCC allow list — i.e. **every authorization layer says yes except the sandbox lookup**.
 
-> **Confidence note:** the entitlement dump above is fact. That the missing `mach-lookup.global-name` entry is *the* cause is a strong inference, not proof — some services are reachable via the platform sandbox profile rather than the per-binary exception array, and `sandboxd` logged **0** lines mentioning imagent in 7 h (the denial surfaces only as the client-side `error 159`, below). Apple can confirm this instantly against the profile.
+### Confirmed against the sandbox profile on disk / 沙盒配置文件实证
+
+`/System/Library/Sandbox/Profiles/com.apple.imagent.sb` (403 lines) has an explicit `(allow mach-lookup …)` block whose contents settle it:
+
+```
+173: (allow mach-lookup
+174:     (global-name "com.apple.lockdownmoded")
+175:     (global-name "com.apple.corerecents.recentsd")
+176:     (global-name "com.apple.accountsd.accountmanager")
+177:     (global-name "com.apple.AddressBook.abd")            ← LEGACY AddressBook service: allowed
+     …
+232:     (global-name "com.apple.private.contacts")           ← allowed
+233:     (global-name "com.apple.Contacts.database-allow")    ← allowed
+     …
+     com.apple.AddressBook.ContactsAccountsService           ← ABSENT from the entire file
+```
+
+`grep -n "ContactsAccountsService" /System/Library/Sandbox/Profiles/com.apple.imagent.sb` → **no matches**.
+
+The profile grants imagent essentially everything Contacts-related — AddressBook preference domains (lines 39–40, 81, incl. `com.apple.AddressBook.CardDAVPlugin`), `~/Library/Application Support/AddressBook` (line 145), `/T/.AddressBookLocks` (line 140), and the **legacy** `com.apple.AddressBook.abd` lookup (line 177) — but omits the **modern** `ContactsAccountsService` that Contacts' `PersistentStoreBuilder` actually calls. Reads like the profile was never updated when store preparation moved to `ContactsAccountsService`.
+
+> This was originally recorded here as a *strong inference*; the on-disk profile upgrades it to **demonstrable**. Remaining caveat: `sandboxd` logged **0** lines mentioning imagent in 7 h, so the denial surfaces only client-side as `error 159` — if an entitled global-name being denied is supposed to be reported by sandboxd, that silence may be a second, smaller issue.
 
 ## The error chain / 报错链
 
