@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | 🟡 Mitigated · confirmed on `26A5378n` (caught live twice, both directions) |
+| **Status** | 🟡 Mitigated · confirmed on `26A5378n` — **10+ runaways captured in one day**, both directions, both output devices; reproducible on demand (see [Reproduction](#reproduction--复现)) |
 | **macOS** | 27.0 beta3 revision **`26A5378n`** — **not 27-specific**, see [Scope](#scope-not-a-27-regression--并非-27-回归) |
 | **Component** | Apple **ControlCenter** (`com.apple.controlcenter`, `SoundSettings`) + CoreAudio HAL volume properties |
 | **Trigger** | **Alcove 1.7.9** (`com.henrikruscon.Alcove`, build 203) must be running — established by A/B, both directions. Fires when an output-device change is followed by rapid manual volume adjustment. Mechanism by which Alcove contributes is **unidentified**; see [Open question](#open-question--未解) |
@@ -26,7 +26,9 @@ The **direction** (up or down) varies between occurrences, and the **device** va
 
 ## Symptom / 症状
 
-Two occurrences caught live, 15 minutes apart, on one boot:
+The two earliest occurrences are broken down below because they were captured with the fullest instrumentation and between them show every axis of variation — direction, device, and mid-runaway device migration. They are **representative, not exhaustive**: 8 further runaways followed the same shape. Full timestamp list under [Reproduction](#reproduction--复现).
+
+最早两次在下面详细拆解 —— 它们的仪表数据最完整,且合起来涵盖了全部变化维度(方向、设备、失控中途的设备迁移)。这是**代表性样本而非全部**,后续另有 8 次同型发作。
 
 | | Incident 1 | Incident 2 |
 |---|---|---|
