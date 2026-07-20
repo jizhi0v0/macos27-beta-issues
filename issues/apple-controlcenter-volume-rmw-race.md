@@ -8,7 +8,7 @@
 | **Status** | 🟡 Mitigated · confirmed on `26A5378n` (caught live twice, both directions) |
 | **macOS** | 27.0 beta3 revision **`26A5378n`** — **not 27-specific**, see [Scope](#scope-not-a-27-regression--并非-27-回归) |
 | **Component** | Apple **ControlCenter** (`com.apple.controlcenter`, `SoundSettings`) + CoreAudio HAL volume properties |
-| **Trigger (necessary, not causal)** | **Alcove 1.7.9** (build 203, `com.henrikruscon.Alcove`) running; kicked off by a Spotify Connect transfer to this Mac **followed within ~190 ms by a manual volume adjustment** |
+| **Trigger** | **Alcove 1.7.9** (`com.henrikruscon.Alcove`, build 203) must be running — established by A/B, both directions. Fires when an output-device change is followed by rapid manual volume adjustment. Mechanism by which Alcove contributes is **unidentified**; see [Open question](#open-question--未解) |
 | **Hardware** | MacBook Pro `Mac15,11`, M3 Max, 36 GB |
 | **Report** | Apple Feedback: **[FB23868196](https://feedbackassistant.apple.com/feedback/23868196)** (filed 2026-07-20 via Feedback Assistant — Control Center → "Incorrect/Unexpected Behavior"; sysdiagnose + ratchet log + concurrent-TID log + HID-absence log + before/after rate table attached) |
 
@@ -164,17 +164,83 @@ Serializing volume mutations on a single queue/actor removes the race outright, 
 
 限流是错解 —— 只会让棘轮变慢,方向不变,照样触顶/触底。正解是把音量 mutation 串行化(单一队列/actor),竞态直接消失,且开销是微秒级、不可感知。此外应把 banner 呈现与音量写入解耦。
 
+## Reproduction / 复现
+
+**Eight-plus runaways captured on 2026-07-20**, all on `26A5378n`, identified by ControlCenter emitting ≥300 `set system volume` lines/min (idle is single digits):
+
+```
+10:39–10:44 · 10:53–10:54 · 14:14–14:16 · 14:25–14:28 · 14:33–14:43 · 14:56–15:02 · 15:18
+```
+
+### The recipe / 复现配方
+
+Reporter's own sequence, which produced most of the later occurrences:
+
+1. Spotify playing on an **iPhone**, output to AirPods
+2. In the Spotify desktop app on the Mac, switch playback to **"This Computer"**
+3. **Immediately hammer the volume keys** — up and down, repeatedly
+
+Step 3 is not contrived. In the reporter's words: *"因为这种流转操作,音频可能会发生一些变化,可能 macOS 处于 max volume,所以我会下意识一直按音量"* — when you move audio to a device whose current level you cannot know, pressing volume repeatedly is the natural reflex. This is ordinary use, not a stress test.
+
+**Still probabilistic.** Five deliberate attempts with the full sequence (14:03–14:15) produced nothing; later attempts produced runaways within seconds. Expected for a lost-update race, which needs a specific interleaving.
+
+### Alcove is necessary — controlled, and reversible / Alcove 是必要条件
+
+Run twice on 2026-07-20, in both directions:
+
+| | Alcove | External volume writes | Result |
+|---|---|---|---|
+| Morning | quit | manual (Spotify Connect recipe) | **no runaway** across repeated attempts |
+| 15:15–15:16 | **quit** | `racetrigger` at **2,508–2,571 writes/min** | **no runaway** (ControlCenter 33–143 lines/min) |
+| 15:17–15:18 | **running** (~65 writes/min) | same tool, same settings | **runaway within a minute** (1,078 lines/min) |
+
+**Write pressure is not the trigger.** A synthetic writer at **38× Alcove's rate** produced nothing; Alcove's sparse writes produced a runaway. Whatever Alcove contributes is qualitative, not volumetric.
+
+### What does NOT reproduce it / 已验证无法触发的路径
+
+Recorded so Apple can skip these, and so this report is not read as "some app writes volume, therefore chaos":
+
+| Attempted | Result |
+|---|---|
+| Timer-driven concurrent writes, 8 threads, 2,500+/min | no runaway |
+| Same writes plus default-output-device flipping | no runaway |
+| Echo-from-listener (closed loop), immediate write-back, 8 threads | **ControlCenter became unresponsive** — Control Center and Notification Center both froze until it respawned. A denial of service, not the ratchet. |
+| Echo-from-listener with a 40 ms stale-read window, rate-limited to 12/s | no runaway (30 s) |
+| Bluetooth handoff (AirPods moving between iPhone and Mac) | **not required** — runaways occurred with AirPods idle, and on built-in speakers |
+| ToDesk app running | **not required** — the ToDesk app was quit for later runaways (its root service `ToDesk_Service` was still loaded, so ToDesk is not fully excluded) |
+
+The write signatures are identical where it matters: both Alcove and the synthetic tool issue `AudioObjectSetPropertyData` on `['vmvc', 'outp', 0]` against the same devices. Alcove additionally writes `['mute', 'outp', 0]`. Banner behaviour is also identical — `VolumeSystemBannerContent` events track volume writes at a ratio of ~2.0 with Alcove both running and quit, so Alcove is **not** suppressing the system HUD in a way that matters here.
+
+**Consequence: no self-contained reproducer exists yet.** Concurrent writes to the same property, by themselves, do not provoke it. Something specific to Alcove does, and it is not visible from outside a closed-source, now-archived app.
+
+### Tools / 工具
+
+[`tools/volwatch/`](../tools/volwatch/) — LaunchAgent that records occurrences passively. Detection rule and the three rejected alternatives are documented in the source header; it has caught every runaway since the pinned-phase probe was added. [`racetrigger.swift`](../tools/volwatch/racetrigger.swift) in the same directory implements the negative results above and is kept so they stay reproducible.
+
 ## Open question / 未解
 
-**How does Alcove's presence push ControlCenter into the racing state, given it issues no writes during the loop?**
+**What does Alcove do that a synthetic writer does not?**
 
-Unproven hypothesis: every loop iteration carries `Did activate assertion for VolumeSystemBannerContent` / `Did present banner of type VolumeSystemBannerContent`. Alcove's core function is to replace/suppress the system volume HUD, and it has a documented history of failing to do so cleanly ([#562](https://github.com/henrikruscon/alcove-releases/issues/562), [#517](https://github.com/henrikruscon/alcove-releases/issues/517)). If ControlCenter's volume-apply path is coupled to the banner's presentation lifecycle, an externally disturbed banner callback could re-enter the setter and multiply the in-flight sync tasks.
+Alcove is necessary (A/B, both directions, twice) but the mechanism is unidentified. Everything observable from outside matches between Alcove and a synthetic writer that fails to trigger it: same API (`AudioObjectSetPropertyData`), same property (`['vmvc', 'outp', 0]`), same devices, same banner-to-write ratio. Alcove also writes `['mute', 'outp', 0]`; mirroring that did not close the gap.
 
-**This is a hypothesis, not a finding.** Testing it needs either ControlCenter internals or a minimal reproducer that suppresses the volume HUD without Alcove.
+Hypotheses tested and **rejected** during this investigation, listed so they are not re-run:
+
+1. Virtual audio drivers (Oray/ToDesk) are the writers — 2 of 490 writes; not involved.
+2. Alcove issues the runaway commands — 0 writes during incident 2's entire runaway.
+3. Alcove's off-grid values (`0.435`, `0.490`) are its fingerprint — 1,194 of its 1,324 daily writes are clean 1/16 multiples.
+4. ToDesk is required — later runaways occurred with the app quit.
+5. The Bluetooth handoff is required — runaways occurred on built-in speakers with AirPods idle.
+6. Enough concurrent write pressure suffices — 38× Alcove's rate produced nothing.
+7. The stale-read window is the missing ingredient — a 40 ms read-then-write-back loop produced nothing.
+8. Alcove suppresses the volume HUD and breaks the banner lifecycle — banner-to-write ratio is ~2.0 with Alcove running *and* quit.
+
+Resolving this needs ControlCenter's internals (Apple) or Alcove's (closed source, [repo archived read-only 2026-06-01](https://github.com/henrikruscon/alcove-releases)). It is out of reach from the outside.
 
 ## Notes / 备注
 
-- **Reproduction rigor:** the "quitting Alcove prevents it" result is reporter-observed across an unrecorded number of Spotify Connect transfers, not a counted trial series. Treat as strong but not quantified.
+- **The HUD desyncs from the actual volume.** During one runaway the menu-bar slider rendered at **maximum** while the device was actually at `0.0` and muted — `VolumeSystemBannerContent` was being presented **58×/sec** and never dismissing. The visible control and the real state disagree, so a user cannot tell what the volume is.
+- **Klack 2.1.4 (`com.henrikruscon.Klack`, same developer as Alcove) crashed during a runaway** — `EXC_BAD_ACCESS (SIGSEGV)` at `0x0000…00fc` on queue `com.henrikruscon.Klack.SoundManager.control`, at 14:14:18, **2.4 s after** that runaway began, having created ~10 `AudioConverter`s in the preceding 0.5 s. Klack never writes system volume (0 writes all day), so it is **collateral damage** of the device churn, not a participant. One crash only — not tracked separately yet.
+- **Reproduction rigor:** the morning's "quitting Alcove prevents it" result was reporter-observed and uncounted. It was later replaced by the controlled A/B above, which is the citable evidence.
 - **This loop drives MenuBarAgent too — and that is not a usable signature.** Each iteration presents a volume banner, so `MenuBarAgent` runs at **13,334–18,839 log lines/min** during a runaway versus **33–38** after `killall ControlCenter` (**~500×**), 100% of it `com.apple.menubar:systemBanners`. A machine hitting this shows **both** ControlCenter *and* MenuBarAgent at high CPU.
 - **Ruled out: the external report in [#20](https://github.com/jizhi0v0/macos27-beta-issues/issues/20) is *not* this bug.** That report (MenuBarAgent ~60% + ControlCenter ~45% CPU on beta3) matched the CPU shape above, so it was worth checking. [@progzone122 confirmed](https://github.com/jizhi0v0/macos27-beta-issues/issues/21#issuecomment-5018601375) their **volume control works normally** and they run **no Alcove or comparable menu-bar app** — only Tailscale and Nextcloud icons. Two takeaways: (a) a **weak** data point consistent with Alcove being required (no Alcove, no runaway — one sample, not evidence to lean on); (b) **ControlCenter can reach ~45% CPU without this loop**, so high ControlCenter CPU alone is not a signature — the volume symptom is.
 - **Not related to [#12](apple-menubaragent-idle-cpu.md)** (MenuBarAgent idle CPU), despite the shared process. #12's beta3 retest measured MenuBarAgent at **0.28%** (43.5 s / 2 h 35 m) *with Alcove installed and running* (present on this machine since 2025-12-28, bundle updated 2026-07-01) — so Alcove cannot be #12's "unidentified sender". And #12 was **sustained 10–14% at idle over hours**, which this loop cannot be: volume would have been pinned at a rail the whole time. **Caveat worth keeping:** #12's hunt for that sender grepped `StatusItem` / `NSStatusBar` / `drawWithFrame` / `_updateReplicants` — **never `systemBanners`**. That open question stays open; if #12 recurs, grep the banner subsystem first.
