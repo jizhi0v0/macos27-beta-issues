@@ -1,0 +1,241 @@
+SUMMARY
+
+On macOS 27.0 (26A5378n), system volume becomes uncontrollable: it ratchets
+monotonically to either 0% (plus mute) or 100%, pins there, and ControlCenter
+continues writing the CoreAudio volume property at ~30 Hz indefinitely. Manual
+adjustment is overridden within a second - the ratchet simply restarts from
+whatever value the user set. Recovery requires restarting the agent.
+
+Both the direction and the target device vary between occurrences. This is the
+signature of a lost-update race, not of a stuck input.
+
+Caught live twice on one boot, 2026-07-20:
+
+  Incident 1 (10:39:26.849) - ratchets UP to 1.000000 on BuiltInSpeakerDevice,
+  then spins at 30 Hz (1,800 "set system volume" lines/min) for ~4.5 minutes
+  until "killall ControlCenter".
+
+  Incident 2 (~10:52) - same signature ratcheting DOWN to 0.000000 + muted=true
+  on a Bluetooth output, 493 client-side writes in 8 s across 7 distinct
+  ControlCenter threads.
+
+Every write during both runaways originates from ControlCenter itself.
+
+
+SEVERITY - PLEASE NOTE
+
+The ratchet advances one 1/16 step per ~33 ms, so the up-direction case drives
+output to full scale in roughly 0.5 seconds with no ramp. I hit this with the
+affected output live and in use. The user cannot correct it - every manual
+adjustment is overwritten in under a second.
+
+I am filing this as Incorrect/Unexpected Behavior because there is no safety
+category in the picker, but the hearing-exposure aspect is the reason I am
+reporting it rather than just working around it.
+
+
+1. THE RATCHET
+
+The step is exactly 1/16 - the standard macOS volume increment - advancing about
+one step per 33 ms:
+
+  10:39:26.849  set system volume: 0.435000 -> 0.500000
+  10:39:27.116  set system volume: 0.500000 -> 0.562500
+  10:39:27.149  set system volume: 0.562500 -> 0.625000
+  10:39:27.182  set system volume: 0.625000 -> 0.687500
+  10:39:27.215  set system volume: 0.687500 -> 0.750000
+  10:39:27.249  set system volume: 0.750000 -> 0.812500
+  10:39:27.285  set system volume: 0.490000 -> 0.500000   <-- a thread lands a
+                                                              STALE value here;
+                                                              ratchet restarts
+  10:39:27.315  set system volume: 0.500000 -> 0.562500
+
+Once a rail is reached it spins forever without changing anything:
+
+  232 x   set system volume: 1.000000 -> 1.000000
+
+Each iteration is closed inside ControlCenter:
+  syncMute -> updateMute -> setLevel -> set system volume
+           -> "Did present banner of type VolumeSystemBannerContent"
+
+ControlCenter's own write raises a property-changed notification, which
+schedules another sync, which races again.
+
+
+2. WHY THIS IS A RACE AND NOT AN INPUT PROBLEM
+
+(a) Direction is arbitrary. Incident 1 ratcheted up to 1.000000; incident 2 down
+    to 0.000000 + muted=true. No key repeat or stuck HID line can reverse
+    direction.
+
+(b) Device is arbitrary. Incident 1 targeted device 100 (BuiltInSpeakerDevice);
+    incident 2 targeted a Bluetooth output, with 0 writes to device 100 during
+    it.
+
+(c) Multiple threads write concurrently. In incident 2, seven ControlCenter TIDs
+    (54625, 5498c, 5467e, 5386f, 5498a, 5499c, 5498e) all issue
+    AudioObjectSetPropertyData. The bookkeeping line "set system volume: X -> Y"
+    comes from a DIFFERENT TID (1b1b) than the threads performing the CoreAudio
+    writes.
+
+(d) Stale intermediates appear mid-ramp. 0.435000 and 0.490000 are not multiples
+    of 1/16 - they are values observed by one thread while another was
+    mid-write.
+
+(e) There is no input. A 6-second HID capture during an active runaway returned
+    ONE key event total: no NX_KEYTYPE_SOUND_UP stream, no injected events.
+
+
+3. THE THIRD-PARTY PRECONDITION - AND WHAT IT IS NOT
+
+A third-party menu-bar app (Alcove 1.7.9, com.henrikruscon.Alcove, build 203)
+must be running for this to occur; quitting it prevents recurrence. But it does
+NOT issue the runaway commands:
+
+  Incident 1: all Alcove volume writes land AFTER onset (10:39:28.333 onward;
+              onset was 10:39:26.849). Before onset: 2 writes, at 10:39:17,
+              about 10 seconds earlier.
+
+  Incident 2: Alcove ran for the entire runaway and wrote NOTHING. Zero volume
+              writes. ControlCenter accounted for 493 of the 496 writes; the
+              other 3 were my own osascript probe.
+
+So Alcove is a seed that gets ControlCenter into the racing state, not the
+driver. Once started, the loop needs no external participant.
+
+The defect I am reporting is ControlCenter's, and it stands on its own: no
+third-party app, privileged or not, should be able to drive system output to a
+rail. Alcove requires no special entitlement to do whatever it is doing.
+
+How the seed works is NOT established. One untested hypothesis, offered only
+because it may shorten triage: every loop iteration carries "Did activate
+assertion for VolumeSystemBannerContent", and Alcove's core function is to
+replace/suppress the system volume HUD. If the volume-apply path is coupled to
+the banner's presentation lifecycle, an externally disturbed banner callback
+could re-enter the setter and multiply in-flight sync tasks. This is a guess,
+not a finding - I have no visibility into ControlCenter internals.
+
+
+STEPS TO REPRODUCE
+
+Reproduction currently requires the third-party app. The log-level signature
+below is diagnosable from a sysdiagnose without it.
+
+1. On macOS 27.0 26A5378n, run Alcove 1.7.9 (com.henrikruscon.Alcove).
+
+2. Play audio and transfer playback to this Mac via Spotify Connect. This
+   supplies an audio-device renegotiation. Spotify itself never writes a volume
+   property - a full-window grep for Spotify volume writes returns nothing.
+
+3. Observe the runaway begin within ~200 ms of the device negotiation:
+
+     10:39:26.646  coreaudiod    >>> NEGOTIATE [com.spotify.client]
+     10:39:26.665  Spotify       AUHAL HALListener registers
+     10:39:26.849  ControlCenter set system volume: 0.435 -> 0.5     <-- +203 ms
+
+4. Capture the loop:
+
+     /usr/bin/log stream --style compact --predicate 'process == "ControlCenter"
+       AND eventMessage CONTAINS "set system volume"'
+
+   -> ~30 lines/sec, ratcheting in 1/16 steps, then "1.000000 -> 1.000000"
+      (or 0.000000) forever.
+
+5. Confirm the concurrent writers - note the multiple distinct TIDs:
+
+     /usr/bin/log stream --style compact --predicate 'eventMessage CONTAINS
+       "LogVolumeChangeForClientSide"'
+
+   -> ControlCenter[<pid>:<many different tids>] AudioObjectSetPropertyData
+      ... ['vmvc', 'outp']
+
+6. Confirm there is no input driving it:
+
+     /usr/bin/log stream --style compact --predicate 'subsystem CONTAINS "hid"
+       OR eventMessage CONTAINS[c] "NX_KEYTYPE"'
+
+   -> ~1 event per 6 s; no volume keys.
+
+7. Recover: "killall ControlCenter" (respawns automatically). The loop stops and
+   volume holds. If the runaway left the device muted, clear it separately:
+
+     osascript -e 'set volume without output muted'
+
+Reproduction notes: "log" is a zsh builtin - use /usr/bin/log explicitly or the
+commands silently return nothing. Device IDs are per-boot and reused; resolve
+them via AudioObjectGetPropertyData(kAudioHardwarePropertyDevices) rather than
+assuming stability. Direction and target device are NOT deterministic across
+occurrences - expect either rail on either output.
+
+
+EXPECTED RESULT
+
+Concurrent volume-sync requests serialize, each observing the true current
+value. A running third-party app cannot drive system output to a rail, and user
+volume input is authoritative.
+
+
+ACTUAL RESULT
+
+Unsynchronized read-modify-write across at least 7 threads produces a monotonic
+ratchet to 0% or 100%, self-sustains at 30 Hz, and overrides all user input
+until ControlCenter is restarted.
+
+
+ON THE FIX
+
+Rate-limiting the setter would be the wrong remedy: it slows the ratchet without
+removing its direction, so output still reaches the rail, just later. The defect
+is the lost update, not the update frequency.
+
+Serializing volume mutations on a single queue/actor removes the race outright
+at no perceptible cost - volume changes occur at human rates (a few per second;
+30 Hz in this pathological case), and serialization overhead is microseconds.
+
+Separately, decoupling VolumeSystemBannerContent presentation from the
+volume-apply path would prevent an externally disturbed HUD from re-entering the
+setter.
+
+
+CONFIGURATION
+
+- MacBook Pro Mac15,11, M3 Max, 36 GB
+- macOS 27.0 beta3 revision 26A5378n
+- ControlCenter (com.apple.controlcenter), SoundSettings
+- Alcove 1.7.9 (build 203, com.henrikruscon.Alcove) - required precondition
+- Affected outputs: built-in speakers (BuiltInSpeakerDevice) and a Bluetooth
+  audio device
+- Also installed but RULED OUT: OrayVirtualAudioDevice (SunLogin virtual driver,
+  was the default *system* output) and ToDeskOutputDriver. Together these
+  accounted for 2 of 490 writes in incident 1, and none during either runaway.
+  Flagging them so they are not mistaken for the cause.
+
+
+PRIOR ART - THIS IS NOT A macOS 27 REGRESSION
+
+The up-direction symptom is publicly reported against macOS 26.3.1 with Alcove
+1.6.12 on a MacBook Pro M2 Max - "volume stuck at maximum, the app blocks it
+from going down":
+
+  https://github.com/henrikruscon/alcove-releases/issues/675
+
+That report was closed as "not planned" / stale, and the Alcove repository was
+archived read-only on 2026-06-01 (the app is closed-source; that tracker hosted
+only changelogs). There is no upstream channel left, which is part of why I am
+filing this with Apple.
+
+It is NOT confirmed to be the same defect - #675 involves USB-C output, reports
+only the max direction, and the mechanism was never investigated there. I treat
+it as prior art establishing that the symptom predates macOS 27, not as a
+duplicate.
+
+
+TWO LIMITS ON THIS REPORT, STATED PLAINLY
+
+1. The "quitting Alcove prevents it" result is observational - recorded across
+   an uncounted series of Spotify Connect transfers, not a controlled trial with
+   a stated N.
+
+2. I found no public report of the ControlCenter-side race itself
+   (multi-threaded RMW, arbitrary direction, cross-device). That is the result
+   of a handful of searches and is not a first-discovery claim.
