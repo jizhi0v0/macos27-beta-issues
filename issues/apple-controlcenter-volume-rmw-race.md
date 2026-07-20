@@ -1,7 +1,7 @@
 # ControlCenter volume runaway — concurrent read-modify-write ratchets system volume to 0 or 100% and spins at 30 Hz
 # ControlCenter 音量失控 —— 并发 read-modify-write 把系统音量棘轮到 0 或 100%,并以 30 Hz 空转
 
-> 🔗 **Track / 关注此问题:** [#20 — watch & discuss on GitHub](https://github.com/jizhi0v0/macos27-beta-issues/issues/20)
+> 🔗 **Track / 关注此问题:** [#21 — watch & discuss on GitHub](https://github.com/jizhi0v0/macos27-beta-issues/issues/21)
 
 | | |
 |---|---|
