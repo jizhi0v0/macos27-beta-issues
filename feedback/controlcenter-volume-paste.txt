@@ -6,17 +6,27 @@ continues writing the CoreAudio volume property at ~30 Hz indefinitely. Manual
 adjustment is overridden within a second - the ratchet simply restarts from
 whatever value the user set. Recovery requires restarting the agent.
 
-Both the direction and the target device vary between occurrences. This is the
-signature of a lost-update race, not of a stuck input.
+The direction varies between occurrences, and the target device varies WITHIN a
+single occurrence. This is the signature of a lost-update race, not of a stuck
+input.
 
 Caught live twice on one boot, 2026-07-20:
 
-  Incident 1 (10:39:26.849) - ratchets UP to 1.000000 on BuiltInSpeakerDevice,
-  then spins at 30 Hz (1,800 "set system volume" lines/min) for ~4.5 minutes
-  until "killall ControlCenter".
+  Incident 1 (10:39:26.849) - ratchets UP to 1.000000 and spins at 30 Hz
+  (1,800 "set system volume" lines/min) for ~4.5 minutes until
+  "killall ControlCenter". It does NOT stay on one device: within the single
+  runaway ControlCenter thrashes across three CoreAudio device IDs -
+
+    DeviceID 198 (115 writes) -> 100 (26) -> 198 (920) -> 100 (57)
+      -> 212 (404) -> 100 (7,160)
+
+  where 198 and 212 are THE SAME physical device (UID C4-B3-49-AA-E7-97, a pair
+  of AirPods 4) under two IDs, because it disconnected and reconnected mid-
+  runaway and was reassigned a new ID. Device 100 is BuiltInSpeakerDevice.
+  Totals for the window: 14,533 writes to device 100, 2,182 to 198, 865 to 212.
 
   Incident 2 (~10:52) - same signature ratcheting DOWN to 0.000000 + muted=true
-  on a Bluetooth output, 493 client-side writes in 8 s across 7 distinct
+  on the same AirPods, 493 client-side writes in 8 s across 7 distinct
   ControlCenter threads.
 
 Every write during both runaways originates from ControlCenter itself.
@@ -24,14 +34,19 @@ Every write during both runaways originates from ControlCenter itself.
 
 SEVERITY - PLEASE NOTE
 
-The ratchet advances one 1/16 step per ~33 ms, so the up-direction case drives
-output to full scale in roughly 0.5 seconds with no ramp. I hit this with the
-affected output live and in use. The user cannot correct it - every manual
-adjustment is overwritten in under a second.
+This is not a theoretical hazard. The affected output in incident 1 was a pair
+of AirPods 4 that I was wearing at the time. ControlCenter issued 1,158 writes
+setting that device to volume 1.000000 - full scale, in-ear.
 
-I am filing this as Incorrect/Unexpected Behavior because there is no safety
-category in the picker, but the hearing-exposure aspect is the reason I am
-reporting it rather than just working around it.
+The ratchet advances one 1/16 step per ~33 ms, so the climb to full scale takes
+roughly 0.5 seconds, with no ramp and no warning. The user cannot correct it:
+every manual adjustment is overwritten in under a second, and the only recovery
+I found was killing the agent from a terminal - not something a normal user can
+do while the sound is painful.
+
+I am filing this as Incorrect/Unexpected Behavior because the picker has no
+safety category, but hearing exposure is the reason I am reporting this rather
+than just working around it.
 
 
 1. THE RATCHET
@@ -45,9 +60,10 @@ one step per 33 ms:
   10:39:27.182  set system volume: 0.625000 -> 0.687500
   10:39:27.215  set system volume: 0.687500 -> 0.750000
   10:39:27.249  set system volume: 0.750000 -> 0.812500
-  10:39:27.285  set system volume: 0.490000 -> 0.500000   <-- a thread lands a
-                                                              STALE value here;
+  10:39:27.285  set system volume: 0.490000 -> 0.500000   <-- read side is a
+                                                              non-1/16 value;
                                                               ratchet restarts
+                                                              from 0.5 (see 2d)
   10:39:27.315  set system volume: 0.500000 -> 0.562500
 
 Once a rail is reached it spins forever without changing anything:
@@ -68,9 +84,13 @@ schedules another sync, which races again.
     to 0.000000 + muted=true. No key repeat or stuck HID line can reverse
     direction.
 
-(b) Device is arbitrary. Incident 1 targeted device 100 (BuiltInSpeakerDevice);
-    incident 2 targeted a Bluetooth output, with 0 writes to device 100 during
-    it.
+(b) A single runaway thrashes across devices. Incident 1 alternated between the
+    AirPods and BuiltInSpeakerDevice six times (198 -> 100 -> 198 -> 100 -> 212
+    -> 100), including across a disconnect/reconnect of the AirPods that
+    reassigned them from ID 198 to ID 212. Incident 2 stayed on the AirPods with
+    0 writes to device 100. A per-device state machine driven by real input
+    would not migrate mid-runaway, and would not follow the same physical device
+    across an ID change.
 
 (c) Multiple threads write concurrently. In incident 2, seven ControlCenter TIDs
     (54625, 5498c, 5467e, 5386f, 5498a, 5499c, 5498e) all issue
@@ -78,9 +98,13 @@ schedules another sync, which races again.
     comes from a DIFFERENT TID (1b1b) than the threads performing the CoreAudio
     writes.
 
-(d) Stale intermediates appear mid-ramp. 0.435000 and 0.490000 are not multiples
-    of 1/16 - they are values observed by one thread while another was
-    mid-write.
+(d) Non-1/16 values appear as the READ side of the ratchet: "0.435000 -> 0.5",
+    "0.490000 -> 0.5". Since the write side only ever emits multiples of 1/16,
+    these are values that were current when a thread read but had been replaced
+    by the time it wrote. I cannot fully separate this from the device's own
+    pre-existing level (the AirPods may simply have been at 0.435 when the
+    transfer landed), so I offer it as consistent with a race rather than as
+    proof of one - points (a) through (c) carry that argument.
 
 (e) There is no input. A 6-second HID capture during an active runaway returned
     ONE key event total: no NX_KEYTYPE_SOUND_UP stream, no injected events.
@@ -122,18 +146,37 @@ Reproduction currently requires the third-party app. The log-level signature
 below is diagnosable from a sysdiagnose without it.
 
 1. On macOS 27.0 26A5378n, run Alcove 1.7.9 (com.henrikruscon.Alcove).
+   Connect AirPods (AirPods 4 here) and make them the active output.
 
-2. Play audio and transfer playback to this Mac via Spotify Connect. This
-   supplies an audio-device renegotiation. Spotify itself never writes a volume
+2. Start Spotify playback ON AN iPHONE (not on the Mac).
+
+3. In the Spotify desktop app on the Mac, use the device picker to switch
+   playback to "This Computer". This is the Spotify Connect transfer; it
+   supplies the audio-device renegotiation. Spotify itself never writes a volume
    property - a full-window grep for Spotify volume writes returns nothing.
 
-3. Observe the runaway begin within ~200 ms of the device negotiation:
+4. IMMEDIATELY adjust the system volume - within about a second of the transfer,
+   before the device settles. In my case this was reflexive, and the timing
+   turns out to matter: the adjustment lands inside ControlCenter's post-
+   transfer volume re-sync, which is what appears to put two mutation paths in
+   flight at once.
+
+5. Observe the runaway begin within ~200 ms of the device negotiation, and ~14
+   ms after the volume adjustment:
 
      10:39:26.646  coreaudiod    >>> NEGOTIATE [com.spotify.client]
-     10:39:26.665  Spotify       AUHAL HALListener registers
-     10:39:26.849  ControlCenter set system volume: 0.435 -> 0.5     <-- +203 ms
+     10:39:26.835  ControlCenter (DeviceID 198) setLevel: main volume 0.500000
+                                                          <-- the adjustment
+     10:39:26.849  ControlCenter set system volume: 0.435 -> 0.5
+                                                          <-- +14 ms, runaway
 
-4. Capture the loop:
+   No volume write of any kind appears in the log between 10:39:20 and
+   10:39:26.835, so the adjustment at .835 is the first mutation in the
+   sequence. I cannot prove from the log alone that .835 was user-initiated
+   rather than ControlCenter's own re-sync - both log identically - but it
+   matches what I did and the ordering is consistent.
+
+6. Capture the loop:
 
      /usr/bin/log stream --style compact --predicate 'process == "ControlCenter"
        AND eventMessage CONTAINS "set system volume"'
@@ -141,7 +184,7 @@ below is diagnosable from a sysdiagnose without it.
    -> ~30 lines/sec, ratcheting in 1/16 steps, then "1.000000 -> 1.000000"
       (or 0.000000) forever.
 
-5. Confirm the concurrent writers - note the multiple distinct TIDs:
+7. Confirm the concurrent writers - note the multiple distinct TIDs:
 
      /usr/bin/log stream --style compact --predicate 'eventMessage CONTAINS
        "LogVolumeChangeForClientSide"'
@@ -149,14 +192,14 @@ below is diagnosable from a sysdiagnose without it.
    -> ControlCenter[<pid>:<many different tids>] AudioObjectSetPropertyData
       ... ['vmvc', 'outp']
 
-6. Confirm there is no input driving it:
+8. Confirm there is no input driving it:
 
      /usr/bin/log stream --style compact --predicate 'subsystem CONTAINS "hid"
        OR eventMessage CONTAINS[c] "NX_KEYTYPE"'
 
    -> ~1 event per 6 s; no volume keys.
 
-7. Recover: "killall ControlCenter" (respawns automatically). The loop stops and
+9. Recover: "killall ControlCenter" (respawns automatically). The loop stops and
    volume holds. If the runaway left the device muted, clear it separately:
 
      osascript -e 'set volume without output muted'

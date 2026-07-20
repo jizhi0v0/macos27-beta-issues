@@ -1,0 +1,85 @@
+CORRECTION AND ADDITIONAL DETAIL TO THE ORIGINAL REPORT
+
+Re-examining the logs after filing, I found two errors in my original submission
+and one omission that materially changes the reproduction steps. Corrected
+details below; the full corrected body is attached as 0-full-description.txt.
+
+
+CORRECTION 1 - Incident 1 did not stay on the built-in speakers
+
+I wrote that incident 1 targeted device 100 (BuiltInSpeakerDevice). That is
+wrong. Within the single runaway, ControlCenter thrashes across THREE CoreAudio
+device IDs:
+
+  DeviceID 198 (115 writes) -> 100 (26) -> 198 (920) -> 100 (57)
+    -> 212 (404) -> 100 (7,160)
+
+Window totals: 14,533 writes to device 100, 2,182 to 198, 865 to 212.
+
+Critically, 198 and 212 are THE SAME physical device - UID C4-B3-49-AA-E7-97, a
+pair of AirPods 4 - under two IDs, because they disconnected and reconnected
+mid-runaway and were reassigned a new CoreAudio device ID.
+
+This strengthens rather than weakens the race argument, and replaces my original
+evidence point (b): a per-device state machine driven by real input would not
+migrate between outputs mid-runaway, and would not follow the same physical
+device across an ID change.
+
+
+CORRECTION 2 - the severity is not theoretical
+
+I described the hearing-exposure risk in the abstract. It was not abstract. The
+affected output in incident 1 was the AirPods 4 identified above, which I was
+wearing at the time. ControlCenter issued 1,158 writes setting that device to
+volume 1.000000 - full scale, in-ear, reached in roughly 0.5 seconds with no
+ramp.
+
+Recovery required killing the agent from a terminal, which is not something a
+user can do while the sound is painful.
+
+
+OMISSION - a manual volume adjustment is part of the trigger
+
+My original Steps to Reproduce jumped from the Spotify Connect transfer straight
+to the runaway. The actual sequence had a step in between that I did not report:
+
+  1. Spotify playing on an iPhone.
+  2. In the Spotify desktop app on the Mac, switch playback to "This Computer".
+  3. Adjust the system volume immediately afterwards - reflexively, in my case.
+  4. Runaway.
+
+The timing appears to matter:
+
+  10:39:26.646  coreaudiod    >>> NEGOTIATE [com.spotify.client]
+  10:39:26.835  ControlCenter (DeviceID 198) setLevel: main volume 0.500000
+  10:39:26.849  ControlCenter set system volume: 0.435 -> 0.5   <-- +14 ms
+
+No volume write of any kind appears in the log between 10:39:20 and
+10:39:26.835, so the adjustment at .835 is the first mutation in the sequence.
+It lands ~190 ms after the device negotiation - inside ControlCenter's
+post-transfer volume re-sync. That collision is the most plausible source of the
+two concurrent mutation paths the race needs.
+
+Caveat: the log cannot distinguish a user-initiated setLevel from
+ControlCenter's own re-sync, since both log identically. I offer this as
+matching what I did and being consistent with the ordering, not as proof.
+
+
+WITHDRAWN - original evidence point (d)
+
+I originally claimed the non-1/16 values (0.435000, 0.490000) were "values
+observed by one thread while another was mid-write". I am withdrawing that as
+stated. They do appear only on the read side of the ratchet, which is consistent
+with a lost update - but 0.435 could equally be the AirPods' own pre-existing
+level when the transfer landed. I cannot separate the two from the log, so it
+should not be counted as evidence. Points (a) through (c) carry the argument
+without it.
+
+
+UNCHANGED
+
+Everything else in the original report stands: the 1/16 ratchet at ~33 ms, the
+30 Hz spin at the rail, the seven concurrent ControlCenter TIDs in incident 2,
+the absence of HID input, Alcove issuing zero writes during incident 2,
+"killall ControlCenter" as recovery, and the macOS 26.3.1 prior art indicating
+this is not a 27 regression.

@@ -1,4 +1,4 @@
-VERIFICATION: CONFIRMED — caught live twice on one boot, 2026-07-20, macOS 27.0 beta3 revision 26A5378n. Incident 1 (10:39:26.849): system volume ratchets **up** in exact 1/16 steps to `1.000000` on `BuiltInSpeakerDevice` and spins at 30 Hz (1,800 `set system volume` lines/min) for ~4.5 min until `killall ControlCenter`. Incident 2 (~10:52): same signature ratcheting **down** to `0.000000` + `muted=true` on a Bluetooth device, 493 client-side writes in 8 s across **7 distinct ControlCenter threads**. Every write during both runaways originates from ControlCenter itself. HID capture during an active runaway: **1 key event in 6 s** — there is no input driving this. After `killall ControlCenter` the 30 Hz loop drops from ~240 lines / 8 s to **1**.
+VERIFICATION: CONFIRMED — caught live twice on one boot, 2026-07-20, macOS 27.0 beta3 revision 26A5378n. Incident 1 (10:39:26.849): system volume ratchets **up** in exact 1/16 steps to `1.000000` and spins at 30 Hz (1,800 `set system volume` lines/min) for ~4.5 min until `killall ControlCenter` — **thrashing across three device IDs** (`198`→`100`→`198`→`100`→`212`→`100`; 198/212 are the same **AirPods 4** before and after a mid-runaway reconnect, 100 is `BuiltInSpeakerDevice`). **1,158 of those writes set the worn AirPods to `1.000000`.** Incident 2 (~10:52): same signature ratcheting **down** to `0.000000` + `muted=true` on the same AirPods, 493 client-side writes in 8 s across **7 distinct ControlCenter threads**. Every write during both runaways originates from ControlCenter itself. HID capture during an active runaway: **1 key event in 6 s** — there is no input driving this. After `killall ControlCenter` the 30 Hz loop drops from ~240 lines / 8 s to **1**.
 
 **Not a macOS 27 regression** — the up-direction symptom is publicly reported on macOS 26.3.1 (see Note).
 
@@ -15,18 +15,18 @@ Fallback if that still won't fit (72 chars):
 ControlCenter volume race: output ratchets to 0 or full scale and sticks
 ```
 
-The full framing — *"…unsynchronized RMW across >=7 threads, direction and device both arbitrary, self-sustains at 30 Hz, overrides all user input until the agent is restarted"* — goes in the Description field below, which has room.
+The full framing — *"…unsynchronized RMW across >=7 threads, direction arbitrary across occurrences and device arbitrary within one, self-sustains at 30 Hz, overrides all user input until the agent is restarted"* — goes in the Description field below, which has room.
 
 # Form fields
 - **Which area are you seeing an issue with?** → **Control Center** if the picker offers it; otherwise **Sound** / **Audio**. Rationale: the defect is in `com.apple.controlcenter`'s `SoundSettings` volume-apply path, not in CoreAudio — coreaudiod faithfully applies every write it is handed. Say so in the Description either way; the report names the component explicitly.
 - **What type of issue are you reporting?** → **Incorrect/Unexpected Behavior.**
 
-  There is no "safety" category, so state it in the Description instead: **the up-direction case drives output to full scale in roughly half a second with no ramp**, which is a hearing-exposure hazard for anyone wearing the affected output. That framing belongs in the text, not smuggled into the wrong picker.
+  There is no "safety" category, so state it in the Description instead: **the affected output was a worn pair of AirPods 4, driven to `1.000000` by 1,158 writes, reaching full scale in roughly half a second with no ramp.** That framing belongs in the text, not smuggled into the wrong picker.
 
 # Description
 On macOS 27.0 (26A5378n), system volume becomes uncontrollable: it ratchets monotonically to **either 0 % (plus mute) or 100 %**, pins there, and ControlCenter continues writing the CoreAudio volume property at **~30 Hz indefinitely**. Manual adjustment is overridden within a second — the ratchet simply restarts from whatever value the user set.
 
-Both the **direction** and the **target device** vary between occurrences. This is the signature of a **lost-update race**, not of a stuck input.
+The **direction** varies between occurrences and the **target device** varies *within* an occurrence. This is the signature of a **lost-update race**, not of a stuck input.
 
 ## 1. The ratchet
 
@@ -39,7 +39,7 @@ The step is exactly **1/16** — the standard macOS volume increment — advanci
 10:39:27.182  set system volume: 0.625000 -> 0.687500
 10:39:27.215  set system volume: 0.687500 -> 0.750000
 10:39:27.249  set system volume: 0.750000 -> 0.812500
-10:39:27.285  set system volume: 0.490000 -> 0.500000   <-- a thread lands a STALE value; ratchet restarts
+10:39:27.285  set system volume: 0.490000 -> 0.500000   <-- read side is non-1/16; ratchet restarts from 0.5
 10:39:27.315  set system volume: 0.500000 -> 0.562500
 ```
 
@@ -56,9 +56,9 @@ Each iteration is closed inside ControlCenter: `syncMute` -> `updateMute` -> `se
 ## 2. Why this is a race and not an input problem
 
 1. **Direction is arbitrary.** Incident 1 ratcheted up to `1.000000`; incident 2 down to `0.000000` + `muted=true`. No key repeat or stuck HID line can reverse direction.
-2. **Device is arbitrary.** Incident 1 targeted device `100` (`BuiltInSpeakerDevice`); incident 2 targeted a Bluetooth output — with **0 writes to device 100** during it.
+2. **A single runaway thrashes across devices.** Incident 1 alternated AirPods ↔ `BuiltInSpeakerDevice` six times and followed the AirPods across a disconnect/reconnect (`198`→`212`). Incident 2 stayed on the AirPods with **0 writes to device 100**.
 3. **Multiple threads write concurrently.** Incident 2: seven ControlCenter TIDs (`54625`, `5498c`, `5467e`, `5386f`, `5498a`, `5499c`, `5498e`) all issue `AudioObjectSetPropertyData`. The bookkeeping line `set system volume: X -> Y` comes from a *different* TID (`1b1b`) than the threads performing the CoreAudio writes.
-4. **Stale intermediates appear mid-ramp.** `0.435000` and `0.490000` are not multiples of 1/16 — they are values observed by one thread while another was mid-write.
+4. **Non-1/16 values appear on the *read* side.** `0.435000`/`0.490000` — the write side only emits multiples of 1/16. **Weaker than it looks:** `0.435` could be the AirPods' own pre-existing level. Consistent with a race, not proof of one.
 5. **There is no input.** A 6 s HID capture during an active runaway returned **one** key event total: no `NX_KEYTYPE_SOUND_UP` stream, no injected events.
 
 ## 3. The third-party precondition — and what it is *not*
@@ -79,35 +79,38 @@ In incident 2 Alcove ran for the entire runaway and wrote **nothing**. In incide
 
 ## 4. Severity
 
-The reporter hit the up-direction case while the affected output was live and in use. Full-scale output arriving in ~0.5 s with no ramp is a hearing-exposure hazard, and the user cannot correct it — every manual adjustment is overwritten in under a second. The only recovery found is restarting the agent.
+**Not theoretical.** The affected output in incident 1 was a pair of **AirPods 4 being worn at the time**, and ControlCenter issued **1,158 writes setting them to `1.000000`** — full scale, in-ear, reached in ~0.5 s with no ramp. The user cannot correct it: every manual adjustment is overwritten in under a second, and the only recovery found was killing the agent from a terminal — not available to a normal user while the sound is painful.
 
 # Steps to Reproduce
 Reproduction currently requires the third-party app; the log-level signature below is diagnosable from a sysdiagnose without it.
 
-1. On macOS 27.0 26A5378n, run **Alcove 1.7.9** (`com.henrikruscon.Alcove`).
-2. Play audio and transfer playback to this Mac via **Spotify Connect** (this supplies an audio-device renegotiation — Spotify itself never writes a volume property; a full-window grep for Spotify volume writes returns nothing).
-3. Observe the runaway begin within ~200 ms of the device negotiation:
+1. On macOS 27.0 26A5378n, run **Alcove 1.7.9** (`com.henrikruscon.Alcove`). Connect AirPods (AirPods 4 here) as the active output.
+2. Start Spotify playback **on an iPhone** — not on the Mac.
+3. In the Spotify desktop app on the Mac, use the device picker to switch playback to **"This Computer"** (the Spotify Connect transfer — this supplies the audio-device renegotiation; Spotify itself never writes a volume property, a full-window grep returns nothing).
+4. **Immediately adjust the system volume**, within ~1 s of the transfer. The timing matters: the adjustment lands inside ControlCenter's post-transfer re-sync, which is what appears to put two mutation paths in flight at once.
+5. Observe the runaway begin ~200 ms after the negotiation and ~14 ms after the adjustment:
    ```
    10:39:26.646  coreaudiod    >>> NEGOTIATE [com.spotify.client]
-   10:39:26.665  Spotify       AUHAL HALListener registers
-   10:39:26.849  ControlCenter set system volume: 0.435 -> 0.5      <-- +203 ms
+   10:39:26.835  ControlCenter (DeviceID 198) setLevel: main vol 0.500000   ← the adjustment
+   10:39:26.849  ControlCenter set system volume: 0.435 -> 0.5           ← +14 ms, runaway
    ```
-4. Capture the loop:
+   No volume write appears between 10:39:20 and `.835`, so the adjustment is the first mutation in the sequence. The log cannot distinguish a user-initiated `setLevel` from ControlCenter's own re-sync — both log identically — but it matches the reporter's account.
+6. Capture the loop:
    ```
    /usr/bin/log stream --style compact --predicate 'process == "ControlCenter" AND eventMessage CONTAINS "set system volume"'
        -> ~30 lines/sec, ratcheting in 1/16 steps, then "1.000000 -> 1.000000" (or 0.000000) forever
    ```
-5. Confirm the concurrent writers — note the multiple distinct TIDs:
+7. Confirm the concurrent writers — note the multiple distinct TIDs:
    ```
    /usr/bin/log stream --style compact --predicate 'eventMessage CONTAINS "LogVolumeChangeForClientSide"'
        -> ControlCenter[<pid>:<many different tids>] AudioObjectSetPropertyData ... ['vmvc', 'outp']
    ```
-6. Confirm there is no input driving it:
+8. Confirm there is no input driving it:
    ```
    /usr/bin/log stream --style compact --predicate 'subsystem CONTAINS "hid" OR eventMessage CONTAINS[c] "NX_KEYTYPE"'
        -> ~1 event per 6 s; no volume keys
    ```
-7. Recover: `killall ControlCenter` (respawns automatically). The loop stops and volume holds. If the runaway left the device muted, clear it separately: `osascript -e 'set volume without output muted'`.
+9. Recover: `killall ControlCenter` (respawns automatically). The loop stops and volume holds. If the runaway left the device muted, clear it separately: `osascript -e 'set volume without output muted'`.
 
 Notes for reproduction: `log` is a **zsh builtin** — use `/usr/bin/log` explicitly or the commands silently return nothing. Device IDs are per-boot and reused; resolve them via `AudioObjectGetPropertyData(kAudioHardwarePropertyDevices)` rather than assuming stability. Direction and target device are **not** deterministic across occurrences — expect either rail on either output.
 
