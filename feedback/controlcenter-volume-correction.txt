@@ -2,7 +2,8 @@ CORRECTION AND ADDITIONAL DETAIL TO THE ORIGINAL REPORT
 
 Re-examining the logs after filing, I found two errors in my original submission
 and one omission that materially changes the reproduction steps. Corrected
-details below; the full corrected body is attached as 0-full-description.txt.
+details below; the full corrected body is attached as
+0-full-description-CORRECTED-2026-07-20.txt.
 
 
 CORRECTION 1 - Incident 1 did not stay on the built-in speakers
