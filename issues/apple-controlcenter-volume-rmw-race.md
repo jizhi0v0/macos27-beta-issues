@@ -166,11 +166,14 @@ Serializing volume mutations on a single queue/actor removes the race outright, 
 
 ## Reproduction / 复现
 
-**Eight-plus runaways captured on 2026-07-20**, all on `26A5378n`, identified by ControlCenter emitting ≥300 `set system volume` lines/min (idle is single digits):
+**Ten-plus runaways captured on 2026-07-20**, all on `26A5378n`, identified by ControlCenter emitting ≥300 `set system volume` lines/min (idle is single digits):
 
 ```
-10:39–10:44 · 10:53–10:54 · 14:14–14:16 · 14:25–14:28 · 14:33–14:43 · 14:56–15:02 · 15:18
+10:39–10:44 · 10:53–10:54 · 14:14–14:16 · 14:25–14:28 · 14:33–14:43
+14:56–15:02 · 15:18 · 15:36–15:40 · 15:55–16:00 · 16:07–16:09
 ```
+
+The last three were provoked by [`racetrigger`](../tools/volwatch/racetrigger.swift) rather than by hand — see [Reproduction on demand](#reproduction-on-demand--按需复现) below.
 
 ### The recipe / 复现配方
 
@@ -212,6 +215,17 @@ Recorded so Apple can skip these, and so this report is not read as "some app wr
 The write signatures are identical where it matters: both Alcove and the synthetic tool issue `AudioObjectSetPropertyData` on `['vmvc', 'outp', 0]` against the same devices. Alcove additionally writes `['mute', 'outp', 0]`. Banner behaviour is also identical — `VolumeSystemBannerContent` events track volume writes at a ratio of ~2.0 with Alcove both running and quit, so Alcove is **not** suppressing the system HUD in a way that matters here.
 
 **Consequence: no self-contained reproducer exists yet.** Concurrent writes to the same property, by themselves, do not provoke it. Something specific to Alcove does, and it is not visible from outside a closed-source, now-archived app.
+
+### Reproduction on demand / 按需复现
+
+```sh
+swiftc -O -o racetrigger tools/volwatch/racetrigger.swift
+./racetrigger --mode open --duration 60 --threads 8
+```
+
+Built-in speakers are enough — no Bluetooth device, no audio playing, no Spotify. **Alcove must be running *and writing*** (next section). The tool clamps every write it makes to `0.10` in code, so a volume that ends at `0` or `1.0` cannot have come from it: that value is ControlCenter's, which is the cleanest confirmation of a real runaway.
+
+Recovery: `killall ControlCenter`, then `osascript -e 'set volume without output muted'`.
 
 ### Alcove must be *writing*, not merely running / Alcove 必须在写
 
