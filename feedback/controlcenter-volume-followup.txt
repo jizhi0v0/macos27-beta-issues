@@ -1,0 +1,159 @@
+FOLLOW-UP: REPRODUCTION TOOL, AND WHAT DOES NOT TRIGGER IT
+
+Since filing I have captured 10+ runaways on 26A5378n and built a tool that
+provokes one on demand. This comment supplies that tool, the exact command, the
+conditions that matter, and — deliberately — the list of things that look like
+they should trigger it and do not, so triage does not repeat work I have already
+done.
+
+
+1. REPRODUCTION
+
+Source: https://github.com/jizhi0v0/macos27-beta-issues/blob/main/tools/volwatch/racetrigger.swift
+
+  swiftc -O -o racetrigger racetrigger.swift
+  ./racetrigger --mode open --duration 60 --threads 8
+
+Conditions required:
+
+  - Alcove 1.7.9 (com.henrikruscon.Alcove) installed, running, and ACTIVELY
+    WRITING volume. See section 2 — this is the part that is easy to get wrong.
+  - Built-in speakers as output is sufficient. No Bluetooth device, no audio
+    playing, no Spotify, no other app is needed.
+  - Run it from an interactive terminal. See section 4.
+
+The tool clamps every write it makes to 0.10, in code. If system volume ends up
+at 0 or 1.0, that value did not come from the tool — ControlCenter produced it.
+That clamp is the cleanest way to confirm a real runaway rather than tool noise.
+
+Recovery, once fired:
+
+  killall ControlCenter
+  osascript -e 'set volume without output muted'
+
+Confirming a hit — ControlCenter emits ~1,800 "set system volume" lines/min
+during a runaway against single digits at idle:
+
+  /usr/bin/log show --last 2m --style compact --predicate \
+    'process == "ControlCenter" AND eventMessage CONTAINS "set system volume"' \
+    | awk 'NR>2{print substr($2,1,5)}' | uniq -c
+
+(`log` is a zsh builtin — the /usr/bin/ prefix is required.)
+
+
+2. THE CONDITION THAT ACTUALLY MATTERS: ALCOVE MUST BE *WRITING*
+
+Not "installed", not "running" — writing. Five paired runs on 2026-07-20,
+16:03–16:09, same command, same machine, minutes apart:
+
+  racetrigger    Alcove        ControlCenter   result
+  writes/min     writes/min
+  ---------------------------------------------------
+  7,759          0             0               nothing
+  9,338          0             0               nothing
+  7,498          0             30              nothing
+  1,252          65            480             RUNAWAY
+  (earlier)      38–45         1,718           RUNAWAY
+
+5/5. Alcove writing → runaway. Alcove silent → nothing, at any write rate.
+
+Note the third column against the first: the runs that produced NOTHING were
+pushing 6x more volume writes than the run that fired.
+
+
+3. WRITE PRESSURE IS NOT THE TRIGGER
+
+This is the most useful negative I have. A synthetic writer at 2,508–2,571
+writes/min with Alcove quit produced no runaway (ControlCenter 33–143
+lines/min). Relaunching Alcove — which writes ~65 times/MINUTE, 38x less —
+produced one within a minute (1,078 lines/min).
+
+Whatever Alcove contributes is qualitative, not volumetric. I could not identify
+what it is. From outside, its writes are indistinguishable from the synthetic
+tool's: same API (AudioObjectSetPropertyData), same property address
+(['vmvc', 'outp', 0]), same devices. Alcove additionally writes
+['mute', 'outp', 0]; mirroring that did not close the gap.
+
+
+4. AN UNEXPLAINED DEPENDENCE ON LAUNCH CONTEXT
+
+Identical command, identical arguments, minutes apart:
+
+  - launched from the reporter's interactive terminal  -> Alcove writes, fires
+  - launched from a non-interactive shell              -> Alcove silent, never fires
+
+I have no explanation. Process QoS or scheduling differences between the two
+launch contexts are the obvious candidate but I have not tested it. Flagging it
+because if reproduction fails on your side, this is the first thing I would vary.
+
+HID input is NOT the variable, in case it looks like it: the non-firing run had
+50 input events in the minute, the firing run had 14.
+
+
+5. THINGS THAT DO NOT TRIGGER IT
+
+Each of these was tried and measured. Listing them so they are not re-run:
+
+  - Timer-driven concurrent writes, 8 threads, 2,500+/min          no runaway
+  - The same, plus flipping the default output device               no runaway
+  - Echo-from-listener, immediate write-back, 8 threads             see below
+  - Echo-from-listener with a 40 ms stale-read window, 12/s         no runaway
+  - Bluetooth handoff (AirPods moving between iPhone and Mac)       not required
+  - ToDesk running                                                  not required
+  - Virtual audio drivers as the writer (Oray, ToDesk)              2 of 490 writes
+
+The third one produced a DIFFERENT failure, which may warrant its own look:
+eight listeners echoing every volume-changed notification back immediately made
+**Control Center and Notification Center both become unresponsive** until
+ControlCenter respawned. That is an unprivileged process rendering a system UI
+inoperable through a public CoreAudio API — a denial of service rather than the
+ratchet, but reachable the same way.
+
+
+6. FURTHER SYMPTOMS OBSERVED SINCE FILING
+
+**The HUD desyncs from the actual volume.** During one runaway the menu-bar
+volume slider rendered at MAXIMUM while the device was actually at 0.0 and
+muted. VolumeSystemBannerContent was being presented 58x/sec and never
+dismissing. A user cannot tell what the volume is, because the control and the
+state disagree.
+
+**MenuBarAgent is dragged along.** 13,334–18,839 log lines/min during a runaway
+versus 33–38 after `killall ControlCenter` — a ~500x difference, entirely
+com.apple.menubar:systemBanners, because every loop iteration presents a banner.
+So a machine hitting this shows both ControlCenter AND MenuBarAgent hot. (High
+ControlCenter CPU alone is not a signature of this bug — I verified an unrelated
+report with the same CPU shape and normal volume control.)
+
+**Collateral crash.** Klack 2.1.4 (com.henrikruscon.Klack, same developer as
+Alcove) crashed with EXC_BAD_ACCESS (SIGSEGV) at 0x00000000000000fc on queue
+com.henrikruscon.Klack.SoundManager.control, 2.4 s after a runaway began, having
+created ~10 AudioConverters in the preceding 0.5 s. Klack never writes system
+volume — it is collateral damage of the device churn, not a participant.
+
+
+7. OCCURRENCE LOG
+
+10+ runaways on 2026-07-20, all on 26A5378n, identified by ControlCenter
+emitting >=300 "set system volume" lines/min:
+
+  10:39–10:44  10:53–10:54  14:14–14:16  14:25–14:28  14:33–14:43
+  14:56–15:02  15:18  15:36–15:40  15:55–16:00  16:07–16:09
+
+Both rails observed (0.0 + muted, and 1.0). Both output devices observed
+(AirPods 4 and built-in speakers), including one runaway that migrated across
+three CoreAudio device IDs mid-flight.
+
+
+8. WHAT I COULD NOT DETERMINE
+
+Why Alcove's writes provoke this and an identical-looking synthetic writer's do
+not. Answering it needs either ControlCenter's internals or Alcove's — and
+Alcove is closed source with its repository archived read-only since
+2026-06-01, so the app side is not available to me.
+
+I mention it because the defect does not depend on the answer: ControlCenter
+performs unsynchronized read-modify-write on the volume property across at least
+seven threads, and a plain unprivileged app writing a public property can drive
+system output to a rail and hold it there. Serializing those mutations fixes it
+regardless of which app happens to provide the second writer.

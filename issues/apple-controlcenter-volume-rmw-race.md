@@ -213,6 +213,27 @@ The write signatures are identical where it matters: both Alcove and the synthet
 
 **Consequence: no self-contained reproducer exists yet.** Concurrent writes to the same property, by themselves, do not provoke it. Something specific to Alcove does, and it is not visible from outside a closed-source, now-archived app.
 
+### Alcove must be *writing*, not merely running / Alcove 必须在写
+
+Sharpened by five paired observations on 2026-07-20 (16:03–16:09), all with `racetrigger --mode open --duration 45..60 --threads 8` against built-in speakers:
+
+| Run by | racetrigger writes/min | **Alcove writes/min** | ControlCenter | Result |
+|---|---|---|---|---|
+| investigator (non-interactive shell) | 7,759 | **0** | 0 | — |
+| investigator | 9,338 | **0** | 0 | — |
+| investigator | 7,498 | **0** | 30 | — |
+| **reporter (interactive terminal)** | **1,252** | **65** | **480** | **runaway** |
+| reporter, earlier (15:35) | high | 38–45 | 1,718 | **runaway** |
+
+**5/5: Alcove writing → runaway; Alcove silent → nothing.** The investigator's runs pushed **6× more** volume writes and never fired.
+
+Two things this rules out that look plausible:
+
+- **HID input is not the variable.** The investigator's non-firing run had **50** input events in the minute; the reporter's firing run had **14**.
+- **Launching Alcove is not enough.** A run where Alcove was started programmatically (`open -a Alcove`, 6 s settle) recorded 0 Alcove writes across 9 trials and 0 runaways — the process existed but never participated. Any trial harness must verify Alcove is *writing* before treating a negative as meaningful.
+
+**Unexplained:** why Alcove writes when `racetrigger` is launched from the reporter's interactive terminal but not when launched from a non-interactive shell, despite identical arguments. Process QoS/scheduling differences between the two launch contexts are a candidate, untested. This is the current edge of the investigation.
+
 ### Tools / 工具
 
 [`tools/volwatch/`](../tools/volwatch/) — LaunchAgent that records occurrences passively. Detection rule and the three rejected alternatives are documented in the source header; it has caught every runaway since the pinned-phase probe was added. [`racetrigger.swift`](../tools/volwatch/racetrigger.swift) in the same directory implements the negative results above and is kept so they stay reproducible.
