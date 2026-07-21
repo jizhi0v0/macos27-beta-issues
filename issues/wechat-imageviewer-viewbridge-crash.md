@@ -5,8 +5,8 @@
 
 | | |
 |---|---|
-| **Status** | 🔴 Open — confirmed recurring & **cross-app** (WeChat ×12 + CleanShot X ×1 = **13 verified crashes**, 2026-07-09 → 07-15, **byte-identical throw site**); **survives the `26A5378j` → `26A5378n` update**; root throw is 100% in Apple frameworks |
-| **macOS** | 27.0 beta3 — **both** `26A5378j` (8 crashes) **and** `26A5378n` (5 crashes, incl. the latest on 07-15). Not fixed by the 07-14 update. |
+| **Status** | 🔴 Open — confirmed recurring & **cross-app** (WeChat ×17 + CleanShot X ×3 = **20 verified crashes**, 2026-07-09 → 07-21, **byte-identical throw site**); **survives two beta3 builds AND beta4** (`26A5378j` → `26A5378n` → `26A5388g`); root throw is 100% in Apple frameworks |
+| **macOS** | 27.0 — **beta3 `26A5378j`** (8 crashes) → **beta3 rev `26A5378n`** (11 crashes) → **beta4 `26A5388g`** (1 crash, 07-21). Fixed by neither the 07-14 beta3 revision nor the beta4 update. |
 | **Component** | Apple **ViewBridge / AppKit** (`NSRemoteView`) — reproduced via **WeChat 4.1.11** (WeChatAppEx / `flue` engine) **and** **CleanShot X 4.8.9** (QuickLookUI `QLSeamlessDocumentOpener`) |
 | **Reproducers** | **WeChat 4.1.11 (269136)** MAS (`adam_id` 836500024) · **CleanShot X 4.8.9** (`pl.maketheweb.cleanshotx`, team `AFJU4P8ZV4`) |
 | **Machine** | `Mac15,11` — Apple M3 Max, 36 GB |
@@ -14,15 +14,15 @@
 
 ## Symptom / 症状
 
-WeChat **quits unexpectedly when opening the full-screen image viewer** (clicking an image in a chat). **12 WeChat crashes over 7 days (2026-07-09 → 07-15)**, up to **4 in a single day** (07-14) — routine, not a one-off.
+WeChat **quits unexpectedly when opening the full-screen image viewer** (clicking an image in a chat). **17 WeChat crashes over 13 days (2026-07-09 → 07-21)**, up to **4 in a single day** (07-14) — routine, not a one-off. On 07-17 it crashed **3 times in a chain**, each report launched ~4–6 s after the previous crash (auto-relaunch → re-crash).
 
-在聊天里**点击图片、打开全屏看图**时微信直接闪退。**7 天内 12 次(2026-07-09 → 07-15)**,单日最多 **4 次**(07-14)—— 属于常态,不是孤例。
+在聊天里**点击图片、打开全屏看图**时微信直接闪退。**13 天内 17 次(2026-07-09 → 07-21)**,单日最多 **4 次**(07-14)—— 属于常态,不是孤例。07-17 出现**连崩 3 次**:每份报告都在上一次崩溃后约 4–6 秒启动(自动重启 → 再崩)。
 
 ## Occurrences / 复现记录
 
-All 13 entries below were **verified programmatically**, not by grep: the ViewBridge frame sits at index 3 of `lastExceptionBacktrace` (the actual throw site) in every one. Every WeChat crash is the same build **4.1.11 (269136)**.
+All 20 entries below were **verified programmatically**, not by grep: the ViewBridge frame sits at index 3 of `lastExceptionBacktrace` (the actual throw site) in every one, and every one goes through `_doWindowWillBeVisibleAsSheet:`. Every WeChat crash is the same build **4.1.11 (269136)**; both CleanShot X are **4.8.9**.
 
-下列 13 条均经**程序化校验**(非 grep):每一份的 `lastExceptionBacktrace` 第 3 帧都正是 ViewBridge 抛点。微信侧全部为同一版本 **4.1.11 (269136)**。
+下列 20 条均经**程序化校验**(非 grep):每一份的 `lastExceptionBacktrace` 第 3 帧都正是 ViewBridge 抛点,且都经 `_doWindowWillBeVisibleAsSheet:`。微信侧全部为同一版本 **4.1.11 (269136)**;CleanShot X 均为 **4.8.9**。
 
 | # | Time (local) | Build | App | pid | Uptime at crash | Incident |
 |---|---|---|---|---|---|---|
@@ -40,10 +40,18 @@ All 13 entries below were **verified programmatically**, not by grep: the ViewBr
 | 11 | 2026-07-14 15:06:20 | `26A5378n` | WeChat | 63251 | 0h41m | `69F90A59-BA5E-4621-8568-4D41FB59D9B0` |
 | 12 | 2026-07-14 17:54:11 | `26A5378n` | WeChat | 60254 | 2h41m | `F4B3908D-0244-4822-A072-AC1F2588C551` |
 | 13 | 2026-07-15 18:26:03 | `26A5378n` | WeChat | 22430 | 24h30m | `6E4A70E1-BDE5-4DC9-A79D-799D0CBE9E5D` |
+| 14 | 2026-07-16 14:17:51 | `26A5378n` | WeChat | — | 4h09m | `9941EDFE-43AD-4838-A1FF-2AD8C86DF121` |
+| 15 | 2026-07-17 10:30:35 | `26A5378n` | WeChat | — | 20h13m | `7F666349-6E2A-44EC-9A4E-F9CDE48AB041` |
+| 16 | 2026-07-17 16:32:46 | `26A5378n` | WeChat | — | 6h02m | `AB9D9EBC-7997-48ED-A69D-4706F9096895` |
+| 17 | 2026-07-17 17:25:28 | `26A5378n` | WeChat | — | 0h52m | `BABA5ABA-1AC7-456B-9CAB-8EF115405E5D` |
+| 18 | 2026-07-19 17:16:46 | `26A5378n` | **CleanShot X** | — | ~79h | `E6B283DF-DA79-4A7E-8C29-3399DAA56610` |
+| 19 | 2026-07-19 18:07:18 | `26A5378n` | **CleanShot X** | — | 0h50m | `ACF9295D-5832-4963-AB46-C38FA824F900` |
+| — | *2026-07-2x — beta4 `26A5388g` installed (`…n` → `…g`)* | | | | | |
+| 20 | 2026-07-21 17:47:34 | **`26A5388g`** | WeChat | 50320 | 4h11m | `600F54BC-FE44-4053-85F6-BEDE7AF3A198` |
 
-**Survives the build update.** The `26A5378j` → `26A5378n` update (installed 07-14 02:55, live from the 10:58 reboot) did **not** fix it: 5 more crashes on `…n`, four of them the same day, the latest on 07-15. Uptime at crash ranges 0h22m → 66h, so it is not a "stale process" / long-uptime decay effect.
+**Survives two OS updates.** The `26A5378j` → `26A5378n` update (07-14) did **not** fix it (11 crashes on `…n`), and neither did the **beta4 `26A5388g`** update — WeChat crashed with the identical throw on 07-21 (entry 20). So this has now survived a beta3 revision *and* a full beta bump. Uptime at crash ranges 0h22m → ~79h, so it is not a "stale process" / long-uptime decay effect.
 
-**跨 build 依旧存在。** `26A5378j` → `26A5378n`(07-14 02:55 安装,10:58 重启后生效)**并未**修复:`…n` 上又崩 5 次,其中 4 次在当天,最新一次在 07-15。崩溃时进程运行时长从 0h22m 到 66h 不等,故与"进程跑太久劣化"无关。
+**熬过两次系统更新。** `26A5378j` → `26A5378n`(07-14)**未**修复(`…n` 上 11 次),**beta4 `26A5388g`** 同样没修 —— 07-21 微信以相同抛点再崩(第 20 条)。即它已经熬过一次 beta3 修订 *和* 一次完整的 beta 版本升级。崩溃时进程运行时长从 0h22m 到 ~79h 不等,故与"进程跑太久劣化"无关。
 
 Throw site identical across all 13; only the AppKit sub-path varies slightly (some go through `__27-[NSWindow _doOrderWindow:]_block_invoke.766` + `NSPerformVisuallyAtomicChange`, others hit `-[NSWindow _doOrderWindow:]` directly) — the exception origin is the same.
 
@@ -92,19 +100,22 @@ The `far: 0x0`, `byte write Translation fault` in the header comes from that las
 
 ## Second app — CleanShot X (same throw, no WeChat involved) / 第二个 app —— CleanShot X(同一抛点,与微信无关)
 
-On **2026-07-13** (still beta3 `26A5378j`), **CleanShot X 4.8.9** (`pl.maketheweb.cleanshotx`) crashed with the **byte-identical throw site** — a completely unrelated, sandbox-free app, reached through a **different remote-view provider**: the system's own **QuickLook** seamless preview (`QLSeamlessDocumentOpener`), presented after a capture. This all but rules out any single third-party app being at fault.
+**CleanShot X 4.8.9** (`pl.maketheweb.cleanshotx`) has now crashed with the **byte-identical throw site 3 times** — a completely unrelated, sandbox-free app, reached through a **different remote-view provider**: the system's own **QuickLook** seamless preview (`QLSeamlessDocumentOpener`), presented after a capture. Two apps, two remote-view providers, one throw site — this all but rules out any single third-party app being at fault.
 
-**2026-07-13**(仍是 beta3 `26A5378j`),**CleanShot X 4.8.9** 以**逐字相同的抛点**崩溃 —— 一个与微信毫不相关的 app,经由**另一套 remote-view 提供方**触达:系统自带的 **QuickLook** 无缝预览(`QLSeamlessDocumentOpener`),截图/录屏后弹预览时崩。几乎彻底排除某个第三方 app 单独背锅的可能。
+**CleanShot X 4.8.9**(`pl.maketheweb.cleanshotx`)现已以**逐字相同的抛点崩溃 3 次** —— 一个与微信毫不相关的 app,经由**另一套 remote-view 提供方**触达:系统自带的 **QuickLook** 无缝预览(`QLSeamlessDocumentOpener`),截图/录屏后弹预览时崩。两个 app、两套 remote-view 提供方、同一个抛点,几乎彻底排除某个第三方 app 单独背锅的可能。
 
-| | CleanShot X |
-|---|---|
-| Time (local) | 2026-07-13 19:45:55 |
-| pid | 53292 |
-| Incident | `EF867893-F3DC-4C3D-B1E6-B6EAA9E3BC58` |
-| Crash Reporter Key | `E33E57DD-CF22-CB53-A1DF-059800B67B55` |
-| Uptime at crash | ~2 h 04 m (launched 17:41:33) |
-| Exception | `EXC_CRASH (SIGABRT)` — `abort() called` (**unmasked**) |
-| `share_with_app_devs` | 0 (not auto-sent to vendor) |
+| | #7 | #18 | #19 |
+|---|---|---|---|
+| Time (local) | 2026-07-13 19:45:55 | 2026-07-19 17:16:46 | 2026-07-19 18:07:18 |
+| Build | `26A5378j` | `26A5378n` | `26A5378n` |
+| pid | 53292 | — | — |
+| Incident | `EF867893-…` | `E6B283DF-…` | `ACF9295D-…` |
+| Uptime at crash | ~2 h 04 m | ~79 h | ~0 h 50 m (relaunch after #18) |
+| Exception | `EXC_CRASH (SIGABRT)` — `abort() called` (**unmasked**) | same | same |
+
+The 07-19 pair is the same relaunch-and-recrash shape WeChat shows: #18 crashed, CleanShot X was reopened, and ~50 min later #19 hit the identical throw again.
+
+07-19 这一对与微信一样是"重启即再崩":#18 崩后重开 CleanShot X,约 50 分钟后 #19 又撞上同一抛点。
 
 ### Why CleanShot X is the *cleaner* data point / 为什么 CleanShot X 是更干净的证据
 
@@ -152,10 +163,10 @@ None confirmed. It crashes while *presenting* the viewer (an out-of-process shee
 
 ## Notes / 备注
 
-- All **13** crash reports have `share_with_app_devs = 0` (verified) — none was auto-sent to either vendor.
+- Every crash report has `share_with_app_devs = 0` — none auto-sent to either vendor. (Re-verified on the 9 reports still on disk 2026-07-21; the 11 older `…j`/early-`…n` reports have since rotated out of `DiagnosticReports`, but were 0 when logged.)
 - Distinct from **[#10](wechat-mas-crash-fixed.md)** (a 4.1.9 MAS *launch* crash, fixed in 4.1.10). This is a *4.1.11* image-viewer crash — a different bug.
-- **Cross-app** now (WeChat `flue` engine + Apple's own QuickLook), byte-identical throw → strengthens the Apple Feedback: the exception fires in ViewBridge's own order-on-screen observer regardless of who presents the remote view. Worth a Feedback (ViewBridge exception on window order-on-screen as sheet) + a minimal repro (any remote/XPC-hosted view presented as a sheet).
-- **Feedback is now overdue and the case is stronger than when it was drafted:** 13 verified crashes, two unrelated apps, and **persistence across the `…j` → `…n` update** (i.e. Apple shipped a build and this survived). The `FB____` placeholder should be filed — this is the only 🔴 entry left in the log.
+- **Cross-app** (WeChat `flue` engine + Apple's own QuickLook), byte-identical throw → strengthens the Apple Feedback: the exception fires in ViewBridge's own order-on-screen observer regardless of who presents the remote view. Worth a Feedback (ViewBridge exception on window order-on-screen as sheet) + a minimal repro (any remote/XPC-hosted view presented as a sheet).
+- **Feedback is now overdue and the case only keeps getting stronger:** 20 verified crashes across two unrelated apps, and **persistence across two OS updates** — the `…j` → `…n` beta3 revision *and* the **beta4 `26A5388g`** bump (i.e. Apple has now shipped two builds and this survived both). The `FB____` placeholder should be filed — this is the only 🔴 entry left in the log.
 - A vendor-facing email to **CleanShot X** (MakeTheWeb) is drafted — reports the Apple root cause and suggests they present the QuickLook preview off the sheet path / guard the `showWindow:` call so an AppKit exception during order-on-screen doesn't abort the whole app.
 - 现已**跨 app**(微信 `flue` 引擎 + 苹果自家 QuickLook),抛点逐字一致 → 加强 Apple Feedback:无论谁来呈现 remote view,异常都在 ViewBridge 自己的上屏 observer 里触发。值得提 Feedback + 做最小复现(任意 XPC 托管视图作为 sheet 呈现)。
 - 已为 **CleanShot X**(MakeTheWeb)起草一封厂商邮件:说明 Apple 根因,并建议把 QuickLook 预览挪出 sheet 路径 / 给 `showWindow:` 加保护,避免上屏时的 AppKit 异常把整个 app 拖崩。

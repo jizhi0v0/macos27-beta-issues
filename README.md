@@ -11,7 +11,7 @@ If a Google/GitHub search for a crash signature or a process eating CPU on macOS
 | | |
 |---|---|
 | Machine | MacBook Pro `Mac15,11` — Apple M3 Max, 36 GB |
-| OS | macOS **27.0** beta — builds seen: `26A5353q` (beta1), `26A5368g` (beta2), `26A5378j` (beta3), **`26A5378n`** (beta3 revision, installed 2026-07-14, live from that day's 10:58 reboot — **current**) |
+| OS | macOS **27.0** beta — builds seen: `26A5353q` (beta1), `26A5368g` (beta2), `26A5378j` (beta3), `26A5378n` (beta3 revision, 2026-07-14), **`26A5388g`** (beta4, seen 2026-07-21 — **current**) |
 | Reporter | [@jizhi0v0](https://github.com/jizhi0v0) |
 
 ## Status legend / 状态
@@ -42,7 +42,7 @@ If a Google/GitHub search for a crash signature or a process eating CPU on macOS
 | [14](https://github.com/jizhi0v0/macos27-beta-issues/issues/14) | [Click/input latency — WindowServer `ws_main_thread` serializes events (persists at 80% idle)](issues/apple-click-input-latency-beta.md) | macOS 27 WindowServer / event delivery | 🟢 fixed on beta3 (Telegram panel-dismiss stutter gone; user-confirmed, settings-independent) | (was) Reduce transparency/motion | Feedback candidate `FB____` |
 | [15](https://github.com/jizhi0v0/macos27-beta-issues/issues/15) | [appstoreagent + dasd retry-loop (Arcade BG task rejected `Code=8`, no backoff) floods log/CPU](issues/apple-appstoreagent-bgtask-retry-loop.md) | Apple appstoreagent / dasd / BGTaskScheduler | ⚪ not reproduced in beta3 window (conditional) | `killall` = temporary; internal bug | **[FB23413997](https://feedbackassistant.apple.com/feedback/23413997)** |
 | [16](https://github.com/jizhi0v0/macos27-beta-issues/issues/16) | [`modelmanagerd` crash-loop (`EXC_BREAKPOINT`) on AI-ineligible device](issues/apple-modelmanagerd-crash-loop.md) | Apple modelmanagerd / ModelManagerServices | 🟢 fixed on beta3 (0 crashes ≥11h, trigger unchanged) | (was) none (SIP daemon) | **[FB23430737](https://feedbackassistant.apple.com/feedback/23430737)** |
-| [17](https://github.com/jizhi0v0/macos27-beta-issues/issues/17) | [ViewBridge `NSRemoteView` uncaught ObjC exception on sheet order-on-screen (WeChat image viewer + CleanShot X QuickLook)](issues/wechat-imageviewer-viewbridge-crash.md) | Apple ViewBridge / AppKit (`NSRemoteView`) — hits WeChat 4.1.11 (WeChatAppEx) **&** CleanShot X 4.8.9 (QuickLook) | 🔴 confirmed **cross-app**, **13 crashes** (WeChat ×12 + CleanShot X ×1, byte-identical signature) — **still crashing on `26A5378n`** | none confirmed (retry recovers; ~12×/week in practice) | Feedback candidate `FB____` |
+| [17](https://github.com/jizhi0v0/macos27-beta-issues/issues/17) | [ViewBridge `NSRemoteView` uncaught ObjC exception on sheet order-on-screen (WeChat image viewer + CleanShot X QuickLook)](issues/wechat-imageviewer-viewbridge-crash.md) | Apple ViewBridge / AppKit (`NSRemoteView`) — hits WeChat 4.1.11 (WeChatAppEx) **&** CleanShot X 4.8.9 (QuickLook) | 🔴 confirmed **cross-app**, **20 crashes** (WeChat ×17 + CleanShot X ×3, byte-identical signature) — **survives into beta4 `26A5388g`** (07-21) | none confirmed (retry recovers; routine in practice) | Feedback candidate `FB____` |
 | [18](https://github.com/jizhi0v0/macos27-beta-issues/issues/18) | [contactsd self-sustaining change-history loop on CardDAV collection-groups](issues/apple-contactsd-carddav-group-changehistory-loop.md) | Apple contactsd `3837.100.1` / AddressBookManager / Contacts change-history | 🔴 confirmed on `26A5378n` — **~143% CPU bursts, 13% avg over 4 h**, 840k log lines; 7 CardDAV accounts affected, Exchange clean | **none** (loop is entirely Apple-internal — no app to quit) | Feedback candidate `FB____` |
 | [19](https://github.com/jizhi0v0/macos27-beta-issues/issues/19) | [imagent entitled to `ContactsAccountsService` but sandbox blocks the lookup → 1–2 ms no-backoff retry loop](issues/apple-imagent-contactsaccounts-sandbox-retry-loop.md) | Apple imagent `10.0` (IMCore) ↔ ContactsAccountsService | 🔴 confirmed on `26A5378n` — **66,626 errors / 7 h**, but only **19 s CPU** (log-volume bug, *not* CPU); shares #18's trigger | none (SIP daemon; respawns on kill) | Feedback candidate `FB____` |
 | [21](https://github.com/jizhi0v0/macos27-beta-issues/issues/21) | [ControlCenter volume runaway — concurrent RMW ratchets volume to 0 or 100%](issues/apple-controlcenter-volume-rmw-race.md) | Apple ControlCenter (`SoundSettings`) ↔ CoreAudio HAL — trigger requires **Alcove 1.7.9** | 🟡 · **not 27-specific** (same symptom on 26.3.1 via [Alcove #675](https://github.com/henrikruscon/alcove-releases/issues/675)) — caught live ×2, **both directions**, 30 Hz, ratchet step 1/16 | `killall ControlCenter`; prevent by quitting Alcove | **[FB23868196](https://feedbackassistant.apple.com/feedback/23868196)** |
@@ -63,9 +63,15 @@ Re-ran the still-open Apple bugs on beta3 (installed 07:54, booted 07:53). Verdi
 
 ### New build `26A5378n` / 新 build(2026-07-14 装,10:58 重启生效)
 
-A beta3 revision **`26A5378n`** replaced `26A5378j` on 2026-07-14. **Every verdict in the retest above was measured on `…j` and has *not* been re-measured on `…n`** — treat them as carrying over unverified. The only entry re-checked on `…n` so far is **#17**, which **is still crashing** (5 crashes on `…n`, latest 07-15).
+A beta3 revision **`26A5378n`** replaced `26A5378j` on 2026-07-14. **Every verdict in the retest above was measured on `…j` and has *not* been re-measured on `…n`** — treat them as carrying over unverified. The only entry re-checked on `…n` so far is **#17**, which **kept crashing** (11 crashes on `…n`, 07-14 → 07-19).
 
-`26A5378n` 于 2026-07-14 替换 `26A5378j`。**上面的复验结论全部测于 `…j`,尚未在 `…n` 上重测**,请视为"沿用但未验证"。目前唯一在 `…n` 上复验过的是 **#17 —— 仍在崩**(`…n` 上 5 次,最新 07-15)。
+`26A5378n` 于 2026-07-14 替换 `26A5378j`。**上面的复验结论全部测于 `…j`,尚未在 `…n` 上重测**,请视为"沿用但未验证"。目前唯一在 `…n` 上复验过的是 **#17 —— 仍在崩**(`…n` 上 11 次,07-14 → 07-19)。
+
+### New build `26A5388g` (beta4) / 新 build(beta4,2026-07-21 见)
+
+**beta4 `26A5388g`** is now current. Nothing above has been re-measured on it yet — the only entry with a beta4 data point is **#17**, which **still crashes** (WeChat, identical ViewBridge throw, 07-21). Everything else carries over from `…n`/`…j` unverified.
+
+**beta4 `26A5388g`** 现为当前版本。上面所有结论均未在其上重测 —— 目前唯一有 beta4 数据点的是 **#17 —— 依旧崩**(微信,相同 ViewBridge 抛点,07-21)。其余结论均沿用 `…n`/`…j`,未验证。
 
 - ✅ **Filed to Apple** (confirmed beta2 bugs): **CoreMedia loop** → [FB23411581](https://feedbackassistant.apple.com/feedback/23411581) · **MenuBarAgent idle ~10–14% CPU** → [FB23411741](https://feedbackassistant.apple.com/feedback/23411741)
 - ✅ **Filed:** **Spotlight `insert ranking attr at NSNotFound` ~60–160×/sec while typing** (idle=0; intrinsic to ranking code, no Settings fix) → [FB23412497](https://feedbackassistant.apple.com/feedback/23412497)
