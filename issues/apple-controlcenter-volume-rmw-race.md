@@ -5,8 +5,8 @@
 
 | | |
 |---|---|
-| **Status** | 🟡 Mitigated · confirmed on `26A5378n` — **10+ runaways captured in one day**, both directions, both output devices; reproducible on demand (see [Reproduction](#reproduction--复现)) |
-| **macOS** | 27.0 beta3 revision **`26A5378n`** — **not 27-specific**, see [Scope](#scope-not-a-27-regression--并非-27-回归) |
+| **Status** | 🔴 Not fixed · confirmed on `26A5378n` (beta3) **and `26A5388g` (beta4)** — **10+ runaways captured in one day**, both directions, both output devices; reproducible on demand (see [Reproduction](#reproduction--复现)) |
+| **macOS** | 27.0 beta3 revision **`26A5378n`**, reconfirmed on **beta4 `26A5388g`** (2026-07-22) — **not 27-specific**, see [Scope](#scope-not-a-27-regression--并非-27-回归) |
 | **Component** | Apple **ControlCenter** (`com.apple.controlcenter`, `SoundSettings`) + CoreAudio HAL volume properties |
 | **Trigger** | **Alcove 1.7.9** (`com.henrikruscon.Alcove`, build 203) must be running — established by A/B, both directions. Fires when an output-device change is followed by rapid manual volume adjustment. Mechanism by which Alcove contributes is **unidentified**; see [Open question](#open-question--未解) |
 | **Hardware** | MacBook Pro `Mac15,11`, M3 Max, 36 GB |
@@ -253,6 +253,32 @@ Two things this rules out that look plausible:
 ### Tools / 工具
 
 [`tools/volwatch/`](../tools/volwatch/) — LaunchAgent that records occurrences passively. Detection rule and the three rejected alternatives are documented in the source header; it has caught every runaway since the pinned-phase probe was added. [`racetrigger.swift`](../tools/volwatch/racetrigger.swift) in the same directory implements the negative results above and is kept so they stay reproducible.
+
+### beta4 confirmation / beta4 复现确认
+
+**Still present, unfixed, on `26A5388g` (2026-07-22).** Reproduced with the same [on-demand recipe](#reproduction-on-demand--按需复现) — `racetrigger --mode open --duration 60 --threads 8` against built-in speakers, Alcove running, a handful of manual volume-key taps to get Alcove writing — while `volwatch` ran in the foreground in observe mode.
+
+```
+15:03:15.611  set system volume: 0.500000 -> 0.562500      ← clean 1/16 climb starts
+15:03:15.863  set system volume: 0.125000 -> 0.187500
+  ...
+15:03:16.528  set system volume: 0.937500 -> 1.000000       ← rail reached, 0.9 s after onset
+15:03:16.556  set system volume: 1.000000 -> 1.000000        ← spin begins
+  ...                                                          (unbroken 30 Hz spin, single TID 0x1b02)
+15:03:37.224  set system volume: 1.000000 -> 1.000000        ← last line before the process died
+15:03:37.275  launchd: [gui/501/com.apple.controlcenter [738]:] exited due to SIGTERM | sent by killall[2771]
+15:03:37.292  launchd: Successfully spawned ControlCenter[2772] because semaphore
+```
+
+**~21 s continuous unbroken spin** at the rail (`738` never stopped emitting `1.000000 -> 1.000000` from 16.556 to 37.224) before the reporter ran `killall ControlCenter` by hand to recover — the same workaround documented above, applied live. Corroborated at the CoreAudio layer during the same window: `LogVolumeChangeForClientSide from AudioObjectSetPropertyData` on `['vmvc','outp',0]` and `['mute','outp',0]` against `BuiltInSpeakerDevice`, matching incident 2's signature from the original beta3 capture.
+
+This was deliberately cross-checked against `volwatch`'s own detector output before being trusted — the tool's `DETECT` line alone is not sufficient evidence (a human tapping keys can produce a similar rate/idle signature, see [README](../tools/volwatch/README.md#why-the-detection-rule-is-what-it-is)) — by pulling `/usr/bin/log show --info --debug` for `ControlCenter` (PID `738`) independently and confirming the monotonic 1/16 climb, the sustained rail spin, and that the final value (`1.000000`) is not reachable from `racetrigger`'s own writes, which are hard-clamped to `0.10` in code.
+
+A second, weaker signal followed: after the `killall`-triggered respawn (new PID `2772`), `volwatch` detected a down-direction burst (rate 15.6/s, settling at `0.5000`) about 3 s later. No corresponding `set system volume` log lines were found from PID `2772` in that window — plausibly the freshly-spawned process's `SoundSettings` still initializing, plausibly something else. **Not treated as confirmed** — the up-direction episode above stands on its own regardless.
+
+**Reporter's residual state after the session: output volume pinned at `0` and `output muted:true`**, cleared manually with `set volume without output muted` — consistent with the "recovery required" note in [Workaround](#workaround--临时规避).
+
+beta4(`26A5388g`,2026-07-22)复现确认:同一套按需复现配方触发,单线程(`0x1b02`)以 30Hz 连续空转 **约 21 秒**才被手动 `killall ControlCenter` 打断,CoreAudio 层日志佐证。复现前先用 `log show` 独立核实了日志,不是单凭 `volwatch` 的 DETECT 行下的结论(那条信号单独看可能是人在按键的假阳性)。
 
 ## Open question / 未解
 
