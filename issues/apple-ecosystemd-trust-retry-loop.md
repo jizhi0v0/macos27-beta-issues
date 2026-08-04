@@ -1,7 +1,7 @@
 # `ecosystemd` re-evaluates Apple trust anchors ~85×/second with failures, burning 26–57% CPU
 # `ecosystemd` 每秒重复约 85 次证书信任评估并持续报错，吃 26–57% CPU
 
-> 🔗 **Track / 关注此问题:** *(GitHub issue to be created)*
+> 🔗 **Track / 关注此问题:** [#23 — watch & discuss on GitHub](https://github.com/jizhi0v0/macos27-beta-issues/issues/23)
 
 | | |
 |---|---|
@@ -66,6 +66,23 @@ None known. `ecosystemd` is a system daemon; disabling it is not advisable. Sile
 ```sh
 sudo log config --subsystem com.apple.securityd --mode 'level:off'
 ```
+
+## Re-measured 2026-08-04 10:23 (uptime 1 d 0 h 23 m) — still running a day later / 次日复测:仍在跑
+
+Second capture, different day and different boot, 60 s window:
+
+| Metric | 2026-08-04 |
+|---|---|
+| `ecosystemd` log lines / 60 s | **7,177** — **18% of the entire system's log volume** (39,686 lines total) |
+| `SecTrustCopyAppleTrustAnchors` / 60 s | **4,061 ≈ 68/s**, sustained |
+| Rank among all log emitters | **#1 system-wide** (`ecosystemanalyticsd` #2 at 5,712) |
+| Cumulative CPU | **186 min over 24 h uptime ≈ 12.7% of one core, sustained** |
+
+Instantaneous CPU at sample time was 0.5%, which is exactly why the **cumulative** figure is the one to quote: 186 minutes of CPU time cannot be produced by an idle daemon. Same lesson as [#12](apple-menubaragent-idle-cpu.md) — a single `ps %cpu` reading is a decaying average and is not decision-grade.
+
+The [`mds` storm](apple-mds-coreduet-activity-storm.md) captured alongside this in the first session was **not** active in this window (132 lines/60 s), so the two are independent; `ecosystemd` is the one that runs continuously.
+
+取样瞬时 CPU 只有 0.5%,所以该引用的是**累计**值:空闲守护进程烧不掉 186 分钟 CPU。教训同 [#12](apple-menubaragent-idle-cpu.md) —— 单次 `ps %cpu` 是衰减平均值,不足以作判断依据。首轮与之同时抓到的 [`mds` 风暴](apple-mds-coreduet-activity-storm.md)本轮并未发作(132 行/60 秒),两者相互独立,持续在跑的是 `ecosystemd`。
 
 ## Related / 相关
 
