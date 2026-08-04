@@ -5,24 +5,28 @@
 
 | | |
 |---|---|
-| **Status** | 🔴 Open — confirmed recurring & **cross-app** (WeChat ×17 + CleanShot X ×3 = **20 verified crashes**, 2026-07-09 → 07-21, **byte-identical throw site**); **survives two beta3 builds AND beta4** (`26A5378j` → `26A5378n` → `26A5388g`); root throw is 100% in Apple frameworks |
-| **macOS** | 27.0 — **beta3 `26A5378j`** (8 crashes) → **beta3 rev `26A5378n`** (11 crashes) → **beta4 `26A5388g`** (1 crash, 07-21). Fixed by neither the 07-14 beta3 revision nor the beta4 update. |
-| **Component** | Apple **ViewBridge / AppKit** (`NSRemoteView`) — reproduced via **WeChat 4.1.11** (WeChatAppEx / `flue` engine) **and** **CleanShot X 4.8.9** (QuickLookUI `QLSeamlessDocumentOpener`) |
-| **Reproducers** | **WeChat 4.1.11 (269136)** MAS (`adam_id` 836500024) · **CleanShot X 4.8.9** (`pl.maketheweb.cleanshotx`, team `AFJU4P8ZV4`) |
+| **Status** | 🔴 Open — confirmed recurring & **cross-app across 4 unrelated apps and 4 different UI toolkits** (WeChat ×26 + CleanShot X ×3 + DingTalk ×1 + duo-pasted ×1 = **31 verified crashes**, 2026-07-09 → 08-04, **byte-identical throw site, always `+216`**); **survives two beta3 builds AND beta4**, and **beta4 has now been out 15 days with no beta5** (`26A5378j` → `26A5378n` → `26A5388g`); root throw is 100% in Apple frameworks |
+| **macOS** | 27.0 — **beta3 `26A5378j`** (8 crashes) → **beta3 rev `26A5378n`** (11 crashes) → **beta4 `26A5388g`** (**12 crashes**, 07-21 → 08-04). Fixed by neither the 07-14 beta3 revision nor the beta4 update; **beta4 released 2026-07-20, still the current build as of 2026-08-04 (15 days, no beta5)**. |
+| **Component** | Apple **ViewBridge / AppKit** (`NSRemoteView`) — reproduced via **WeChat 4.1.11** (Chromium-based WeChatAppEx / `flue` engine), **CleanShot X 4.8.9** (Cocoa + QuickLookUI `QLSeamlessDocumentOpener`), **DingTalk 8.3.15** (**Qt** — `QtWidgets`/`QtGui`) and **duo-pasted 0.1.1270** (**Swift/AppKit**, own code) |
+| **Reproducers** | **WeChat 4.1.11 (269136)** MAS (`adam_id` 836500024) · **CleanShot X 4.8.9** (`pl.maketheweb.cleanshotx`, team `AFJU4P8ZV4`) · **DingTalk 8.3.15 (54703766)** MAS (`adam_id` 1435447041) · **duo-pasted 0.1.1270** (own app, Swift/AppKit) |
 | **Machine** | `Mac15,11` — Apple M3 Max, 36 GB |
-| **Report** | Apple Feedback: `FB________` *(candidate — now cross-app reproducible)* · vendor email to CleanShot X drafted |
+| **Report** | Apple Feedback: `FB________` *(candidate — now reproducible in 4 apps / 4 toolkits)* · vendor email to CleanShot X drafted |
 
 ## Symptom / 症状
 
-WeChat **quits unexpectedly when opening the full-screen image viewer** (clicking an image in a chat). **17 WeChat crashes over 13 days (2026-07-09 → 07-21)**, up to **4 in a single day** (07-14) — routine, not a one-off. On 07-17 it crashed **3 times in a chain**, each report launched ~4–6 s after the previous crash (auto-relaunch → re-crash).
+WeChat **quits unexpectedly when opening the full-screen image viewer** (clicking an image in a chat). **26 WeChat crashes over 26 days (2026-07-09 → 08-03)**, up to **4 in a single day** (07-14 and 07-31) — routine, not a one-off. On 07-17 it crashed **3 times in a chain**, each report launched ~4–6 s after the previous crash (auto-relaunch → re-crash); 07-31 repeated that shape (16:31 → 16:39 → 16:46, uptimes 4h55m → 8m → 6m).
 
-在聊天里**点击图片、打开全屏看图**时微信直接闪退。**13 天内 17 次(2026-07-09 → 07-21)**,单日最多 **4 次**(07-14)—— 属于常态,不是孤例。07-17 出现**连崩 3 次**:每份报告都在上一次崩溃后约 4–6 秒启动(自动重启 → 再崩)。
+The same throw kills **three other apps** on their own equivalent action: **CleanShot X** showing its post-capture QuickLook preview, **DingTalk** ordering a sheet on screen, and **duo-pasted** (own app) showing its clipboard preview panel.
+
+在聊天里**点击图片、打开全屏看图**时微信直接闪退。**26 天内 26 次(2026-07-09 → 08-03)**,单日最多 **4 次**(07-14、07-31)—— 属于常态,不是孤例。07-17 出现**连崩 3 次**:每份报告都在上一次崩溃后约 4–6 秒启动(自动重启 → 再崩);07-31 重演同样形态(16:31 → 16:39 → 16:46,运行时长 4h55m → 8m → 6m)。
+
+同一抛点还杀掉**另外三个 app**:**CleanShot X**(截图后弹 QuickLook 预览)、**DingTalk**(把 sheet 上屏)、**duo-pasted**(自研 app,展示剪贴板预览面板)。
 
 ## Occurrences / 复现记录
 
-All 20 entries below were **verified programmatically**, not by grep: the ViewBridge frame sits at index 3 of `lastExceptionBacktrace` (the actual throw site) in every one, and every one goes through `_doWindowWillBeVisibleAsSheet:`. Every WeChat crash is the same build **4.1.11 (269136)**; both CleanShot X are **4.8.9**.
+All 31 entries below were **verified programmatically**, not by grep: the ViewBridge frame sits at index 3 of `lastExceptionBacktrace` (the actual throw site) in every one, at symbol offset **`+216`** in every one, and every one goes through `_doWindowWillBeVisibleAsSheet:`. Every WeChat crash is the same build **4.1.11 (269136)**; all three CleanShot X are **4.8.9**.
 
-下列 20 条均经**程序化校验**(非 grep):每一份的 `lastExceptionBacktrace` 第 3 帧都正是 ViewBridge 抛点,且都经 `_doWindowWillBeVisibleAsSheet:`。微信侧全部为同一版本 **4.1.11 (269136)**;CleanShot X 均为 **4.8.9**。
+下列 31 条均经**程序化校验**(非 grep):每一份的 `lastExceptionBacktrace` 第 3 帧都正是 ViewBridge 抛点、偏移都是 **`+216`**,且都经 `_doWindowWillBeVisibleAsSheet:`。微信侧全部为同一版本 **4.1.11 (269136)**;CleanShot X 均为 **4.8.9**。
 
 | # | Time (local) | Build | App | pid | Uptime at crash | Incident |
 |---|---|---|---|---|---|---|
@@ -46,16 +50,27 @@ All 20 entries below were **verified programmatically**, not by grep: the ViewBr
 | 17 | 2026-07-17 17:25:28 | `26A5378n` | WeChat | — | 0h52m | `BABA5ABA-1AC7-456B-9CAB-8EF115405E5D` |
 | 18 | 2026-07-19 17:16:46 | `26A5378n` | **CleanShot X** | — | ~79h | `E6B283DF-DA79-4A7E-8C29-3399DAA56610` |
 | 19 | 2026-07-19 18:07:18 | `26A5378n` | **CleanShot X** | — | 0h50m | `ACF9295D-5832-4963-AB46-C38FA824F900` |
-| — | *2026-07-2x — beta4 `26A5388g` installed (`…n` → `…g`)* | | | | | |
+| — | *2026-07-20 — **beta4 `26A5388g`** released by Apple; installed here 07-21 04:45:29 (`…n` → `…g`)* | | | | | |
 | 20 | 2026-07-21 17:47:34 | **`26A5388g`** | WeChat | 50320 | 4h11m | `600F54BC-FE44-4053-85F6-BEDE7AF3A198` |
+| 21 | 2026-07-28 10:44:50 | `26A5388g` | **duo-pasted** | 25867 | 16h38m | `311B7D34-1FB6-45D8-BCF8-E2C1D36B01A0` |
+| 22 | 2026-07-28 11:30:28 | `26A5388g` | WeChat | 53153 | 18h33m | `9B6E46E6-D5C1-41F5-B5A6-E7017C730469` |
+| 23 | 2026-07-29 10:51:42 | `26A5388g` | WeChat | 53775 | 23h21m | `02B6FA6E-E20C-4299-9C04-B43B7C99B18F` |
+| 24 | 2026-07-30 16:04:12 | `26A5388g` | WeChat | 16601 | 6h10m | `E3A50DAD-03ED-474F-9718-2C970DDD2B22` |
+| 25 | 2026-07-31 11:36:21 | `26A5388g` | WeChat | 45328 | 19h32m | `A43C0C2B-F8E2-4F7E-8DF9-602D7FA34280` |
+| 26 | 2026-07-31 16:31:00 | `26A5388g` | WeChat | 20916 | 4h54m | `810C7C1D-BFE1-4554-8D50-607822481FFC` |
+| 27 | 2026-07-31 16:39:41 | `26A5388g` | WeChat | 41735 | 0h08m | `C8A86CF7-FC4F-4749-80FF-2C84EB158E9F` |
+| 28 | 2026-07-31 16:46:16 | `26A5388g` | WeChat | 49652 | 0h06m | `CDC9CA03-8464-4562-9BBE-63EE6A24D839` |
+| 29 | 2026-07-31 17:58:15 | `26A5388g` | WeChat | 54849 | 1h11m | `1160C272-28D9-452D-AED7-D75D7E8AE828` |
+| 30 | 2026-08-03 17:20:13 | `26A5388g` | WeChat | 5423 | 7h14m | `2EA99B0D-282C-4054-8906-7FF2DB408E09` |
+| 31 | 2026-08-04 09:55:44 | `26A5388g` | **DingTalk** | 10540 | 23h45m | `FCBDB4F1-13E6-49B8-B1DE-EC75D46394E6` |
 
-**Survives two OS updates.** The `26A5378j` → `26A5378n` update (07-14) did **not** fix it (11 crashes on `…n`), and neither did the **beta4 `26A5388g`** update — WeChat crashed with the identical throw on 07-21 (entry 20). So this has now survived a beta3 revision *and* a full beta bump. Uptime at crash ranges 0h22m → ~79h, so it is not a "stale process" / long-uptime decay effect.
+**Survives two OS updates, and beta4 has now been out for over two weeks.** The `26A5378j` → `26A5378n` update (07-14) did **not** fix it (11 crashes on `…n`), and neither did the **beta4 `26A5388g`** update — beta4 has since accumulated **12 crashes of its own (entries 20–31)**, more than either beta3 build. Apple [released beta4 on 2026-07-20](https://www.macrumors.com/2026/07/20/apple-releases-macos-27-beta-4/); as of **2026-08-04 it is still the current build (15 days, no beta5)**, so there has been no opportunity for a fix to land since. Uptime at crash ranges 0h06m → ~79h, so it is not a "stale process" / long-uptime decay effect.
 
-**熬过两次系统更新。** `26A5378j` → `26A5378n`(07-14)**未**修复(`…n` 上 11 次),**beta4 `26A5388g`** 同样没修 —— 07-21 微信以相同抛点再崩(第 20 条)。即它已经熬过一次 beta3 修订 *和* 一次完整的 beta 版本升级。崩溃时进程运行时长从 0h22m 到 ~79h 不等,故与"进程跑太久劣化"无关。
+**熬过两次系统更新,且 beta4 已发布两周多。** `26A5378j` → `26A5378n`(07-14)**未**修复(`…n` 上 11 次),**beta4 `26A5388g`** 同样没修 —— beta4 上至今已累计 **12 次(第 20–31 条)**,比任一 beta3 版本都多。Apple 于 **2026-07-20 发布 beta4**,截至 **2026-08-04 它仍是最新版本(已 15 天,beta5 未发布)**,期间根本没有修复落地的机会。崩溃时进程运行时长从 0h06m 到 ~79h 不等,故与"进程跑太久劣化"无关。
 
-Throw site identical across all 13; only the AppKit sub-path varies slightly (some go through `__27-[NSWindow _doOrderWindow:]_block_invoke.766` + `NSPerformVisuallyAtomicChange`, others hit `-[NSWindow _doOrderWindow:]` directly) — the exception origin is the same.
+Throw site identical across all 31 — always `-[NSRemoteView containingWindowWillOrderOnScreen:] + 216`, always reached via `_doWindowWillBeVisibleAsSheet:`. Only the AppKit sub-path varies slightly (some go through `__27-[NSWindow _doOrderWindow:]_block_invoke.766/.767` + `NSPerformVisuallyAtomicChange`, others hit `-[NSWindow _doOrderWindow:]` directly) — the exception origin is the same.
 
-13 次抛点完全一致;仅 AppKit 子路径略有差别(有的走 `_doOrderWindow:` 的 `block_invoke` + `NSPerformVisuallyAtomicChange`,有的直连 `_doOrderWindow:`),异常来源相同。
+31 次抛点完全一致 —— 永远是 `-[NSRemoteView containingWindowWillOrderOnScreen:] + 216`,永远经 `_doWindowWillBeVisibleAsSheet:` 到达。仅 AppKit 子路径略有差别(有的走 `_doOrderWindow:` 的 `block_invoke` + `NSPerformVisuallyAtomicChange`,有的直连 `_doOrderWindow:`),异常来源相同。
 
 ## What actually crashed / 真正的崩溃原因
 
@@ -143,17 +158,70 @@ The **only** difference is the one frame that presents the out-of-process view (
 
 Both apps are **non-deterministic and recover on retry**: repeating the exact action (WeChat: re-click the image / CleanShot X: capture + show preview again) does **not** reliably re-hit the throw. A deterministic app bug would crash every time on the same action; a race inside ViewBridge's order-on-screen path is exactly this flaky-but-identical shape.
 
-**Not low-frequency, though** — that earlier characterisation was based on 2 known crashes and is now retired: WeChat alone hit it **12 times in 7 days, 4× on 07-14**. Per *attempt* it is intermittent; per *day of normal use* it is routine.
+**Not low-frequency, though** — that earlier characterisation was based on 2 known crashes and is now retired: WeChat alone hit it **26 times in 26 days**, 4× on both 07-14 and 07-31. Per *attempt* it is intermittent; per *day of normal use* it is routine.
 
 两个 app 都表现为**非确定、重试即恢复**:重复同样操作(微信再点图 / CleanShot X 再截图弹预览)都**不**稳定重现。确定性 app bug 会每次必崩;ViewBridge 上屏路径里的竞态才是这种"时崩时不崩、签名却逐字一致"的形态。
 
 **但并非"低频"** —— 之前"低频"的判断基于当时仅知的 2 次,现已作废:光微信就 **7 天 12 次、07-14 单日 4 次**。按"每次操作"看是偶发,按"每天正常使用"看是常态。
 
-## Not the `duo-pasted` crash / 与 `duo-pasted` 崩溃无关
+## Third and fourth apps — DingTalk (Qt) and duo-pasted (Swift/AppKit) / 第三、第四个 app —— DingTalk(Qt)与 duo-pasted(Swift/AppKit)
 
-A grep for `containingWindowWillOrderOnScreen` / `NSRemoteView` across all reports also matched `duo-pasted-2026-07-07-083914.ips`, but that is an **unrelated `EXC_BREAKPOINT`/SIGTRAP** (an uncaught exception during `NSView` **layout**, `+[NSApplication _crashOnException:]`), with `NSRemoteView` only on a live background thread — a different throw site, not a second data point for this bug.
+On **2026-08-04 09:55:44** **DingTalk 8.3.15 (54703766)** (MAS, `5ZSL2CJU2T.com.dingtalk.mac`) died with the **byte-identical throw site** — a fourth unrelated vendor, and, decisively, a **fourth UI toolkit**: DingTalk is a **Qt** app (`QtWidgets`, `QtGui`, `QtMacExtras` … loaded in `usedImages`; no Chromium, no QuickLookUI). It also dies **unmasked**, like CleanShot X: plain `EXC_CRASH (SIGABRT)` / `abort() called`, no rewritten header.
 
-对全部报告 grep 还命中 `duo-pasted-2026-07-07-083914.ips`,但那是**无关的 `EXC_BREAKPOINT`/SIGTRAP**(NSView **布局**期抛异常),`NSRemoteView` 只在其空闲后台线程上,抛点不同,不算本 bug 的数据点。
+Verified throw site (`lastExceptionBacktrace`, DingTalk, incident `FCBDB4F1-13E6-49B8-B1DE-EC75D46394E6`):
+
+```
+0  CoreFoundation  __exceptionPreprocess
+1  libobjc.A.dylib objc_exception_throw
+2  CoreFoundation  _CFBundleGetValueForInfoKey + 0
+3  ViewBridge      -[NSRemoteView containingWindowWillOrderOnScreen:] + 216   ← identical, same +216
+4  CoreFoundation  __CFNOTIFICATIONCENTER_IS_CALLING_OUT_TO_AN_OBSERVER__
+8  Foundation      -[NSNotificationCenter postNotificationName:object:userInfo:]
+9  AppKit          -[NSWindow _doWindowWillBeVisibleAsSheet:]                 ← identical (shown as SHEET)
+10 AppKit          -[NSWindow _reallyDoOrderWindowAboveOrBelow:]
+11 AppKit          -[NSWindow _reallyDoOrderWindow:]
+12 AppKit          __27-[NSWindow _doOrderWindow:]_block_invoke.767
+13 AppKit          NSPerformVisuallyAtomicChange
+14 AppKit          -[NSWindow _doOrderWindow:]
+15 DingTalk        (unsymbolicated, +0x4e597f8)                               ← DingTalk's own Qt presenter
+```
+
+Frames 0–14 match WeChat and CleanShot X **frame for frame, including the `+216` offset**; only frame 15 — whoever presents the remote view — differs. Crashing thread unwinds `objc_exception_rethrow → std::__terminate → demangling_terminate_handler → abort()`, i.e. the unmasked form.
+
+**duo-pasted 0.1.1270** (own app, plain **Swift/AppKit**, no embedded engine) hit the same throw on **2026-07-28 10:44:50**, presenting its clipboard preview panel:
+
+```
+3  ViewBridge  -[NSRemoteView containingWindowWillOrderOnScreen:] + 216
+9  AppKit      -[NSWindow _doWindowWillBeVisibleAsSheet:]
+12 AppKit      -[NSWindow _doOrderWindow:]
+13 duo-pasted  PreviewPanelController.show(item:cardRectInGlobal:)
+14 duo-pasted  closure #1 in closure #4 in SearchPanelController.ensurePanel()
+```
+
+This one is the **strongest** data point of all: the presenting code is a handful of lines of ordinary Swift/AppKit under our own control, doing nothing more exotic than ordering a panel on screen, and it still takes an exception thrown inside `NSRemoteView`'s own notification observer.
+
+2026-08-04 **DingTalk 8.3.15** 以**逐字相同的抛点**崩溃 —— 第四个不相干的厂商,更关键的是**第四种 UI 技术栈**:DingTalk 是 **Qt** app(`usedImages` 里是 `QtWidgets`/`QtGui`/`QtMacExtras`,没有 Chromium、没有 QuickLookUI),且和 CleanShot X 一样**未被掩盖**:干净的 `EXC_CRASH (SIGABRT)` / `abort() called`。第 0–14 帧与微信、CleanShot X **逐帧一致(含 `+216` 偏移)**,只有第 15 帧(谁来呈现 remote view)不同。
+
+**duo-pasted 0.1.1270**(自研 app,纯 **Swift/AppKit**,无内嵌引擎)于 2026-07-28 在展示剪贴板预览面板时撞上同一抛点 —— 这是**最有力**的一条:呈现方就是我们自己可控的几行普通 Swift/AppKit 代码,只是把面板上屏,依然被 `NSRemoteView` 自己的通知 observer 抛出的异常打死。
+
+### Four apps, four toolkits, one throw site / 四个 app、四种技术栈、同一抛点
+
+| App | UI stack | Presenting frame | Crash header |
+|---|---|---|---|
+| WeChat 4.1.11 | Chromium (`WeChatAppEx` / `flue`) | `wechat.dylib` → `makeKeyAndOrderFront:` | `EXC_BAD_ACCESS 0x0` (**masked** by own SIGABRT handler) |
+| CleanShot X 4.8.9 | Cocoa + Apple **QuickLookUI** | `-[QLSeamlessDocumentOpener showWindow:…]` | `EXC_CRASH (SIGABRT)` (unmasked) |
+| DingTalk 8.3.15 | **Qt** (`QtWidgets`/`QtGui`) | DingTalk (unsymbolicated) | `EXC_CRASH (SIGABRT)` (unmasked) |
+| duo-pasted 0.1.1270 | **Swift/AppKit** (own code) | `PreviewPanelController.show(item:…)` | `EXC_CRASH (SIGABRT)` (unmasked) |
+
+Everything above the presenting frame — `_doOrderWindow:` → `_doWindowWillBeVisibleAsSheet:` → `NSNotificationCenter` → `-[NSRemoteView containingWindowWillOrderOnScreen:] + 216` → `_CFBundleGetValueForInfoKey` → throw — is **identical in all four**. No third-party app, engine, or toolkit is common to all four; **the only thing they share is Apple's ViewBridge order-on-screen path.**
+
+呈现帧以上的部分在四者中**完全一致**。四个 app 之间不存在任何共同的第三方 app / 引擎 / 技术栈,**唯一的共同点就是 Apple 的 ViewBridge 上屏路径**。
+
+## Not to be confused with the 07-07 `duo-pasted` crash / 勿与 07-07 那次 `duo-pasted` 崩溃混淆
+
+An early grep for `containingWindowWillOrderOnScreen` / `NSRemoteView` also matched `duo-pasted-2026-07-07-083914.ips`, but **that one is unrelated**: `EXC_BREAKPOINT`/SIGTRAP, an uncaught exception during `NSView` **layout** (`+[NSApplication _crashOnException:]`), with `NSRemoteView` only on a live background thread — a different throw site, and it is **not** counted here. The duo-pasted entry in the table above is the separate **07-28** crash, which *does* carry the index-3 `+216` throw site.
+
+早期 grep 也命中过 `duo-pasted-2026-07-07-083914.ips`,但那次**无关**:`EXC_BREAKPOINT`/SIGTRAP,是 NSView **布局**期抛异常,`NSRemoteView` 只在空闲后台线程上,抛点不同,**未计入**本表。上表里的 duo-pasted 是另一次 **07-28** 崩溃,其第 3 帧确为 `+216` 抛点。
 
 ## Workaround / 临时规避
 
@@ -163,10 +231,11 @@ None confirmed. It crashes while *presenting* the viewer (an out-of-process shee
 
 ## Notes / 备注
 
-- Every crash report has `share_with_app_devs = 0` — none auto-sent to either vendor. (Re-verified on the 9 reports still on disk 2026-07-21; the 11 older `…j`/early-`…n` reports have since rotated out of `DiagnosticReports`, but were 0 when logged.)
+- Every crash report has `share_with_app_devs = 0` — none auto-sent to any vendor. (Re-verified on the 11 reports still on disk 2026-08-04, i.e. entries 21–31; the older ones have since rotated out of `DiagnosticReports`, but were 0 when logged.)
 - Distinct from **[#10](wechat-mas-crash-fixed.md)** (a 4.1.9 MAS *launch* crash, fixed in 4.1.10). This is a *4.1.11* image-viewer crash — a different bug.
-- **Cross-app** (WeChat `flue` engine + Apple's own QuickLook), byte-identical throw → strengthens the Apple Feedback: the exception fires in ViewBridge's own order-on-screen observer regardless of who presents the remote view. Worth a Feedback (ViewBridge exception on window order-on-screen as sheet) + a minimal repro (any remote/XPC-hosted view presented as a sheet).
-- **Feedback is now overdue and the case only keeps getting stronger:** 20 verified crashes across two unrelated apps, and **persistence across two OS updates** — the `…j` → `…n` beta3 revision *and* the **beta4 `26A5388g`** bump (i.e. Apple has now shipped two builds and this survived both). The `FB____` placeholder should be filed — this is the only 🔴 entry left in the log.
+- **Cross-app across four UI toolkits** (Chromium `flue` engine, Apple's own QuickLook, Qt, plain Swift/AppKit), byte-identical throw at the same `+216` → strengthens the Apple Feedback: the exception fires in ViewBridge's own order-on-screen observer regardless of who presents the remote view. Worth a Feedback (ViewBridge exception on window order-on-screen as sheet) + a minimal repro (any remote/XPC-hosted view presented as a sheet) — **and duo-pasted gives us a repro we fully own**, so the Feedback can ship with source, not just other vendors' stack traces.
+- **Feedback is now well overdue and the case only keeps getting stronger:** 31 verified crashes across **four** unrelated apps, and **persistence across two OS updates** — the `…j` → `…n` beta3 revision *and* the **beta4 `26A5388g`** bump. Worse, beta4 (released 2026-07-20) is **still the current build 15 days later with no beta5**, and it has racked up **12 crashes of its own** — more than either beta3 build — so nothing is going to fix itself here. The `FB____` placeholder should be filed — this is the only 🔴 entry left in the log.
+- A vendor-facing note to **DingTalk** has *not* been drafted; given the root cause is Apple's, the Feedback comes first.
 - A vendor-facing email to **CleanShot X** (MakeTheWeb) is drafted — reports the Apple root cause and suggests they present the QuickLook preview off the sheet path / guard the `showWindow:` call so an AppKit exception during order-on-screen doesn't abort the whole app.
 - 现已**跨 app**(微信 `flue` 引擎 + 苹果自家 QuickLook),抛点逐字一致 → 加强 Apple Feedback:无论谁来呈现 remote view,异常都在 ViewBridge 自己的上屏 observer 里触发。值得提 Feedback + 做最小复现(任意 XPC 托管视图作为 sheet 呈现)。
 - 已为 **CleanShot X**(MakeTheWeb)起草一封厂商邮件:说明 Apple 根因,并建议把 QuickLook 预览挪出 sheet 路径 / 给 `showWindow:` 加保护,避免上屏时的 AppKit 异常把整个 app 拖崩。
