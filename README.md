@@ -11,7 +11,7 @@ If a Google/GitHub search for a crash signature or a process eating CPU on macOS
 | | |
 |---|---|
 | Machine | MacBook Pro `Mac15,11` — Apple M3 Max, 36 GB |
-| OS | macOS **27.0** beta — builds seen: `26A5353q` (beta1), `26A5368g` (beta2), `26A5378j` (beta3), `26A5378n` (beta3 revision, 2026-07-14), **`26A5388g`** (beta4, seen 2026-07-21 — **current**) |
+| OS | macOS **27.0** beta — builds seen: `26A5353q` (beta1), `26A5368g` (beta2), `26A5378j` (beta3), `26A5378n` (beta3 revision, 2026-07-14), **`26A5388g`** (beta4 — [released 2026-07-20](https://www.macrumors.com/2026/07/20/apple-releases-macos-27-beta-4/), installed here 07-21, **still current on 2026-08-04: 15 days, no beta5**) |
 | Reporter | [@jizhi0v0](https://github.com/jizhi0v0) |
 
 ## Status legend / 状态
@@ -80,6 +80,30 @@ The entry with by far the most beta4 data is **#17**, which **keeps crashing —
 **beta4 `26A5388g`**(Apple 于 2026-07-20 发布,本机 07-21 安装)**截至 2026-08-04 仍是最新版本 —— 已 15 天,beta5 未发布**。因此上面沿用的结论并非被新版本推翻,只是尚未在 `…g` 上验证。
 
 beta4 数据最多的是 **#17 —— 仍在崩,光 beta4 上就 12 次**(07-21 → 08-04),且已扩散到**4 个 app、4 种 UI 技术栈**(微信/Chromium、CleanShot X/QuickLook、**钉钉/Qt**、**duo-pasted/Swift-AppKit**),抛点逐字一致于 `+216`。#21 亦已在 beta4 复验。其余结论均沿用 `…n`/`…j`,未验证。
+
+### beta4 retest pass 1 / beta4 复验第一轮 (2026-08-04 10:23, `26A5388g`, uptime 1 d 0 h 23 m)
+
+A single 60 s `/usr/bin/log show` window (39,686 lines total) + a process-CPU snapshot, run to see which of the carried-over verdicts still hold. **The machine was *not* idle** during this pass (Claude 31%, Spotify 15%, Telegram, OrbStack all active), so CPU-floor questions (#3) are explicitly **not** answered here — those need the idle protocol in [`tools/ws-idle-baseline.sh`](tools/ws-idle-baseline.sh).
+
+一次 60 s 日志窗口(全系统 39,686 行)+ 进程 CPU 快照,用于检查沿用结论是否还成立。**取样时机器并非空闲**(Claude 31%、Spotify 15%、Telegram、OrbStack 均在跑),因此涉及 CPU 底噪的 #3 **本轮不作结论** —— 那需要走 [`tools/ws-idle-baseline.sh`](tools/ws-idle-baseline.sh) 的空闲流程。
+
+| Entry | Measured this pass | Verdict |
+|---|---|---|
+| **#16 modelmanagerd** | **0** crash reports on disk (incl. `Retired/`); daemon holds **6.7 s cumulative CPU** over 24 h uptime | 🟢 **fix holds on beta4** — first beta4 confirmation |
+| **#18 contactsd** | **0** `contactsd` log lines in the window; **19 s cumulative CPU** since boot (was ~143% bursts / 13% avg on `…n`) | ⚪ **not reproducing** in this window — trigger is CardDAV change-history, needs a dedicated window before claiming a fix |
+| **#19 imagent** | **0** `ContactsAccountsService` lines; imagent 55 s cumulative CPU | ⚪ **not reproducing** — shares #18's trigger |
+| **#1 CoreMedia** | **0** `fpSupport_GetVideoRangeForCoreDisplay` lines | ⚪ still conditional (needs WebKit DRM video); not reproduced |
+| **#2 Shortcuts storm** | **0** `BackgroundShortcutRunner`, 2 benign `siriactionsd` lines | ⚪ post-boot-only trigger, uptime 24 h — window can't see it |
+| **#15 appstoreagent** | **0** `BGSystemTaskSchedulerErrorDomain Code=8`; 5 appstoreagent lines, `dasd` 0.0% | ⚪ not reproduced |
+| **#13 Spotlight ranking attr** | **0** — but idle is *expected* to be 0; the bug is typing-time only | ⚪ needs a typing window to retest |
+| **`ecosystemd` trust loop** *(new, untracked)* | 🔴 **ACTIVE right now** — **top log emitter of the whole system**: 7,177 lines/60 s (18% of all log volume), **4,061 `SecTrustCopyAppleTrustAnchors` calls/60 s ≈ 68/s**, and **186 min cumulative CPU over 24 h uptime ≈ 12.7% of a core sustained** | 🔴 **confirmed still live on beta4** — strongest currently-reproducing entry |
+| **`mds` CoreDuet storm** *(new, untracked)* | 132 `mds` + 22 `contextstored` lines in the window; `mds` 0.0% | ⚪ **not active in this window** (was 145,241 lines/60 s) — bursty, needs catching live |
+| **`corebrightnessd` nan** *(new, untracked)* | 0 lines | ⚪ rare (~once/30 min), not caught in a 60 s window |
+| **#3 WindowServer floor** | WindowServer 41–45%, MenuBarAgent 8.1% — **but under real app load** | ⚠️ **no verdict** — not decision-grade, machine wasn't idle |
+
+**Not yet retested on beta4 at all:** #12's beta3 sibling verdicts **#13 / #14** (both user-perception bugs — need the narrowed manual repro, not a log query), and #21 (already reconfirmed separately).
+
+**本轮尚未复验:** #13 / #14 属用户感知类,需要手动走窄化复现路径,日志查询看不出来。
 
 - ✅ **Filed to Apple** (confirmed beta2 bugs): **CoreMedia loop** → [FB23411581](https://feedbackassistant.apple.com/feedback/23411581) · **MenuBarAgent idle ~10–14% CPU** → [FB23411741](https://feedbackassistant.apple.com/feedback/23411741)
 - ✅ **Filed:** **Spotlight `insert ranking attr at NSNotFound` ~60–160×/sec while typing** (idle=0; intrinsic to ranking code, no Settings fix) → [FB23412497](https://feedbackassistant.apple.com/feedback/23412497)
