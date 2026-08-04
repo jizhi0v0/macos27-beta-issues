@@ -153,11 +153,30 @@ Step size is exactly **1/16 (0.0625)** on all 208 real transitions; the only two
 
 The reporter had walked away and come back; the headphones reconnected on their own. The first volume write lands **101 ms before** the `BTUnifiedAudioDevice: Connected` line and ~200 ms before `Smart Route ... Connected` — i.e. inside the same device-change window, on the leading edge of it.
 
-This matters because it **generalises the trigger**. Incident 1 arrived via a Spotify Connect transfer; the [on-demand recipe](#the-recipe--复现配方) uses an output-device change followed by rapid manual volume adjustment. Here there was no Spotify transfer and no AirPlay hand-off — just a Bluetooth device reconnecting after an absence. What the three share is an **output-device change**, which is the part worth putting in front of Apple.
+This matters because it **generalises the trigger**. Incident 1 arrived via a Spotify Connect transfer; the [on-demand recipe](#the-recipe--复现配方) uses an output-device change followed by rapid manual volume adjustment. Here there was no Spotify transfer and no AirPlay hand-off — just a Bluetooth device reconnecting after an absence, followed 150 ms later by a volume-key press (see below). What the three share is an **output-device change** immediately followed by a volume mutation; the *kind* of device change is evidently irrelevant, which is the part worth putting in front of Apple.
 
-**Open, needs the reporter's confirmation:** whether the volume was manually adjusted in that first second. The log cannot distinguish a user `setLevel` from ControlCenter's own post-device-change re-sync — they log identically (same limitation as [Onset timing](#onset-timing--起爆时刻)). If it was *not* touched, this incident removes "rapid manual adjustment" from the necessary conditions entirely, which would be a significant narrowing. Recorded as unresolved rather than assumed.
+**RESOLVED — the volume key *was* pressed.** ControlCenter logs hot-key presses distinctly, so this did not have to stay open:
 
-报告者离开后返回,耳机自行重连。第一条音量写入比 `BTUnifiedAudioDevice: Connected` **早 101 毫秒**,处于同一设备变更窗口的前沿。意义在于**触发条件被推广**了:事故 1 经 Spotify Connect 切换、按需复现配方用"设备变更 + 快速手动调音量",而这次既无 Spotify 切换也无 AirPlay 交接,只是蓝牙设备离开后重连。三者的共同点是**输出设备变更**。**待报告者确认**:那一秒内是否手动调过音量 —— 日志无法区分用户 `setLevel` 与 ControlCenter 自身的设备变更后重同步。若并未手动调节,则"快速手动调节"可从必要条件中剔除,是一次重要收敛。故记为未决而非默认。
+```
+11:02:14.930156  ControlCenter  system volume of 64 updated: 0.500000 -> 0.562500
+11:02:15.184629  ControlCenter  system-banners: show smart routing connected … C4:B3:49:AA:E7:97   ← AirPods connect
+11:02:15.191594  ControlCenter  system volume of 22d updated: 0.562500 -> 0.215000   ← re-sync to the AirPods' OWN level
+11:02:15.340920  ControlCenter  [HotKeys] Notifying observer … for hot key 'volumeUp (builtin, down)'   ← USER PRESSES VOLUME-UP
+11:02:15.341310  ControlCenter  <SoundSettings> (DeviceID 557) setLevel: Setting main volume to 0.250000
+11:02:15.360987  ControlCenter  set system volume: 0.215000 -> 0.250000              ← +20 ms, runaway begins
+```
+
+So incident 3 **does** contain the rapid manual adjustment, ~150 ms after the device change — it does *not* remove that condition from the recipe. The reporter's own reasoning for why is worth recording: *"if you don't adjust it, you wouldn't notice"* — which is an **observation bias**, not evidence of necessity. Manual adjustment may be present in every observed incident simply because it is the detection path. That question stays open; what is now settled is that this incident is not a counter-example.
+
+**Methodology correction:** the [Onset timing](#onset-timing--起爆时刻) section states that the log cannot distinguish a user `setLevel` from ControlCenter's own re-sync. That is **wrong as stated** — `[com.apple.controlcenter:HotKeys] Notifying observer … for hot key 'volumeUp (builtin, down)'` identifies a hardware volume-key press explicitly, at `--info` level. Future incidents should be checked against the `HotKeys` subsystem before the input question is called unanswerable. (It remains true that a *slider drag* in the Control Center UI would not produce a HotKeys line.)
+
+**Bonus — the non-1/16 read value is now explained.** [Root cause](#root-cause--根因) point 4 offers `0.435`/`0.490` as *possibly* the accessory's own pre-existing level rather than a torn read, and rates that alternative as weaker. Here it is confirmed outright: `system volume of 22d updated: 0.562500 -> 0.215000` is ControlCenter adopting the AirPods' own stored level on connect, and `0.215` is exactly the read side of the first runaway write. **The non-1/16 read values are accessory levels, not torn reads** — point 4 should be retired as evidence for the race. Points 1–3 (concurrent TIDs, 1/16 write side, 30 Hz self-sustain) carry the argument unchanged.
+
+**已解决 —— 音量键确实按了。** ControlCenter 会单独记录热键事件:设备变更后约 150 毫秒,`hot key 'volumeUp (builtin, down)'` 明确记录了硬件音量+键按下,20 毫秒后失控开始。故事故 3 **包含**快速手动调节,并未把该条件从配方中剔除。报告者的解释值得记录:"不调节应该发现不了" —— 这是**观察偏倚**,而非必要性的证据:手动调节可能只是"发现该 bug 的途径",而非触发的必要条件。该问题仍未决,已确定的只是这次事故不构成反例。
+
+**方法学更正:**[起爆时刻](#onset-timing--起爆时刻)一节称"日志无法区分用户 setLevel 与自动重同步",该说法**有误** —— `HotKeys` 子系统在 `--info` 级别明确记录硬件音量键。今后应先查 `HotKeys` 再判定输入不可知。(但 Control Center 界面上的拖动滑块确实不会产生 HotKeys 记录。)
+
+**附带收获 —— 非 1/16 读值有解释了。**[根因](#root-cause--根因)第 4 点把 `0.435`/`0.490` 列为"可能是配件自身既有音量而非撕裂读取",并自评为较弱证据。这次直接坐实:`system volume of 22d updated: 0.562500 -> 0.215000` 就是 ControlCenter 在连接时采用 AirPods 自身存储的音量,而 `0.215` 正是首条失控写入的读侧值。**非 1/16 读值是配件音量,不是撕裂读取** —— 第 4 点应作为竞态证据撤下;第 1–3 点(并发 TID、写侧恒为 1/16、30 Hz 自持)不受影响。
 
 ### Hearing-safety: full scale on in-ear headphones in 570 ms / 听力安全:570 毫秒内在入耳式耳机上冲到满刻度
 
