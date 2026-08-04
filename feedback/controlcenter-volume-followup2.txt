@@ -1,0 +1,149 @@
+FOLLOW-UP 2: STILL PRESENT ON BETA 4 (26A5388g). THE TRIGGER IS ANY OUTPUT-
+DEVICE CHANGE, NOT A SPOTIFY/AIRPLAY TRANSFER. COREAUDIOD PAYS 1.5-1.8 CORES.
+
+Caught live again on 2026-08-04 on macOS 27.0 beta 4 (26A5388g), 15 days after
+that build shipped. This is the most complete capture so far: unlike every
+previous occurrence it ratchets in BOTH directions inside a single runaway, and
+it arrived through a trigger path that rules out the Spotify-specific reading
+of my original report.
+
+Three things in this comment are new. Two of them narrow the report; one of
+them retracts a piece of evidence I supplied earlier.
+
+
+1. THE TRIGGER IS AN OUTPUT-DEVICE CHANGE OF ANY KIND
+
+My original report reached the runaway via a Spotify Connect transfer, which
+makes it easy to read as a Spotify-specific interaction. It is not. This
+occurrence had no Spotify transfer, no AirPlay hand-off, and no application
+involvement at all: a pair of AirPods simply reconnected on their own after the
+user walked away and came back, and the user pressed the volume-up key while
+Control Center was still re-syncing to the newly-connected device.
+
+  11:02:14.927718  Alcove         ['vmvc'] volume: 0.562500
+  11:02:14.930156  ControlCenter  system volume of 64 updated: 0.500000 -> 0.562500
+  11:02:15.184629  ControlCenter  system-banners: show smart routing connected,
+                                  C4:B3:49:AA:E7:97, "Bobby's AirPods"
+  11:02:15.191594  ControlCenter  system volume of 22d updated: 0.562500 -> 0.215000
+                                  (Control Center adopts the accessory's OWN
+                                   stored level on connect)
+  11:02:15.340920  ControlCenter  [HotKeys] Notifying observer ... for hot key
+                                  'volumeUp (builtin, down)'
+  11:02:15.341310  ControlCenter  <SoundSettings> (DeviceID 557) setLevel:
+                                  Setting main volume to 0.250000
+  11:02:15.360987  ControlCenter  set system volume: 0.215000 -> 0.250000
+                                  <-- runaway begins, 20 ms after the key press
+
+What the known occurrences share is therefore narrower and more general than
+what I originally wrote: an output-device change immediately followed by a
+volume mutation. The KIND of device change is irrelevant - Spotify Connect
+transfer, manual device switch, or an unattended Bluetooth reconnect all work.
+The window is short: 150 ms from the device-connect banner to the key press,
+20 ms from the key press to the first runaway write.
+
+
+2. BOTH DIRECTIONS IN ONE RUNAWAY, AND FULL SCALE ON WORN HEADPHONES
+
+Previous occurrences went one direction each. This one does both:
+
+  11:02:15.360987  0.215000 -> 0.250000   first write
+  11:02:15.930699  0.937500 -> 1.000000   FULL SCALE, 570 ms after onset
+  ...              35 x 1.000000 -> 1.000000    spins at the top rail ~1.2 s
+  11:02:17.099573  last write at 1.0, ratchet reverses
+  11:02:19.996664  0.062500 -> 0.000000   bottom reached
+  ...              4,604 x 0.000000 -> 0.000000  pinned + muted for 166 s
+  11:05:06.031483  last write; recovered with "killall ControlCenter"
+
+  Total: 4,849 "set system volume" writes over 170.7 s = 28.4/s.
+  Step size is exactly 1/16 on all 208 real transitions.
+
+On the hearing-safety point from my original report: this is the second
+occurrence to drive a worn in-ear device to 1.000000, and it did so in 570 ms
+with no ramp, on headphones the user had just put back on. Note which end the
+user actually complained about - the stuck-at-zero tail, which is the harmless
+one. The dangerous end happened first and lasted about a second. That asymmetry
+is why this bug will be under-reported relative to its risk.
+
+
+3. NEW: COREAUDIOD IS DRAGGED TO 150-181% CPU
+
+My earlier reports measured Control Center's own cost. The larger cost is in
+the HAL:
+
+                    during runaway    after killall ControlCenter
+  coreaudiod        150-181%          112% and falling
+  ControlCenter     13.6-20.8%        0.3%
+
+So the 30 Hz write loop costs roughly 1.5-1.8 cores in coreaudiod, an order of
+magnitude more than in the agent issuing the writes, for as long as the runaway
+lasts. The impact is not only that volume misbehaves; it is a sustained
+system-wide CPU cost.
+
+
+4. RETRACTION: THE NON-1/16 VALUES ON THE READ SIDE ARE NOT TORN READS
+
+In my original report I offered, as supporting evidence for the race, that
+non-1/16 values appear on the READ side of the ratchet (0.435000 -> 0.5,
+0.490000 -> 0.5) while the write side only ever emits multiples of 1/16, and
+suggested these were values that had been replaced between a thread's read and
+its write. I rated that as weaker than my other points and noted the
+alternative explanation.
+
+The alternative is now confirmed and I am withdrawing the point. This
+occurrence shows the same shape - 0.215000 on the read side - and the log
+identifies where 0.215 comes from: "system volume of 22d updated: 0.562500 ->
+0.215000" is Control Center adopting the AirPods' own stored volume when the
+device connects, 169 ms before the runaway starts. These are accessory levels,
+not torn reads. Please disregard that item.
+
+The rest of the argument is unaffected and still stands:
+
+  - the writes come from multiple concurrent ControlCenter threads;
+  - the write side is always a clean 1/16 step from the value just written;
+  - the loop self-sustains at ~30 Hz with no external input;
+  - it terminates only when the agent is restarted.
+
+
+5. ON THE THIRD-PARTY PRECONDITION
+
+My follow-up established that Alcove 1.7.9 must be actively writing volume for
+the runaway to fire, and that write pressure is not the variable (a synthetic
+writer at 38x Alcove's rate, with Alcove quit, never triggered it). That still
+holds - this occurrence is a sixth positive case.
+
+But this occurrence also shows what Alcove does and does not do, in an incident
+nobody staged. Alcove wrote once, 433 ms before onset, and Control Center
+observed that value 2.4 ms later. Alcove then fell SILENT for the first 3.9
+seconds of the runaway - through the entire climb to 1.000000, the top-rail
+spin, and the reversal. Across the whole 170.7 s window: ControlCenter 9,947
+client-side volume writes, Alcove 211, coreaudiod 5.
+
+The self-sustaining 30 Hz loop is therefore entirely Control Center's own
+writes. A third-party app can put the system into the state, but it is not
+driving it and cannot stop it. Serializing volume mutations on a single
+queue/actor inside Control Center removes the race regardless of what any other
+process does; volume changes occur at human rates, so the serialization cost is
+irrelevant.
+
+
+ENVIRONMENT
+
+  macOS 27.0 beta 4, build 26A5388g (released 2026-07-20, still current
+    2026-08-04)
+  MacBook Pro Mac15,11, M3 Max, 36 GB
+  Output device: AirPods, UID C4-B3-49-AA-E7-97, CoreAudio device ID 557
+  Alcove 1.7.9 (com.henrikruscon.Alcove) running
+  Full log capture available on request; ControlCenter lines were pulled with
+    /usr/bin/log show --info --debug --predicate 'process == "ControlCenter"'
+
+Detailed write-up, including the parts I could not resolve:
+https://github.com/jizhi0v0/macos27-beta-issues/blob/main/issues/apple-controlcenter-volume-rmw-race.md
+
+
+ONE OPEN QUESTION I CANNOT SETTLE FROM LOGS
+
+Whether the manual volume adjustment is causally necessary, or merely the way
+the user discovers the runaway. Every occurrence I have observed includes one,
+but that may be observation bias: with the volume pinned the user reaches for
+the volume key, so the adjustment is also the detection path. I mention it so
+the correlation in my reports is not over-read.

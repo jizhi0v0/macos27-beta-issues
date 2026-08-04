@@ -10,7 +10,7 @@
 | **Component** | Apple **ControlCenter** (`com.apple.controlcenter`, `SoundSettings`) + CoreAudio HAL volume properties |
 | **Trigger** | **Alcove 1.7.9** (`com.henrikruscon.Alcove`, build 203) must be running — established by A/B, both directions. Fires on an **output-device change**: a Spotify Connect transfer (incident 1), the on-demand recipe's device switch + rapid manual adjustment, or — new in [incident 3](#incident-3--2026-08-04-bluetooth-reconnect-full-up-then-down-cycle-in-one-runaway--事故-3蓝牙重连触发单次事故内先冲顶再坠底) — a **Bluetooth headphone reconnect with no transfer involved**. Mechanism by which Alcove contributes is **unidentified**; see [Open question](#open-question--未解) |
 | **Hardware** | MacBook Pro `Mac15,11`, M3 Max, 36 GB |
-| **Report** | Apple Feedback: **[FB23868196](https://feedbackassistant.apple.com/feedback/23868196)** (filed 2026-07-20 via Feedback Assistant — Control Center → "Incorrect/Unexpected Behavior"; sysdiagnose + ratchet log + concurrent-TID log + HID-absence log + before/after rate table attached) |
+| **Report** | Apple Feedback: **[FB23868196](https://feedbackassistant.apple.com/feedback/23868196)** (filed 2026-07-20 via Feedback Assistant — Control Center → "Incorrect/Unexpected Behavior"; sysdiagnose + ratchet log + concurrent-TID log + HID-absence log + before/after rate table attached)  · **follow-up 2 drafted 2026-08-04** for the beta4 recurrence — generalised trigger, both directions, coreaudiod CPU cost, and a retraction of the torn-read evidence ([paste text](../feedback/controlcenter-volume-followup2.txt)), **not yet submitted**|
 
 ## Summary / 摘要
 
