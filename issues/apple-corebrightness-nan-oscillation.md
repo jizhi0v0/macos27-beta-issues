@@ -1,7 +1,7 @@
 # `corebrightnessd` toggles a key 1/0 at ~116 Hz for 12 s while every brightness value reads `nan`
 # `corebrightnessd` 以 ~116Hz 反复翻转 1/0 持续 12 秒，且所有亮度值均为 `nan`
 
-> 🔗 **Track / 关注此问题:** *(GitHub issue to be created)*
+> 🔗 **Track / 关注此问题:** [#25 — watch & discuss on GitHub](https://github.com/jizhi0v0/macos27-beta-issues/issues/25)
 
 | | |
 |---|---|

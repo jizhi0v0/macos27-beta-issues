@@ -1,7 +1,7 @@
 # `mds` emits ~2,420 CoreDuet activity log lines/second, continuously
 # `mds` 持续以 ~2420 行/秒 刷 CoreDuet activity 日志
 
-> 🔗 **Track / 关注此问题:** *(GitHub issue to be created)*
+> 🔗 **Track / 关注此问题:** [#24 — watch & discuss on GitHub](https://github.com/jizhi0v0/macos27-beta-issues/issues/24)
 
 | | |
 |---|---|
@@ -86,6 +86,34 @@ None known that keeps Spotlight functional. Silencing the subsystem only hides t
 ```sh
 sudo log config --subsystem com.apple.duetactivityscheduler --mode 'level:off'
 ```
+
+## Re-measured 2026-08-04 10:23 (uptime 1 d 0 h 23 m) — NOT active in this window / 次日复测:本轮未发作
+
+The storm is **intermittent**. A 60 s capture on a different day and a different boot:
+
+| Metric | 2026-07-25 (storm) | 2026-08-04 |
+|---|---|---|
+| `mds` log lines / 60 s | **145,241** | **132** |
+| `contextstored` lines / 60 s | (top-tier) | 22 |
+| `com.apple.mdworker.shared` spawns / 60 s | **341** (~5.7/s) | 53 (~0.9/s) |
+| `mds` instantaneous CPU | 39–43% | 0.0–0.3% |
+| Share of total system log volume | **54%** | ~0.3% |
+
+Cumulative CPU over the 24 h uptime: `mds` **36 min** (≈2.5% avg), `mds_stores` **81 min** (≈5.6% avg) — real background work, but nothing like the storm. In the same window [`ecosystemd`](apple-ecosystemd-trust-retry-loop.md) **was** running its loop, so the two are independent and must not be conflated.
+
+风暴是**间歇性**的:换一天、换一次开机后的 60 秒窗口里,`mds` 只有 132 行、CPU 0.0–0.3%,`mdworker.shared` 生成 53 次(风暴时 341 次)。24 小时累计 CPU:`mds` 36 分钟、`mds_stores` 81 分钟 —— 属于真实后台工作,但远非风暴量级。同一窗口里 [`ecosystemd`](apple-ecosystemd-trust-retry-loop.md) 的循环**在跑**,故两者独立,不可混为一谈。
+
+**To file this properly, the storm has to be caught live.** A one-shot `log show` is a lottery; the next step is a polling watcher that snapshots when `mds` lines/sec crosses a threshold.
+
+**要正式提交,必须抓现行。** 单次 `log show` 全靠运气,下一步应做一个按 `mds` 行/秒阈值触发快照的轮询脚本。
+
+### Open lead — user-reported slow indexing / 待查线索:用户反映索引很久不完成
+
+The reporter notes that **Spotlight indexing has recently been taking a very long time to finish**. If true, it would fit the "Spotlight queries CoreDuet per indexed item" hypothesis above — the storm would then be a *symptom* of an indexing run that never settles, and would explain why it is present for hours and then absent entirely.
+
+**This is not corroborated yet.** At the time of writing, `mdutil -s` reports indexing enabled on all volumes but exposes **no progress figure**, and nothing in the current log window shows a stalled or restarting index run. Recorded as a lead to test, **not** as evidence: the next storm capture should be paired with the indexing state at that moment (store size/mtime deltas, `mdbulkimport` activity, `mdworker` spawn rate) before any causal claim is made.
+
+用户反映**最近 Spotlight 索引要跑很久才结束**。若属实,正好契合上面"Spotlight 按条目查询 CoreDuet"的假设 —— 风暴将是"索引迟迟不收敛"的*症状*,也能解释它为何持续数小时后又完全消失。**但目前尚未得到佐证**:`mdutil -s` 只报告索引已启用、不给进度,当前日志窗口里也看不到索引停滞或反复重启的迹象。故记为**待验证线索,而非证据**;下次抓到风暴时应同时记录当刻的索引状态再谈因果。
 
 ## Related / 相关
 
