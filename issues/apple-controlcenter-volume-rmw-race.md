@@ -178,6 +178,48 @@ So incident 3 **does** contain the rapid manual adjustment, ~150 ms after the de
 
 **附带收获 —— 非 1/16 读值有解释了。**[根因](#root-cause--根因)第 4 点把 `0.435`/`0.490` 列为"可能是配件自身既有音量而非撕裂读取",并自评为较弱证据。这次直接坐实:`system volume of 22d updated: 0.562500 -> 0.215000` 就是 ControlCenter 在连接时采用 AirPods 自身存储的音量,而 `0.215` 正是首条失控写入的读侧值。**非 1/16 读值是配件音量,不是撕裂读取** —— 第 4 点应作为竞态证据撤下;第 1–3 点(并发 TID、写侧恒为 1/16、30 Hz 自持)不受影响。
 
+### Alcove's role, observed in an unstaged incident / Alcove 的角色:一次非人为安排的事故里的观察
+
+Every previous statement about Alcove came from **deliberately staged** A/B runs with `racetrigger`. Incident 3 was not staged, so the same question can be asked of a naturally-occurring runaway. Client-side volume writes across the full 170.7 s window:
+
+| Process | `LogVolumeChangeForClientSide` writes |
+|---|---|
+| **ControlCenter** | **9,947** |
+| Alcove | 211 |
+| coreaudiod | 5 |
+
+**Alcove was writing**, so incident 3 is not a counter-example to [Alcove must be *writing*](#alcove-must-be-writing-not-merely-running--alcove-必须在写) — that record is now **6/6**. The timing is the informative part:
+
+```
+11:02:14.927718  Alcove         ['vmvc'] volume: 0.562500                          <- Alcove writes
+11:02:14.930156  ControlCenter  system volume of 64 updated: 0.500000 -> 0.562500  <- +2.4 ms, CC observes it
+11:02:15.13-.16  coreaudiod     AirPods connect; writes 0.215000 (accessory's own level)
+11:02:15.340920  ControlCenter  [HotKeys] hot key 'volumeUp (builtin, down)'
+11:02:15.360987  ControlCenter  set system volume: 0.215000 -> 0.250000            <- runaway begins
+   ...           Alcove silent for 3.9 s                                           <- the entire climb, the
+                                                                                      top-rail spin, and the
+                                                                                      start of the reversal
+11:02:18.826959  Alcove         ['vmvc'] volume: 0.937500                          <- reappears, tracking the
+                                                                                      ratchet downward
+```
+
+Two things follow:
+
+1. **Alcove initiates a volume change 433 ms before onset**, and ControlCenter observes that value 2.4 ms later — the ordering expected if Alcove wrote it and ControlCenter followed, not the reverse. It lands immediately before the device change and the key press.
+2. **Alcove is silent for the first 3.9 s of the runaway** — through `0.215 -> 1.000000`, the 35 no-op writes at the top rail, and the reversal. The 30 Hz self-sustaining loop is **entirely ControlCenter's own writes**, confirming [the trigger is a precondition, not the driver](#the-trigger-is-a-precondition-not-the-driver--触发源是前提不是驱动) in an incident nobody arranged.
+
+**Not claimed:** that Alcove's 139 writes of `1.000000` at 11:03:18–24, while ControlCenter was pinned at zero, represent a tug-of-war. That window overlaps the reporter trying to restore volume *and* the investigator running capture commands, so Alcove-initiated and Alcove-reacting cannot be separated there. Recorded as uninterpretable rather than as evidence.
+
+**Limit of this data point:** it is a correlation within a single incident. Alcove is a HUD app that follows volume changes by design, so "it was writing" cannot by itself establish causation — that still rests on the 2026-07-20 A/B, where a synthetic writer at **38× Alcove's rate** with Alcove quit produced nothing. Incident 3 is another positive case, not an independent proof.
+
+此前关于 Alcove 的每一条结论都来自**人为安排**的 A/B。事故 3 并非安排出来的,因此可以在一次自然发生的失控里问同样的问题。全窗口客户端写入:ControlCenter 9,947 次、Alcove 211 次、coreaudiod 5 次。**Alcove 确在写**,故事故 3 不构成反例,该记录现为 **6/6**。
+
+关键在时序:Alcove 在失控前 433 毫秒主动写入 0.5625,ControlCenter 于 2.4 毫秒后才观察到该值 —— 顺序正是"Alcove 写、CC 跟随",而非相反;而失控开始后 **Alcove 沉默 3.9 秒**,覆盖整个冲顶、顶端空转与反转起点,说明 30 Hz 自持循环**完全是 ControlCenter 自己的写入**。这在一次无人安排的事故里印证了"触发源是前提,不是驱动"。
+
+**不作主张的部分:** 11:03:18–24 期间 Alcove 139 次写入 `1.000000` 与 CC 钉零并存,但该时段与报告者尝试恢复音量、调查者执行抓取命令重叠,无法区分自发与响应,记为不可解读而非证据。
+
+**本数据点的局限:** 这是单次事故内的相关性。Alcove 本就是设计成跟随音量变化的 HUD 应用,"它在写"本身不能确立因果 —— 因果仍依赖 07-20 那组 A/B(Alcove 退出 + 写压力为其 38 倍的合成写入器 → 不触发)。事故 3 是又一个正例,不是独立证明。
+
 ### Hearing-safety: full scale on in-ear headphones in 570 ms / 听力安全:570 毫秒内在入耳式耳机上冲到满刻度
 
 The ratchet went from `0.215` to `1.000000` in **570 ms**, on **headphones the reporter had just put back on**, with no ramp. This is the second incident to drive a worn in-ear/headphone device to full scale (incident 1 did it to AirPods 4 with 1,158 writes at `1.000000`). The user-facing complaint this time was the *stuck-at-zero* tail, which is the harmless end — but the dangerous end happened first and lasted only a second, which is exactly why it is easy to under-report.
