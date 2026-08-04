@@ -5,8 +5,8 @@
 
 | | |
 |---|---|
-| **Status** | ⚪ **NEEDS RETEST on `26A5378n`** — was 🟢 FIXED on beta3 `26A5378j` (was ✅ CONFIRMED beta2 regression). See [Status downgraded](#status-downgraded-2026-07-20--状态降级) |
-| **macOS** | seen on 27.0 beta2 `26A5368g`; fixed on beta3 `26A5378j`; **unverified on `26A5378n`** |
+| **Status** | 🟢 **FIX HOLDS on beta4 `26A5388g`** (2026-07-25) — idles at **0.0–0.1%** once no menu-bar app is feeding it. The high readings were app-fed (Alcove). Resolves the 2026-07-20 downgrade. See [beta4 retest](#retest-2026-07-25--beta4-26a5388g--fix-holds-high-readings-were-alcove-fed) |
+| **macOS** | seen on 27.0 beta2 `26A5368g`; fixed on beta3 `26A5378j`; **fix confirmed to hold on beta4 `26A5388g`** |
 | **Component** | Apple **MenuBarAgent** (`/System/Library/CoreServices/MenuBarAgent.app`, the macOS 27 menu-bar agent) |
 | **Hardware** | MacBook Pro `Mac15,11`, M3 Max, single internal display |
 | **Report** | Apple Feedback: **`FB23411741`** (filed 2026-06-26, Menu Bar → Incorrect/Unexpected Behavior; sysdiagnose + idle `sample` capture attached) |
@@ -86,6 +86,24 @@ done >> ~/mba-cpu.log
 ```
 
 Then pick a window where the user was away **and the Claude app was closed**, and compute the slope. Log `WindowServer` and any live-updating menu-bar app alongside it so periods polluted by system-wide load can be excluded. Match the original isolation: Surge icon-only, no chatty status items.
+
+## Retest 2026-07-25 — beta4 `26A5388g` — FIX HOLDS, high readings were Alcove-fed
+
+The 2026-07-20 downgrade is resolved. Measured during the [WindowServer](apple-windowserver-invalid-window.md) beta4 investigation, which produced exactly the unattended, app-free conditions this issue's "valid retest" section asked for — the measuring scripts are `disown`ed, so the Claude app (the structural blocker documented above) was **quit** during every reading.
+
+| Condition | MenuBarAgent |
+|---|---|
+| Alcove + Klack + Surge + apps running | 21.9% / 20.3% / 21.4% |
+| **Alcove quit** | **1.6% / 1.9%** |
+| All menu-bar apps quit, desktop idle | **0.1% / 0.0%** |
+
+**The ~22% was fed by Alcove**, a notch/Dynamic-Island menu-bar app — not MenuBarAgent's own spin. With nothing feeding it, MenuBarAgent sits at 0.0–0.1%, consistent with the 0.28% idle figure that established the beta3 fix, and nowhere near the beta2 ~10–14% floor.
+
+This also matches the original beta2 isolation logic in reverse: back then, removing every status-item updater did **not** move the number (that was the regression); on beta4, removing one menu-bar app moves it from 21.9% to 1.6%, i.e. the cost now tracks its clients as it should.
+
+**Corollary for [#3](apple-windowserver-invalid-window.md):** MenuBarAgent's 21.9% → 0.1% swing produced **no** reduction in WindowServer (44.8% → 49.3% → 52.3%), which falsified the hypothesis that menu-bar compositing drives the WindowServer floor. Recorded here so that lead is not re-walked.
+
+Caveat: this is a single session's readings on `26A5388g`, and `26A5378n` was never separately re-measured — the build moved on before that could happen. The external report [#20](https://github.com/jizhi0v0/macos27-beta-issues/issues/20) remains unexplained by anything observed here; see below.
 
 ### Note on the external report / 关于外部报告
 
