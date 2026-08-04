@@ -5,10 +5,10 @@
 
 | | |
 |---|---|
-| **Status** | 🔴 Not fixed · confirmed on `26A5378n` (beta3) **and `26A5388g` (beta4)** — **10+ runaways captured in one day**, both directions, both output devices; reproducible on demand (see [Reproduction](#reproduction--复现)) |
+| **Status** | 🔴 Not fixed · confirmed on `26A5378n` (beta3) **and `26A5388g` (beta4)** — **10+ runaways captured in one day**, both directions, both output devices; reproducible on demand (see [Reproduction](#reproduction--复现)). **Still firing 2026-08-04** ([incident 3](#incident-3--2026-08-04-bluetooth-reconnect-full-up-then-down-cycle-in-one-runaway--事故-3蓝牙重连触发单次事故内先冲顶再坠底): 4,849 writes / 170.7 s, up to full scale **and** down to zero in one runaway, `coreaudiod` dragged to 150–180% CPU) |
 | **macOS** | 27.0 beta3 revision **`26A5378n`**, reconfirmed on **beta4 `26A5388g`** (2026-07-22) — **not 27-specific**, see [Scope](#scope-not-a-27-regression--并非-27-回归) |
 | **Component** | Apple **ControlCenter** (`com.apple.controlcenter`, `SoundSettings`) + CoreAudio HAL volume properties |
-| **Trigger** | **Alcove 1.7.9** (`com.henrikruscon.Alcove`, build 203) must be running — established by A/B, both directions. Fires when an output-device change is followed by rapid manual volume adjustment. Mechanism by which Alcove contributes is **unidentified**; see [Open question](#open-question--未解) |
+| **Trigger** | **Alcove 1.7.9** (`com.henrikruscon.Alcove`, build 203) must be running — established by A/B, both directions. Fires on an **output-device change**: a Spotify Connect transfer (incident 1), the on-demand recipe's device switch + rapid manual adjustment, or — new in [incident 3](#incident-3--2026-08-04-bluetooth-reconnect-full-up-then-down-cycle-in-one-runaway--事故-3蓝牙重连触发单次事故内先冲顶再坠底) — a **Bluetooth headphone reconnect with no transfer involved**. Mechanism by which Alcove contributes is **unidentified**; see [Open question](#open-question--未解) |
 | **Hardware** | MacBook Pro `Mac15,11`, M3 Max, 36 GB |
 | **Report** | Apple Feedback: **[FB23868196](https://feedbackassistant.apple.com/feedback/23868196)** (filed 2026-07-20 via Feedback Assistant — Control Center → "Incorrect/Unexpected Behavior"; sysdiagnose + ratchet log + concurrent-TID log + HID-absence log + before/after rate table attached) |
 
@@ -115,6 +115,72 @@ Alcove 在事故2 中全程运行却零写入,失控照常发生;事故1 中它�
 **No volume write of any kind appears between 10:39:20 and 10:39:26.835**, so the adjustment at `.835` is the first mutation in the sequence — it lands ~190 ms after the device negotiation, inside ControlCenter's post-transfer re-sync. That collision is the most likely source of the concurrent mutation paths. *The log cannot distinguish a user-initiated `setLevel` from ControlCenter's own re-sync* — both log identically — but it matches the reporter's account (transfer → reflexively adjust volume → runaway).
 
 Spotify itself never writes a volume property — a full-window grep for Spotify volume writes returns **nothing**. It contributes the *audio-device renegotiation*, which is what makes ControlCenter re-sync volume state.
+
+## Incident 3 — 2026-08-04, Bluetooth reconnect, full up-then-down cycle in one runaway / 事故 3:蓝牙重连触发,单次事故内先冲顶再坠底
+
+Caught live on **beta4 `26A5388g`** and captured end to end. This is the most complete capture so far: a single runaway that ratchets **to full scale, spins there, reverses, and pins at zero**, where every previous incident went one direction only.
+
+在 **beta4 `26A5388g`** 上抓到现行并完整记录。这是迄今最完整的一次:同一次失控里先棘轮到满刻度、在顶端空转、再反向坠到 0 并卡死 —— 此前每次事故都只有单一方向。
+
+| | |
+|---|---|
+| Window | `11:02:15.360987` → `11:05:06.031483` = **170.7 s** |
+| Writes | **4,849** `set system volume` lines = **28.4/s** (~30 Hz) |
+| Direction | **both, in one incident** — up to `1.000000`, then down to `0.000000` |
+| Ended by | `killall ControlCenter` (writes in the following 5 s: **0**) |
+| Output device | Bluetooth headphones, just reconnected |
+| Alcove | 1.7.9 running (the established precondition) |
+
+### Timeline / 时序
+
+```
+11:02:15.360987  ControlCenter  set system volume: 0.215000 -> 0.250000   ← first write; read side is NOT a 1/16 value
+11:02:15.462071  coreaudiod     BTUnifiedAudioDevice: Connected device <private>
+11:02:15.565448  coreaudiod     Smart Route: Tipi Connection Changed to Connected
+11:02:15.930699  ControlCenter  set system volume: 0.937500 -> 1.000000   ← FULL SCALE, 570 ms after onset
+   …             35 × 1.000000 -> 1.000000                                ← spins at the top rail ~1.2 s
+11:02:17.099573  ControlCenter  last write at 1.0, ratchet reverses
+11:02:19.996664  ControlCenter  set system volume: 0.062500 -> 0.000000   ← bottom reached
+   …             4,604 × 0.000000 -> 0.000000                             ← pinned + muted for 166 s
+11:05:06.031483  ControlCenter  last write — killall ControlCenter
+```
+
+Step size is exactly **1/16 (0.0625)** on all 208 real transitions; the only two non-1/16 deltas are on the **read** side (`0.215`, one other), the same read-side signature described in [Root cause](#root-cause--根因).
+
+208 次真实变化的步长全部恰为 **1/16**;仅有的两个非 1/16 值都出现在**读**侧,与[根因](#root-cause--根因)里描述的读侧签名一致。
+
+### Trigger: a Bluetooth reconnect, with no Spotify/AirPlay transfer involved / 触发:蓝牙重连,不涉及 Spotify/AirPlay 切换
+
+The reporter had walked away and come back; the headphones reconnected on their own. The first volume write lands **101 ms before** the `BTUnifiedAudioDevice: Connected` line and ~200 ms before `Smart Route ... Connected` — i.e. inside the same device-change window, on the leading edge of it.
+
+This matters because it **generalises the trigger**. Incident 1 arrived via a Spotify Connect transfer; the [on-demand recipe](#the-recipe--复现配方) uses an output-device change followed by rapid manual volume adjustment. Here there was no Spotify transfer and no AirPlay hand-off — just a Bluetooth device reconnecting after an absence. What the three share is an **output-device change**, which is the part worth putting in front of Apple.
+
+**Open, needs the reporter's confirmation:** whether the volume was manually adjusted in that first second. The log cannot distinguish a user `setLevel` from ControlCenter's own post-device-change re-sync — they log identically (same limitation as [Onset timing](#onset-timing--起爆时刻)). If it was *not* touched, this incident removes "rapid manual adjustment" from the necessary conditions entirely, which would be a significant narrowing. Recorded as unresolved rather than assumed.
+
+报告者离开后返回,耳机自行重连。第一条音量写入比 `BTUnifiedAudioDevice: Connected` **早 101 毫秒**,处于同一设备变更窗口的前沿。意义在于**触发条件被推广**了:事故 1 经 Spotify Connect 切换、按需复现配方用"设备变更 + 快速手动调音量",而这次既无 Spotify 切换也无 AirPlay 交接,只是蓝牙设备离开后重连。三者的共同点是**输出设备变更**。**待报告者确认**:那一秒内是否手动调过音量 —— 日志无法区分用户 `setLevel` 与 ControlCenter 自身的设备变更后重同步。若并未手动调节,则"快速手动调节"可从必要条件中剔除,是一次重要收敛。故记为未决而非默认。
+
+### Hearing-safety: full scale on in-ear headphones in 570 ms / 听力安全:570 毫秒内在入耳式耳机上冲到满刻度
+
+The ratchet went from `0.215` to `1.000000` in **570 ms**, on **headphones the reporter had just put back on**, with no ramp. This is the second incident to drive a worn in-ear/headphone device to full scale (incident 1 did it to AirPods 4 with 1,158 writes at `1.000000`). The user-facing complaint this time was the *stuck-at-zero* tail, which is the harmless end — but the dangerous end happened first and lasted only a second, which is exactly why it is easy to under-report.
+
+棘轮在 **570 毫秒**内从 `0.215` 冲到 `1.000000`,发生在报告者刚戴回的耳机上,无渐变。这是第二次把佩戴中的入耳/头戴设备推到满刻度。用户这次感知到的是"卡在 0"的尾段(无害的一端),而危险的一端发生在最前面、只持续约一秒 —— 这正是它容易被漏报的原因。
+
+### New observation: `coreaudiod` is dragged to 150–180% CPU / 新观察:`coreaudiod` 被拖到 150–180% CPU
+
+Previous write-ups measured ControlCenter's own spin. During this incident:
+
+| Process | During runaway | After `killall ControlCenter` |
+|---|---|---|
+| `coreaudiod` | **150–181%** | 112% and falling |
+| `ControlCenter` | 13.6–20.8% | **0.3%** |
+
+So the 30 Hz write loop costs roughly **1.5–1.8 cores in the HAL**, an order of magnitude more than in the agent doing the writing. Worth adding to the Feedback: the impact is not just "volume misbehaves", it is a sustained system-wide CPU cost for as long as it runs.
+
+30 Hz 写循环在 HAL 侧的代价约为 **1.5–1.8 个核**,比发起写入的 agent 本身高一个数量级。值得补进 Feedback:影响不止"音量失控",还有持续的全系统 CPU 开销。
+
+### Recovery / 恢复
+
+`killall ControlCenter` again worked, immediately: **0** volume writes in the 5 s after the agent respawned, volume restored to a sane 75% and unmuted, ControlCenter back to 0.3% CPU.
 
 ## Scope: not a 27 regression / 并非 27 回归
 
