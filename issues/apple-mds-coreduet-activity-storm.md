@@ -107,13 +107,28 @@ Cumulative CPU over the 24 h uptime: `mds` **36 min** (≈2.5% avg), `mds_stores
 
 **要正式提交,必须抓现行。** 单次 `log show` 全靠运气,下一步应做一个按 `mds` 行/秒阈值触发快照的轮询脚本。
 
-### Open lead — user-reported slow indexing / 待查线索:用户反映索引很久不完成
+### Post-boot hypothesis — tested against the log archive and NOT supported / "开机后持续很久"假设:查历史日志,不成立
 
-The reporter notes that **Spotlight indexing has recently been taking a very long time to finish**. If true, it would fit the "Spotlight queries CoreDuet per indexed item" hypothesis above — the storm would then be a *symptom* of an indexing run that never settles, and would explain why it is present for hours and then absent entirely.
+The reporter's recollection was that the heavy period usually **runs for a long time after a reboot**, while Spotlight *search itself* keeps working normally. The first storm capture fit that shape — it was taken at ~3.5 h uptime. So the hypothesis was: this is a post-boot indexing run that floods for hours and then settles.
 
-**This is not corroborated yet.** At the time of writing, `mdutil -s` reports indexing enabled on all volumes but exposes **no progress figure**, and nothing in the current log window shows a stalled or restarting index run. Recorded as a lead to test, **not** as evidence: the next storm capture should be paired with the indexing state at that moment (store size/mtime deltas, `mdbulkimport` activity, `mdworker` spawn rate) before any causal claim is made.
+**Tested directly against the unified log for the 2026-08-03 10:00:33 boot** (`mds` CoreDuet activity lines per 60 s window):
 
-用户反映**最近 Spotlight 索引要跑很久才结束**。若属实,正好契合上面"Spotlight 按条目查询 CoreDuet"的假设 —— 风暴将是"索引迟迟不收敛"的*症状*,也能解释它为何持续数小时后又完全消失。**但目前尚未得到佐证**:`mdutil -s` 只报告索引已启用、不给进度,当前日志窗口里也看不到索引停滞或反复重启的迹象。故记为**待验证线索,而非证据**;下次抓到风暴时应同时记录当刻的索引状态再谈因果。
+| Window | Uptime at window | `mds` CoreDuet lines / 60 s |
+|---|---|---|
+| 08-03 10:05 | +4 min | **0** |
+| 08-03 10:30 | +30 min | **0** |
+| 08-03 11:00 | +1 h | **0** |
+| 08-03 13:00 | +3 h | **0** ← same uptime as the storm capture |
+| 08-03 16:00 | +6 h | **0** |
+| 08-03 22:00 | +12 h | 64 |
+
+**Not a silent zero:** in the same windows `mds` *was* logging other messages (2 lines/60 s at 11:00, 70 at 22:00), so the query and retention are sound — `mds` simply was not emitting the CoreDuet activity message at all. Compare the storm: **145,241 lines/60 s**.
+
+**Conclusion: uptime-since-boot does not predict the storm.** The 3-hour mark of this boot — the same uptime at which the storm was captured on 07-25 — is completely silent. Whatever triggers it, it is not "every boot re-indexes and floods for hours." The trigger remains unidentified.
+
+Consistent with this: the reporter reports **Spotlight search results stay correct and usable** throughout, which argues against a broken or perpetually-restarting index and in favour of a chatty-but-functional path.
+
+用户的印象是"重启后会持续很久",而搜索本身一直正常;首次抓到风暴时正好是开机约 3.5 小时,与该印象吻合。**但直接查 2026-08-03 那次开机的历史日志:开机后 4 分钟、30 分钟、1 小时、3 小时、6 小时的窗口里,`mds` 的 CoreDuet 行数全为 0**(同期 `mds` 仍在写其它日志,故 0 是真 0,不是查询或保留期造成的假阴性),12 小时窗口也仅 64 行 —— 对比风暴时的 145,241 行/60 秒。**结论:开机时长不能预测风暴的发生**,尤其是与首次抓到风暴相同的 3 小时节点完全安静。触发条件仍未定位。用户反映搜索结果始终正常可用,这也不支持"索引损坏/反复重启"的解释。
 
 ## Related / 相关
 
