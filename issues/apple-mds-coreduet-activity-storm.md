@@ -130,6 +130,20 @@ Consistent with this: the reporter reports **Spotlight search results stay corre
 
 用户的印象是"重启后会持续很久",而搜索本身一直正常;首次抓到风暴时正好是开机约 3.5 小时,与该印象吻合。**但直接查 2026-08-03 那次开机的历史日志:开机后 4 分钟、30 分钟、1 小时、3 小时、6 小时的窗口里,`mds` 的 CoreDuet 行数全为 0**(同期 `mds` 仍在写其它日志,故 0 是真 0,不是查询或保留期造成的假阴性),12 小时窗口也仅 64 行 —— 对比风暴时的 145,241 行/60 秒。**结论:开机时长不能预测风暴的发生**,尤其是与首次抓到风暴相同的 3 小时节点完全安静。触发条件仍未定位。用户反映搜索结果始终正常可用,这也不支持"索引损坏/反复重启"的解释。
 
+### Catching it live / 如何抓现行
+
+Because uptime doesn't predict it and a one-shot `log show` is a lottery, use the watcher:
+
+```sh
+bash tools/mds-storm-watch.sh        # stops after the first burst it catches
+bash tools/mds-storm-watch.sh -k     # keeps watching, one snapshot per burst
+```
+
+It probes `mds`'s CoreDuet rate every 60 s (idle ≈2/s, storm ≈2,420/s; trigger defaults to 300/s) and only then takes the full snapshot: a 60 s log capture, top emitters, per-second `mds` rate (continuous vs bursty), `mdworker.shared` spawn count, **cumulative-CPU deltas** for `mds`/`mds_stores`/`contextstored`, and — the piece missing from every capture so far — **`mdutil -as` and the Spotlight process state both before and after the window**, so the next storm can finally be paired with the indexing state at that moment. Output lands in `/tmp/mds-storm/<timestamp>/`.
+
+由于开机时长无法预测该风暴、单次 `log show` 全靠运气,改用触发式监控:每 60 秒探测 `mds` 的 CoreDuet 速率(空闲 ≈2/s,风暴 ≈2420/s,默认阈值 300/s),越阈值才做完整快照 —— 含 60 秒日志、头号日志来源、每秒速率(判断持续还是爆发)、`mdworker.shared` 生成次数、`mds`/`mds_stores`/`contextstored` 的**累计 CPU 增量**,以及此前每次抓取都缺的一环:**窗口前后各一次 `mdutil -as` 与 Spotlight 进程状态**,以便下次终于能把风暴与当刻索引状态对上。
+
+
 ## Related / 相关
 
 - [ecosystemd trust-evaluation retry loop](apple-ecosystemd-trust-retry-loop.md) — the #3 log emitter in the same capture
