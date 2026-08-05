@@ -10,7 +10,7 @@
 | **Component** | Apple **ViewBridge / AppKit** (`NSRemoteView`) — reproduced via **WeChat 4.1.11** (Chromium-based WeChatAppEx / `flue` engine), **CleanShot X 4.8.9** (Cocoa + QuickLookUI `QLSeamlessDocumentOpener`), **DingTalk 8.3.15** (**Qt** — `QtWidgets`/`QtGui`) and **duo-pasted 0.1.1270** (**Swift/AppKit**, own code) |
 | **Reproducers** | **WeChat 4.1.11 (269136)** MAS (`adam_id` 836500024) · **CleanShot X 4.8.9** (`pl.maketheweb.cleanshotx`, team `AFJU4P8ZV4`) · **DingTalk 8.3.15 (54703766)** MAS (`adam_id` 1435447041) · **duo-pasted 0.1.1270** (own app, Swift/AppKit) |
 | **Machine** | `Mac15,11` — Apple M3 Max, 36 GB |
-| **Report** | Apple Feedback: `FB________` *(candidate — now reproducible in 4 apps / 4 toolkits)* · vendor email to CleanShot X drafted |
+| **Report** | Apple Feedback: `FB________` *(ours, still unfiled)* · **Apple has acknowledged the bug** via [Developer Forums 837342](https://developer.apple.com/forums/thread/837342) — DTS routed it, and a third-party Feedback there reports "Potential fix identified — For a future OS update" · a crash-guard workaround exists (see [External corroboration](#external-corroboration--apple-has-acknowledged-it-and-the-exception-text-is-now-known--外部佐证apple-已受理异常文本已知)) · vendor email to CleanShot X drafted |
 
 ## Symptom / 症状
 
@@ -222,6 +222,51 @@ Everything above the presenting frame — `_doOrderWindow:` → `_doWindowWillBe
 An early grep for `containingWindowWillOrderOnScreen` / `NSRemoteView` also matched `duo-pasted-2026-07-07-083914.ips`, but **that one is unrelated**: `EXC_BREAKPOINT`/SIGTRAP, an uncaught exception during `NSView` **layout** (`+[NSApplication _crashOnException:]`), with `NSRemoteView` only on a live background thread — a different throw site, and it is **not** counted here. The duo-pasted entry in the table above is the separate **07-28** crash, which *does* carry the index-3 `+216` throw site.
 
 早期 grep 也命中过 `duo-pasted-2026-07-07-083914.ips`,但那次**无关**:`EXC_BREAKPOINT`/SIGTRAP,是 NSView **布局**期抛异常,`NSRemoteView` 只在空闲后台线程上,抛点不同,**未计入**本表。上表里的 duo-pasted 是另一次 **07-28** 崩溃,其第 3 帧确为 `+216` 抛点。
+
+## External corroboration — Apple has acknowledged it, and the exception text is now known / 外部佐证:Apple 已受理,异常文本已知
+
+**Source:** [@JyHu](https://github.com/JyHu) pointed this out in [#17](https://github.com/jizhi0v0/macos27-beta-issues/issues/17) on 2026-08-05, linking [Apple Developer Forums thread 837342](https://developer.apple.com/forums/thread/837342). Everything in this section comes from that thread — it is **not** independently verified on this machine, and is labelled as such throughout.
+
+### The exception name and reason — which our own crash reports do not contain / 异常名与原因 —— 这是我们自己的报告里没有的
+
+```
+NSInternalInconsistencyException
+'<NSRemoteView: 0x…> notified of <NSWindow: 0x…> but expected (null)'
+```
+
+**Verified absent from our data:** all 31 `.ips` reports here carry only `asi: {"libsystem_c.dylib": ["abort() called"]}` plus the backtrace — a grep for `NSInternalInconsistencyException` / `notified of` / `but expected` across every report on disk (including `Retired/`) returns **zero hits**. So this is the one piece of the picture our 31 captures structurally could not supply, and it is worth a lot: the assertion says `NSRemoteView` was notified about a window while its own expected containing window was **`null`**. That is a stale-or-missing registration being notified — consistent with the race shape argued in [Diagnosis](#diagnosis--判断), and it explains why retrying usually succeeds.
+
+我方 31 份报告只有 `abort() called` 和调用栈,全盘 grep 异常名/原因**零命中**,故这条是我们结构上拿不到的信息。断言含义是:`NSRemoteView` 被通知了某个窗口,而它自己期望的容器窗口是 **`null`** —— 即一个失效或缺失的注册被通知到了,与[判断](#diagnosis--判断)一节论证的竞态形态吻合,也解释了为何重试通常就好。
+
+### The trigger is broader than the sheet path / 触发路径比 sheet 更广
+
+The thread reports the same assertion from `orderFrontRegardless()`, `makeKeyAndOrderFront()`, **showing status-bar items**, `NSAlert.beginSheetModalForWindow()`, and **closing/opening child windows containing editable text fields**.
+
+All 31 crashes recorded here go through `-[NSWindow _doWindowWillBeVisibleAsSheet:]`. In light of the thread, that is a property of **our sample**, not of the bug — every reproducer we happened to collect presents its remote view as a sheet. The write-up above should be read accordingly: the sheet path is how we hit it, not a necessary condition.
+
+本文 31 次全部经 `_doWindowWillBeVisibleAsSheet:`,但按该帖所述,状态栏项、`NSAlert` sheet、含可编辑文本框的子窗口开关等路径同样触发。故"必经 sheet"是**我们样本的性质**,不是 bug 的必要条件。
+
+### Apple's position / Apple 的态度
+
+Per the thread: a **DTS engineer** acknowledged the reports and routed them to the owning engineering team, and one participant reports their Feedback (**FB23642313**, quoted in-thread — not ours, not verified by us) moved to **"Potential fix identified — For a future OS update."**
+
+This changes what filing is for. It is no longer about establishing that the bug exists — Apple has it. DTS explicitly noted that multiple reports help drive priority, and the evidence assembled here is stronger on one specific axis than anything in that thread: **four unrelated apps across four different UI toolkits, byte-identical throw site at the same `+216`, 31 occurrences, one of them in an app whose source we control.** That is the cross-app argument, and it is worth filing on top of the existing reports rather than instead of them.
+
+据该帖:**Apple DTS 工程师**已确认并转交对应团队;有参与者称其 Feedback(**FB23642313**,帖内引用,非我方、未经我方核实)状态已变为 **"Potential fix identified — For a future OS update"**。这改变了提交 Feedback 的意义:不再是证明 bug 存在(Apple 已掌握),而是加权重。DTS 明确表示报告数量影响优先级,而本文在一个维度上强于该帖任何单条:**四个互不相关的 app、四种 UI 技术栈、逐字相同且偏移同为 `+216` 的抛点、31 次记录,其中一次发生在我们掌握源码的 app 上**。
+
+### Workaround posted in the thread — read the trade-offs before adopting / 帖中给出的规避手段 —— 采用前请权衡
+
+@JyHu posted a guard that **swizzles `-[NSRemoteView containingWindowWillOrderOnScreen:]`** and wraps the original IMP in `@try/@catch`, suppressing **only** an `NSInternalInconsistencyException` whose reason contains `NSRemoteView`, re-`@throw`ing everything else, and installing only when `operatingSystemVersion.majorVersion == 27`. They report 3+ weeks in production. Scoping-wise this is about as disciplined as swizzling gets — narrow exception match, version-gated, non-matching exceptions preserved.
+
+**Trade-offs it does not remove:**
+
+- **It swizzles a private class and a private method.** `NSRemoteView` is not API. `NSClassFromString`/`NSSelectorFromString` avoid a static symbol reference, but this remains private-API use — a real consideration for Mac App Store review, and it can break silently whenever Apple changes that method.
+- **Suppressing an assertion is not the same as fixing the state.** The assertion fires because the remote view's expected containing window is `null`. Swallowing it lets the process continue with the view in exactly the state AppKit considered inconsistent; the visible outcome (does the panel draw correctly, does it leak, does it misbehave later) is unverified here.
+- **It is a crash guard, not a fix.** The underlying race is untouched.
+
+Reasonable stopgap for a non-MAS app whose alternative is aborting; harder to justify for a sandboxed App Store submission, and it should be removed once Apple ships the fix.
+
+该规避手段以 swizzle 包裹私有方法并只吞掉特定断言,作者称已在生产环境跑了三周以上,作用域控制得相当克制。但仍有三点无法回避:**(1)** 它 swizzle 的是私有类与私有方法,对 App Store 审核是实打实的风险,且 Apple 一改该方法就可能静默失效;**(2)** 吞掉断言 ≠ 修复状态 —— 断言之所以触发,正是因为该 remote view 期望的容器窗口为 `null`,吞掉之后进程带着 AppKit 认为不一致的状态继续跑,界面是否正常、是否泄漏,本文未做验证;**(3)** 它是崩溃防护,不是修复,底层竞态未动。对于崩溃已成常态的非 MAS 应用是合理的临时手段,对沙盒 App Store 提交则较难论证,且应在 Apple 修复后移除。
 
 ## Workaround / 临时规避
 
