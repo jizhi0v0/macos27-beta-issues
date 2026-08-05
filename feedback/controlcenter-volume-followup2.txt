@@ -131,20 +131,6 @@ process does; volume changes occur at human rates, so the serialization cost is
 irrelevant.
 
 
-ENVIRONMENT
-
-  macOS 27.0 beta 4, build 26A5388g (released 2026-07-20, still current
-    2026-08-04)
-  MacBook Pro Mac15,11, M3 Max, 36 GB
-  Output device: AirPods, UID C4-B3-49-AA-E7-97, CoreAudio device ID 557
-  Alcove 1.7.9 (com.henrikruscon.Alcove) running
-  Full log capture available on request; ControlCenter lines were pulled with
-    /usr/bin/log show --info --debug --predicate 'process == "ControlCenter"'
-
-Detailed write-up, including the parts I could not resolve:
-https://github.com/jizhi0v0/macos27-beta-issues/blob/main/issues/apple-controlcenter-volume-rmw-race.md
-
-
 6. THE RATCHET STARTS BEFORE ANY USER INPUT (2026-08-05, 63 MINUTES)
 
 In my previous comment I flagged that I could not tell from logs whether the
@@ -192,3 +178,17 @@ Control Center stopped the write loop immediately (0 writes in the following
 5 s) but did NOT restore the volume - it stayed at 0 and muted until raised by
 hand. On the 2026-08-04 occurrence it did come back on its own. Stopping the
 runaway and recovering the volume are separate outcomes.
+
+
+ENVIRONMENT
+
+  macOS 27.0 beta 4, build 26A5388g (released 2026-07-20, still current
+    2026-08-04)
+  MacBook Pro Mac15,11, M3 Max, 36 GB
+  Output device: AirPods, UID C4-B3-49-AA-E7-97, CoreAudio device ID 557
+  Alcove 1.7.9 (com.henrikruscon.Alcove) running
+  Full log capture available on request; ControlCenter lines were pulled with
+    /usr/bin/log show --info --debug --predicate 'process == "ControlCenter"'
+
+Detailed write-up, including the parts I could not resolve:
+https://github.com/jizhi0v0/macos27-beta-issues/blob/main/issues/apple-controlcenter-volume-rmw-race.md
