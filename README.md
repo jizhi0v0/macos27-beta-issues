@@ -11,7 +11,7 @@ If a Google/GitHub search for a crash signature or a process eating CPU on macOS
 | | |
 |---|---|
 | Machine | MacBook Pro `Mac15,11` — Apple M3 Max, 36 GB |
-| OS | macOS **27.0** beta — builds seen: `26A5353q` (beta1), `26A5368g` (beta2), `26A5378j` (beta3), `26A5378n` (beta3 revision, 2026-07-14), **`26A5388g`** (beta4 — [released 2026-07-20](https://www.macrumors.com/2026/07/20/apple-releases-macos-27-beta-4/), installed here 07-21, **still current on 2026-08-04: 15 days, no beta5**) |
+| OS | macOS **27.0** beta — builds seen: `26A5353q` (beta1), `26A5368g` (beta2), `26A5378j` (beta3), `26A5378n` (beta3 revision, 2026-07-14), **`26A5388g`** (beta4 — [released 2026-07-20](https://www.macrumors.com/2026/07/20/apple-releases-macos-27-beta-4/), installed here 07-21, **still current on 2026-08-05: 16 days, no beta5**) |
 | Reporter | [@jizhi0v0](https://github.com/jizhi0v0) |
 
 ## Status legend / 状态
@@ -73,11 +73,11 @@ A beta3 revision **`26A5378n`** replaced `26A5378j` on 2026-07-14. **Every verdi
 
 ### New build `26A5388g` (beta4) / 新 build(beta4,2026-07-21 见)
 
-**beta4 `26A5388g`** — [released by Apple 2026-07-20](https://www.macrumors.com/2026/07/20/apple-releases-macos-27-beta-4/), installed here 07-21 — is **still the current build as of 2026-08-04: 15 days, no beta5**. So none of the carried-over verdicts have had a chance to be invalidated by a newer build; they simply remain unverified on `…g`.
+**beta4 `26A5388g`** — [released by Apple 2026-07-20](https://www.macrumors.com/2026/07/20/apple-releases-macos-27-beta-4/), installed here 07-21 — is **still the current build as of 2026-08-05: 16 days, no beta5**. So none of the carried-over verdicts have had a chance to be invalidated by a newer build; they simply remain unverified on `…g`.
 
 The entry with by far the most beta4 data is **#17**, which **keeps crashing — 12 times on beta4 alone** (07-21 → 08-04), and has now spread to **4 apps across 4 UI toolkits** (WeChat/Chromium, CleanShot X/QuickLook, **DingTalk/Qt**, **duo-pasted/Swift-AppKit**), byte-identical throw at `+216`. #21 was also reconfirmed on beta4. Everything else carries over from `…n`/`…j` unverified.
 
-**beta4 `26A5388g`**(Apple 于 2026-07-20 发布,本机 07-21 安装)**截至 2026-08-04 仍是最新版本 —— 已 15 天,beta5 未发布**。因此上面沿用的结论并非被新版本推翻,只是尚未在 `…g` 上验证。
+**beta4 `26A5388g`**(Apple 于 2026-07-20 发布,本机 07-21 安装)**截至 2026-08-05 仍是最新版本 —— 已 16 天,beta5 未发布**。因此上面沿用的结论并非被新版本推翻,只是尚未在 `…g` 上验证。
 
 beta4 数据最多的是 **#17 —— 仍在崩,光 beta4 上就 12 次**(07-21 → 08-04),且已扩散到**4 个 app、4 种 UI 技术栈**(微信/Chromium、CleanShot X/QuickLook、**钉钉/Qt**、**duo-pasted/Swift-AppKit**),抛点逐字一致于 `+216`。#21 亦已在 beta4 复验。其余结论均沿用 `…n`/`…j`,未验证。
 
