@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | 🔴 Not fixed · confirmed on `26A5378n` (beta3) **and `26A5388g` (beta4)** — **10+ runaways captured in one day**, both directions, both output devices; reproducible on demand (see [Reproduction](#reproduction--复现)). **Still firing 2026-08-04** ([incident 3](#incident-3--2026-08-04-bluetooth-reconnect-full-up-then-down-cycle-in-one-runaway--事故-3蓝牙重连触发单次事故内先冲顶再坠底): 4,849 writes / 170.7 s, up to full scale **and** down to zero in one runaway, `coreaudiod` dragged to 150–180% CPU) |
+| **Status** | 🔴 Not fixed · confirmed on `26A5378n` (beta3) **and `26A5388g` (beta4)** — **10+ runaways captured in one day**, both directions, both output devices; reproducible on demand (see [Reproduction](#reproduction--复现)). **Still firing 2026-08-04** ([incident 3](#incident-3--2026-08-04-bluetooth-reconnect-full-up-then-down-cycle-in-one-runaway--事故-3蓝牙重连触发单次事故内先冲顶再坠底): 4,849 writes / 170.7 s, up to full scale **and** down to zero in one runaway, `coreaudiod` dragged to 150–180% CPU) . **Again 2026-08-05 (incident 4): 107,675 writes over 63 min**, triggered by an iPhone→Mac hand-off, with the ratchet demonstrably starting **before** any key press|
 | **macOS** | 27.0 beta3 revision **`26A5378n`**, reconfirmed on **beta4 `26A5388g`** (2026-07-22) — **not 27-specific**, see [Scope](#scope-not-a-27-regression--并非-27-回归) |
 | **Component** | Apple **ControlCenter** (`com.apple.controlcenter`, `SoundSettings`) + CoreAudio HAL volume properties |
 | **Trigger** | **Alcove 1.7.9** (`com.henrikruscon.Alcove`, build 203) must be running — established by A/B, both directions. Fires on an **output-device change**: a Spotify Connect transfer (incident 1), the on-demand recipe's device switch + rapid manual adjustment, or — new in [incident 3](#incident-3--2026-08-04-bluetooth-reconnect-full-up-then-down-cycle-in-one-runaway--事故-3蓝牙重连触发单次事故内先冲顶再坠底) — a **Bluetooth headphone reconnect with no transfer involved**. Mechanism by which Alcove contributes is **unidentified**; see [Open question](#open-question--未解) |
@@ -242,6 +242,67 @@ So the 30 Hz write loop costs roughly **1.5–1.8 cores in the HAL**, an order o
 ### Recovery / 恢复
 
 `killall ControlCenter` again worked, immediately: **0** volume writes in the 5 s after the agent respawned, volume restored to a sane 75% and unmuted, ControlCenter back to 0.3% CPU.
+
+## Incident 4 — 2026-08-05, iPhone→Mac auto-switch; the ratchet starts BEFORE any key press / 事故 4:iPhone→Mac 自动切换,棘轮先于按键启动
+
+The longest and most informative occurrence so far: **63 minutes, 107,675 writes** — 22× incident 3. It answers, in the negative, the question incident 3 left open about whether the user's volume adjustment is what starts the ratchet.
+
+迄今最长、信息量最大的一次:**63 分钟、107,675 次写入**,是事故 3 的 22 倍。它以否定的方式回答了事故 3 遗留的问题:棘轮并非由用户的音量调节启动。
+
+| | |
+|---|---|
+| Window | `12:45:08.315` → `13:48:08.704` = **63.0 min** |
+| Writes | **107,675** `set system volume` = 1,800/min sustained (30 Hz) for the whole hour |
+| Direction | down; pinned at `0.000000` + `mute: 1.000000` |
+| Trigger | **iPhone → Mac automatic route switch** (AirPods hand-off) |
+| Ended by | `killall ControlCenter` — it did **not** stop on its own |
+| Alcove | 1.7.9 running; **18 writes** in the entire 63 min |
+
+### Onset — Alcove ratchets first, the key press arrives 1.7 s later / 起爆:Alcove 先棘轮,按键晚 1.7 秒
+
+```
+12:44:57.844  ControlCenter  system-banners: show smart routing REVERSE ROUTE,
+                             C4:B3:49:AA:E7:97                      <- iPhone -> Mac auto-switch
+12:45:06.594  Alcove         ['vmvc'] volume: 0.467500   ┐
+12:45:06.617  ControlCenter  system volume of 223 updated: 0.530000 -> 0.467500   (+23 ms, CC observes)
+12:45:06.894  Alcove         ['vmvc'] volume: 0.405000   │  four clean 1/16 steps,
+12:45:07.305  Alcove         ['vmvc'] volume: 0.342500   │  ~300 ms apart, ALL from Alcove
+12:45:07.587  Alcove         ['vmvc'] volume: 0.280000   ┘
+12:45:08.146  AVRouting      configUpdateReasonEndedBottomUpRouteChange   <- route switch completes
+12:45:08.152  ControlCenter  system volume of 65 updated: 0.280000 -> 0.176838   (device changes)
+12:45:08.289  ControlCenter  [HotKeys] hot key 'volumeDown (builtin, down)'      <- the ONLY key event
+12:45:08.295  ControlCenter  <SoundSettings> (DeviceID 101) setLevel: 0.062500
+12:45:08.315  ControlCenter  set system volume: 0.176838 -> 0.062500             <- runaway begins
+   …          107,675 writes, pinned at 0 + muted, for 63 minutes
+```
+
+**A descending 1/16 ratchet was already running 1.7 s before the only key press, and every step of it was written by Alcove** — each Alcove write preceding ControlCenter's observation of that value by ~23 ms, the same write→observe ordering seen in [incident 3](#alcoves-role-observed-in-an-unstaged-incident--alcove-的角色一次非人为安排的事故里的观察).
+
+**What this settles, and what it does not.** It settles that the user's volume adjustment does **not** initiate the ratchet — the ratchet predates it. It does **not** establish that the runaway can reach its self-sustaining state with *zero* input: there is exactly one `volumeDown` HotKeys event, 26 ms before ControlCenter's first runaway write, so input is present at the moment ControlCenter takes over. The honest reading is that manual adjustment is **not the initiator** but has not yet been excluded as a **contributor at the handover**. The reporter's recollection was that they had not adjusted the volume at all; the HotKeys line says otherwise, and the log is the record. Their perception is nevertheless explained by the data — the volume genuinely was falling on its own for 1.7 s before any key was touched.
+
+**已确定与未确定。** 已确定:用户的音量调节**不是**棘轮的起点 —— 棘轮先于它 1.7 秒,且每一步都由 Alcove 写出。**未确定**:失控能否在**零输入**下进入自持状态 —— 起爆前 26 毫秒确实有且仅有一次 `volumeDown` 硬件键事件。诚实的表述是:手动调节**不是发起者**,但尚不能排除它在"交接时刻"起作用。报告者的印象是完全没有调过音量,日志显示有一次按键,以日志为准;但其感知有数据支持 —— 在任何按键之前,音量确实已自行下降了 1.7 秒。
+
+### The loop outlives the device that triggered it / 循环比触发它的设备活得更久
+
+During the runaway the AirPods disconnected and the system fell back to **MacBook Pro Speakers** — and ControlCenter **kept spinning at 30 Hz on the built-in device** for the remainder of the hour. Once established, the loop is independent of the device whose arrival triggered it. Incident 3 showed the loop was independent of Alcove's participation; this shows it is independent of the audio endpoint too.
+
+失控期间 AirPods 断开、系统退回内置扬声器,而 ControlCenter **在内置设备上继续以 30 Hz 空转**直到被终止。循环一旦建立即与触发它的设备无关。事故 3 证明它不依赖 Alcove 的持续参与,这次证明它也不依赖音频端点。
+
+### Third distinct trigger path / 第三条互不相同的触发路径
+
+| Incident | Device-change path |
+|---|---|
+| 1 | Spotify Connect transfer to this Mac |
+| 3 | unattended Bluetooth reconnect (AirPods returning) |
+| **4** | **iPhone → Mac automatic hand-off** (`reverse route`, `configUpdateReasonEndedBottomUpRouteChange`) |
+
+Three unrelated mechanisms, one shape. This is now solid support for stating the trigger as **any output-device change**, rather than anything Spotify- or Bluetooth-specific.
+
+### Recovery differed from incident 3 / 恢复表现与事故 3 不同
+
+`killall ControlCenter` stopped the loop immediately (**0** writes in the following 5 s, ControlCenter back to 0.4% CPU). But unlike incident 3, **the volume did not restore itself** — it stayed at `0` and `muted: true` after the agent respawned, and had to be raised by hand. Worth noting for anyone using the workaround: stopping the runaway and recovering the volume are two separate steps.
+
+`killall ControlCenter` 立即止住循环(其后 5 秒 **0** 次写入),但与事故 3 不同,**音量没有自行恢复** —— agent 重启后仍为 `0` 且静音,需手动调回。使用该规避手段的人需注意:止住失控与恢复音量是两件事。
 
 ## Scope: not a 27 regression / 并非 27 回归
 

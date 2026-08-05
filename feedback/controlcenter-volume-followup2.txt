@@ -1,11 +1,12 @@
 FOLLOW-UP 2: STILL PRESENT ON BETA 4 (26A5388g). THE TRIGGER IS ANY OUTPUT-
 DEVICE CHANGE, NOT A SPOTIFY/AIRPLAY TRANSFER. COREAUDIOD PAYS 1.5-1.8 CORES.
 
-Caught live again on 2026-08-04 on macOS 27.0 beta 4 (26A5388g), 15 days after
-that build shipped. This is the most complete capture so far: unlike every
-previous occurrence it ratchets in BOTH directions inside a single runaway, and
-it arrived through a trigger path that rules out the Spotify-specific reading
-of my original report.
+Caught live twice more on macOS 27.0 beta 4 (26A5388g), on 2026-08-04 and
+2026-08-05, 15 and 16 days after that build shipped. The first of the two
+ratchets in BOTH directions inside a single runaway; the second ran for 63
+minutes and 107,675 writes, and shows the ratchet starting BEFORE any user
+input. Both arrived through trigger paths that rule out the Spotify-specific
+reading of my original report.
 
 Three things in this comment are new. Two of them narrow the report; one of
 them retracts a piece of evidence I supplied earlier.
@@ -34,12 +35,16 @@ Control Center was still re-syncing to the newly-connected device.
   11:02:15.360987  ControlCenter  set system volume: 0.215000 -> 0.250000
                                   <-- runaway begins, 20 ms after the key press
 
+A third occurrence on 2026-08-05 came through yet another path: an automatic
+iPhone-to-Mac AirPods hand-off, logged as "show smart routing REVERSE ROUTE"
+followed by configUpdateReasonEndedBottomUpRouteChange.
+
 What the known occurrences share is therefore narrower and more general than
 what I originally wrote: an output-device change immediately followed by a
 volume mutation. The KIND of device change is irrelevant - Spotify Connect
-transfer, manual device switch, or an unattended Bluetooth reconnect all work.
-The window is short: 150 ms from the device-connect banner to the key press,
-20 ms from the key press to the first runaway write.
+transfer, unattended Bluetooth reconnect, and automatic iPhone-to-Mac hand-off
+have each produced it. The window is short: 150 ms from the device-connect
+banner to the key press, 20 ms from the key press to the first runaway write.
 
 
 2. BOTH DIRECTIONS IN ONE RUNAWAY, AND FULL SCALE ON WORN HEADPHONES
@@ -140,10 +145,50 @@ Detailed write-up, including the parts I could not resolve:
 https://github.com/jizhi0v0/macos27-beta-issues/blob/main/issues/apple-controlcenter-volume-rmw-race.md
 
 
-ONE OPEN QUESTION I CANNOT SETTLE FROM LOGS
+6. THE RATCHET STARTS BEFORE ANY USER INPUT (2026-08-05, 63 MINUTES)
 
-Whether the manual volume adjustment is causally necessary, or merely the way
-the user discovers the runaway. Every occurrence I have observed includes one,
-but that may be observation bias: with the volume pinned the user reaches for
-the volume key, so the adjustment is also the detection path. I mention it so
-the correlation in my reports is not over-read.
+In my previous comment I flagged that I could not tell from logs whether the
+user's volume adjustment is causally necessary or merely how the runaway gets
+noticed. The 2026-08-05 occurrence answers half of that, and I would rather
+supply the answer than let the correlation in my earlier reports be over-read.
+
+  12:44:57.844  ControlCenter  system-banners: show smart routing REVERSE ROUTE
+                               C4:B3:49:AA:E7:97        <- iPhone -> Mac hand-off
+  12:45:06.594  Alcove         ['vmvc'] volume: 0.467500     ┐ four clean 1/16
+  12:45:06.617  ControlCenter  system volume of 223 updated: │ steps, ~300 ms
+                               0.530000 -> 0.467500          │ apart, NOT written
+  12:45:06.894  Alcove         ['vmvc'] volume: 0.405000     │ by Control Center
+  12:45:07.305  Alcove         ['vmvc'] volume: 0.342500     │ and with NO key
+  12:45:07.587  Alcove         ['vmvc'] volume: 0.280000     ┘ event logged
+  12:45:08.146  AVRouting      configUpdateReasonEndedBottomUpRouteChange
+  12:45:08.152  ControlCenter  system volume of 65 updated: 0.280000 -> 0.176838
+  12:45:08.289  ControlCenter  [HotKeys] hot key 'volumeDown (builtin, down)'
+  12:45:08.295  ControlCenter  <SoundSettings> (DeviceID 101) setLevel: 0.062500
+  12:45:08.315  ControlCenter  set system volume: 0.176838 -> 0.062500  <- runaway
+
+A descending 1/16 ratchet is therefore already running 1.7 SECONDS BEFORE the
+only key event in the window. So the user's adjustment is not what starts it.
+
+What I cannot claim: that the runaway reaches its self-sustaining state with
+zero input. There is exactly one volumeDown key event, 26 ms before Control
+Center's first runaway write, so input is present at the moment Control Center
+takes over. Manual adjustment is not the initiator; it has not been excluded as
+a contributor at that handover.
+
+This occurrence also ran far longer than any previous one: 107,675 writes over
+63 minutes at a sustained 1,800/min, ending only when I restarted the agent.
+
+
+7. THE LOOP OUTLIVES THE DEVICE THAT TRIGGERED IT
+
+During that 63-minute runaway the AirPods disconnected and the system fell back
+to the built-in speakers. Control Center kept writing at 30 Hz on the built-in
+device for the rest of the hour. Once established, the loop depends neither on
+the third-party app (section 5) nor on the audio endpoint whose arrival
+triggered it. Only restarting the agent stops it.
+
+One practical note for anyone reproducing: on this occurrence, restarting
+Control Center stopped the write loop immediately (0 writes in the following
+5 s) but did NOT restore the volume - it stayed at 0 and muted until raised by
+hand. On the 2026-08-04 occurrence it did come back on its own. Stopping the
+runaway and recovering the volume are separate outcomes.
