@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | 🟢 **Fixed by the vendor in OrbStack 2.2.2** (2026-08-02), confirmed by the author 2026-08-03. **Our earlier "likely fixed on beta2" verdict was wrong** — see [Resolution](#resolution--结论如何收场) |
+| **Status** | 🟢 **Fixed by the vendor in OrbStack 2.2.2** (2026-08-02), confirmed by the author 2026-08-03. Last actually observed on **beta1 only**; never reproduced afterwards, and the reason for that silence was never isolated — see [Resolution](#resolution--结论如何收场) |
 | **macOS** | seen on 27.0 beta1 `26A5353q`; resolved app-side while beta4 `26A5388g` was current |
 | **Component** | Apple **SwiftUI / AttributeGraph** ↔ OrbStack **2.2.1 (20628)** (non-MAS); fixed in **2.2.2 (20903)** |
 | **Hardware** | `Mac15,11`, M3 Max, 36 GB |
@@ -42,7 +42,21 @@ Crash originates in Apple's `AttributeGraph` / SwiftUI Charts stack, not OrbStac
 
 ### Two things in this write-up were wrong / 本文此前有两处错误
 
-**1. "Not reproduced" was recorded as "likely fixed".** The 2026-06-26 retest kept OrbStack on the Activity Monitor charts view for **3h21m** — past the beta1 ~2h50m crash point — saw RSS plateau instead of grow, and concluded 🟢 *likely fixed on beta2*. It was not fixed. The bug survived beta2, beta3, the beta3 revision and beta4, and was still there until OrbStack shipped an app-side fix **seven weeks later**. A single non-reproducing window is not evidence of a fix, however long it runs. The retest even recorded the correct caveat — *"idle CPU was 0% (charts may have been throttled while the window was occluded/backgrounded), so this is 'doesn't crash under normal use' rather than a guaranteed code-level fix"* — and then the status line overrode it anyway. The caveat was right; the headline was wrong.
+**1. "Not reproduced" was recorded as "likely fixed" — but the opposite over-claim is just as unsupported.** The 2026-06-26 retest kept OrbStack on the Activity Monitor charts view for **3h21m**, past the beta1 ~2h50m crash point, saw RSS plateau instead of grow, and concluded 🟢 *likely fixed on beta2*. That verdict rested on a single non-reproducing window, which is not evidence of a fix — and the retest itself had recorded the right caveat, *"idle CPU was 0% (charts may have been throttled while the window was occluded/backgrounded), so this is 'doesn't crash under normal use' rather than a guaranteed code-level fix"*, which the status line then overrode.
+
+**What we can and cannot say, precisely:**
+
+| | |
+|---|---|
+| Established | Last observed crash: **beta1 `26A5353q`, OrbStack 2.2.1**, 2026-06-10. No OrbStack crash report has appeared on disk since — across beta2, beta3, the beta3 revision and beta4. |
+| Established | The vendor shipped a fix in **2.2.2 on 2026-08-02** and closed the upstream issue with "Fixed in v2.2.2", so as of early August he still considered it a live, fixable bug. |
+| **Not** established | That the crash **reproduced** on beta2/beta3/beta4. It was never once reproduced after beta1. An earlier revision of this section asserted it "survived beta2, beta3, the beta3 revision and beta4" — that was inferred from the existence of the vendor fix, which does not support it. Retracted. |
+| **Not** established | That macOS beta2 fixed it. Equally unsupported, and it is what the original 🟢 claimed. |
+| Confound | The workaround was adopted after beta1 — the reporter stopped leaving OrbStack parked on the Activity Monitor view for hours. The crash needs ~2h50m of continuous GUI uptime **on that specific view**, so months of not seeing it is exactly what you would expect from the behaviour change alone, independent of any code change on either side. |
+
+The two candidate explanations for the silence — an OS-side change in beta2, or simply not exercising the trigger any more — were **never separated**, and now cannot be: 2.2.2 is installed and the vendor fix has landed. The defensible statement is narrow: **the crash was last seen on beta1, and the shipped fix is OrbStack's.** Who fixed what in the intervening weeks is not recoverable from what we have.
+
+**"未复现"被写成了"已修复",而反向的过度断言同样没有依据。** 2026-06-26 那次 3h21m 未复现被判为 🟢 beta2 已修复 —— 单次未复现窗口不构成修复证据,当时也已写下正确的保留意见,却被状态行覆盖。**但需要同样明确的是:** 本节此前断言该 bug "活过 beta2/beta3/beta3 修订/beta4",那是从"厂商后来修了"倒推出来的,同样缺乏依据,现予撤回。可确证的只有:最后一次实际崩溃是 **beta1 + 2.2.1(2026-06-10)**,此后再未出现;厂商于 **2026-08-02 在 2.2.2 中修复**并关闭上游 issue,说明其在 8 月初仍视之为真实存在的可修 bug。**混杂因素:** beta1 之后已采用规避手段(不再让 OrbStack 长时间停在 Activity Monitor 页),而该崩溃需要在**该特定界面**上连续运行约 2h50m —— 因此"很久没遇到"完全可以仅由使用习惯改变解释,与双方是否改过代码无关。两种解释**从未被区分开**,现在也无法再区分。可辩护的表述很窄:**该崩溃最后一次出现在 beta1,而最终落地的修复来自 OrbStack。**
 
 **2. "Apple framework regression, no app-side fix" was wrong as a practical claim.** The vendor's own first read matched ours — on 2026-06-13 kdrag0n wrote *"both look like SwiftUI or other framework bugs… There's likely not much we can do here"* and recommended filing with Apple. Seven weeks later he fixed it in the app. Where the crash *bottoms out* (AttributeGraph, an Apple private framework) does not settle who **can** fix it: an app can restructure how it drives SwiftUI Charts so the attribute graph stops growing without bound. "The stack ends in an Apple framework" is an argument about the throw site, not about ownership of the fix — and this issue is the counter-example to treating the two as the same thing. (Contrast [#17](wechat-imageviewer-viewbridge-crash.md), where four unrelated apps across four UI toolkits hit a byte-identical Apple throw site — *that* pattern does implicate the framework, because no app-side commonality survives.)
 
