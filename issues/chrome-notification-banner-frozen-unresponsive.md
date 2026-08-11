@@ -10,7 +10,7 @@
 | **Component** | Apple `usernoted` (notification response routing) ↔ `Google Chrome Helper (Alerts).app` |
 | **Chrome** | `151.0.7922.109` (Official Build) (arm64) |
 | **Hardware** | MacBook Pro `Mac15,11`, M3 Max (27 beta5) vs. a second Mac on macOS 26 (control) |
-| **Report** | Apple Feedback `FB________` *(to be filed)* · Chromium `crbug.com` UI>Notifications *(to be filed)* — see [Who can fix this](#who-can-fix-this--谁能修) |
+| **Report** | Chromium: **posted 2026-08-12 as [comment #26 on issue 370536109](https://issues.chromium.org/issues/370536109#c26)** — that issue has been open since 2024-10-01 with the identical symptom, was reproduced by Google in #12, and had no root cause in 16 months. Apple Feedback `FB________` *(to be filed — draft in [`feedback/un-getdeliverednotifications-race.md`](../feedback/un-getdeliverednotifications-race.md))* |
 
 ## Symptom / 症状
 

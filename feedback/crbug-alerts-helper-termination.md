@@ -1,5 +1,5 @@
-NOT YET POSTED. This is a COMMENT for the existing Chromium issue, not a new bug report:
-  https://issues.chromium.org/issues/370536109
+POSTED 2026-08-12 as comment #26 on the existing Chromium issue (not a new bug report):
+  https://issues.chromium.org/issues/370536109#c26
   "Push Notifications 'notificationclick' not handled in MacOS 15" — opened 2024-10-01, P2, still unfixed.
 
 Why comment instead of filing new: that issue is the same user-visible bug (see its #5: "clicking may
