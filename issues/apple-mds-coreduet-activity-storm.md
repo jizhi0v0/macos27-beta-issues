@@ -187,3 +187,22 @@ So the 300/s trigger silently required ~600/s of real traffic to fire, and every
 This is the same failure family as the `log`-is-a-zsh-builtin trap already documented here: **it fails by returning a plausible small number rather than an error**, which reads exactly like "no storm".
 
 2026-08-11 于 beta5 专门重启后取样:**峰值 279 行/秒**(beta4 为 ~2,420/秒),且呈开机后爆发并衰减的形态而非持续风暴;配套指标同步下降 —— `mds` **14.0%**(原 39–43%)、`contextstored` **1.7%**(原 24–39%)、`mdworker` 常驻 35 个(原每分钟重生 341 次)。**不予关闭**:仅一次开机窗口、一台机器,且 beta4 的风暴本就是间歇性的。**并修正本仓库脚本的缺陷**:`tools/mds-storm-watch.sh` 的探测未加 `--info --debug`,漏计约 52%(同一 60 秒窗口:1,451 vs 3,032),导致 300/秒的阈值实际需要 ~600/秒才触发,此前所有 "0/s"、"1/s" 读数都偏低约一倍。与"`log` 是 zsh 内建"属同一类陷阱 —— **它以一个看似合理的小数字失败,而不是报错**。
+
+## CORRECTION 2026-08-12 — beta5 is *worse* than beta4; the "much reduced" verdict was a sampling artefact / 更正：beta5 比 beta4 更严重，之前的「大幅减少」是取样假象
+
+The beta5 entry previously read 🟡 "much reduced", based on a **single post-boot window** that peaked at 279 CoreDuet lines/s and decayed to 14/s within ~12 minutes. That reading was not representative.
+
+A continuous watcher ([`tools/mds-storm-watch.sh`](../tools/mds-storm-watch.sh), threshold 300/s over a 10 s probe) left running for **2 h 23 m** on `26A5406e` tripped **10 times**:
+
+```
+17:43:40   585/s      18:33:37   379/s      19:48:46  5,976/s
+18:02:00   309/s      18:45:55   458/s      19:59:04  1,307/s
+18:10:07   302/s      19:30:14  4,871/s     20:06:11    345/s
+18:17:11   648/s
+```
+
+min 302 · median 585 · **max 5,976 lines/s** — versus the ~2,420/s figure recorded on beta4 that this entry was comparing against. So beta5 is **~2.5× worse at peak**, not reduced, and the storm **recurs for hours** rather than settling after boot.
+
+**Methodology lesson, and it is the same one this repo keeps re-learning:** a bursty phenomenon cannot be characterised from one window. The earlier beta5 number understated the real peak by roughly **20×** purely because the window happened to land in a quiet stretch. The companion process costs quoted from that same window (`mds` 14.0%, `contextstored` 1.7%, 35 `mdworker` processes) are equally unrepresentative and should not be treated as beta5's steady state.
+
+(The separate watcher defect noted earlier — probing without `--info --debug`, undercounting CoreDuet lines by ~52% — had already been fixed before these numbers were collected, so it is not an explanation for the discrepancy.)

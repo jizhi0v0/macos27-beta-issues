@@ -76,3 +76,20 @@ Untested: whether turning **Auto-Brightness off** eliminates the episodes. That 
 ## Workaround / 临时规避
 
 Possibly **System Settings → Displays → Automatically adjust brightness → off** (untested).
+
+## CORRECTION 2026-08-12 — not rare at all: 72% of five-minute windows / 更正：完全不罕见，72% 的五分钟窗口都有
+
+This entry previously described the oscillation as **"rare (~once/30 min)"**. That estimate was wrong.
+
+A watcher sampling `log show --last 5m --info --debug --predicate 'process == "corebrightnessd"'` roughly every five minutes, running for **9 h 17 m** on beta5 `26A5406e`, found `nan` lines in:
+
+```
+windows sampled : 104
+windows with nan:  75      (72%)
+total nan lines : 37,088
+worst window    :  4,609 lines
+```
+
+So any arbitrary five-minute look has about a **7-in-10** chance of catching it, and it is still fully present on beta5 — the entry was previously left at 🟡 on beta4 data alone.
+
+What does **not** change: the beta4 mechanism description (1,396 toggles each way in 12 s — once per frame at 120 Hz; every field including `ambient lux` reading `nan` while Auto-Brightness is ON), and the explicit falsification of this as the cause of [#3](apple-windowserver-invalid-window.md). Only the frequency claim was wrong, and it was wrong because it came from spot checks rather than a continuous watcher.
