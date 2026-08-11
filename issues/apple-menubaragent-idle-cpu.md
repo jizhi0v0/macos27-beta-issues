@@ -47,6 +47,44 @@ None app-side that fully clears it (it persists with menu-bar apps removed). Red
 - Consistent across many measurements this session (~12–14%), independent of which apps are running → reads as a macOS 27 beta2 baseline, not app-fed.
 - **Strongest confirmation:** after the user quit nearly all menu-bar apps (only system `ControlCenter` + a couple icon-only items left, `log show` showing **0** status-item redraws), MenuBarAgent still held **12.5%**. With essentially nothing feeding it, the cost is MenuBarAgent's own — confirms a genuine beta2 regression rather than app-driven load.
 
+## What MenuBarAgent actually is / 这个进程到底是什么
+
+Established by inspection on beta5 `26A5406e`, not inferred:
+
+```
+CFBundleIdentifier      com.apple.MenuBarAgent
+LSMinimumSystemVersion  27.0                      <- explicitly macOS 27+
+LSUIElement             true                      <- background agent, no Dock tile
+linked private fwks     MenuBarClient, MenuBarClientCore, ControlCenter, SkyLight
+launchd                 com.apple.MenuBarAgent.plist — RunAtLoad, KeepAlive
+LimitLoadToSessionType  [LoginWindow, Aqua]       <- runs at the login window too
+MachServices            com.apple.MenuBarAgent.systemservices
+                        com.apple.PreloginSystemBannerService
+on-screen window        layer 24, bounds (0,0) 1728x33
+```
+
+**It *is* the menu bar.** That 1728×33 window pinned at the origin is the menu-bar strip itself, sitting at layer 24 (Dock is 20, Notification Center 21, Siri 23). And the dependency runs one way: `ControlCenter` links `MenuBarClient`, not the reverse — so on macOS 27 **ControlCenter is a client of MenuBarAgent**, whereas on macOS 26 ControlCenter drew the menu bar itself.
+
+It is also **feature-flagged**. The launchd job carries:
+
+```
+"Disabled" => { "#IfFeatureFlagDisabled" => "MenuBar/MenuBarQFA", "#Then" => true }
+```
+
+so the whole agent is gated behind a flag named `MenuBar/MenuBarQFA`, implying a switchable new implementation with the old path likely still present. What `QFA` stands for is **unknown** — not documented anywhere found. **This flag has not been touched and should not be**: flipping a system feature flag that owns menu-bar rendering, on a beta, is not a symmetric risk.
+
+### Inferences (labelled as such, not verified)
+
+- **Decoupling menu-bar rendering from ControlCenter's lifecycle** — if ControlCenter hangs or dies, the menu bar survives. This also makes [#22](https://github.com/jizhi0v0/macos27-beta-issues/issues/22) more plausible: a `KeepAlive` process that owns persistent menu-bar compositing state is exactly the shape of thing where state accumulates and a restart clears it.
+- **Drawing the menu bar before login** — `LimitLoadToSessionType` includes `LoginWindow` and it vends `PreloginSystemBannerService`, so it appears to have taken over work previously split between loginwindow and SystemUIServer.
+- **Probably tied to the new menu-bar appearance** (transparency, wallpaper-derived tinting, notch handling), which needs continuous compositing. **No direct evidence for this one.**
+
+### What this corrects about earlier readings here
+
+The framing that macOS 27 "added a process that eats CPU" is incomplete. MenuBarAgent took over work that lived in **ControlCenter** on macOS 26, so its CPU is not straightforwardly *additional* cost — and measuring either process alone across the two releases compares different workloads. The right comparison is the pair together, under a stated condition.
+
+**MenuBarAgent 就是菜单栏本身** —— 它持有 layer 24 上那个 (0,0)、1728×33 的窗口。依赖方向是单向的:`ControlCenter` 链接 `MenuBarClient`,反之不成立,即 **27 上 ControlCenter 是它的客户端**,而 26 上菜单栏由 ControlCenter 自己画。它由 launchd `RunAtLoad`+`KeepAlive` 拉起,**在登录窗口会话中也运行**,并提供 `PreloginSystemBannerService`(登录前系统横幅)。整个 agent 挂在 feature flag **`MenuBar/MenuBarQFA`** 下,说明是可切换的新实现;`QFA` 含义未知。**该 flag 未动过,也不建议动** —— 在 beta 上关掉菜单栏实现,风险不对称。**推断(未验证)**:把菜单栏渲染与 ControlCenter 的生命周期解耦(这也让 #22"状态累积、重启即清"更说得通)、接管登录前菜单栏、可能与新的菜单栏视觉有关。**由此更正**:"27 多了个进程吃 CPU"这个读法不完整 —— 它接手的是 26 上属于 ControlCenter 的活,单独比较任一进程的百分比都不是同一份工作量。
+
 ## The interaction condition — and what macOS 26 says / 交互条件与 macOS 26 的对照
 
 Every measurement in this file before 2026-08-11 was taken on a **static, untouched** menu bar. The external report [#20](https://github.com/jizhi0v0/macos27-beta-issues/issues/20) says something different in its very title — *"when **interacting** with the top panel"* — and reports **MenuBarAgent 20–70%** plus **ControlCenter ~45%**. Those two conditions had never been compared, which is why the note below said #20 was "unexplained by anything observed here": **the condition it describes had simply never been measured.**
