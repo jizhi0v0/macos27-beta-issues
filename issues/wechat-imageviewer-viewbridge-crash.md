@@ -28,7 +28,7 @@ Recorded explicitly so nobody mistakes this for a measured result.
 | [Developer Forums 837342](https://developer.apple.com/forums/thread/837342) | **no mention of beta5**; latest discussed is beta4, still reproducing there as of ~2026-08-04 |
 | Reproducer | none achieved — **0 hits in 800 stress cycles** (~4,800 order-on-screen ops), and the harness was shown never to reach the bad state, so this is not evidence either way |
 | Assertion present in beta5's ViewBridge binary | **yes**, still there — but this is uninformative: a fix can prevent entry into the bad state while leaving the defensive assertion in place |
-| beta4 ↔ beta5 disassembly diff of the method | **not possible on this machine** — no APFS local snapshots (`tmutil listlocalsnapshots /` is empty) and the beta4 dyld shared cache was replaced by the upgrade, so there is no baseline to diff against |
+| beta4 ↔ beta5 disassembly diff | **done — and it is the one positive signal here.** Apple modified the registration teardown in exactly the method that owns the leaked registration. See [beta4 ↔ beta5 diff](#beta4--beta5-diff-what-apple-actually-changed--apple-到底改了什么). It establishes that **the code changed**; it does not establish that **the bug is fixed** |
 
 **Falsification is cheap and immediate: one recurrence flips this back to 🔴.** `~/Library/Logs/crash-notify.log` records every crash and is not subject to log rotation, so no action is needed to catch it. Given the prior rate, **3–5 days of normal use with zero crashes** would be the first genuinely informative signal; 7 days would be strong.
 
@@ -324,6 +324,54 @@ Read with `log show --info --predicate 'subsystem == "dev.jizhi.remoteviewguard"
 流传的那版守卫有两个缺陷,均已在本机验证:**(1) 按推荐时机安装会静默失效** —— ViewBridge 是懒加载,进程启动时 `NSRemoteView` 类还不存在,`if (!cls) return;` 直接走掉且不打日志;修法是先 `dlopen`。**(2) 只挡了三处断言中的一处** —— Did 处理器另有两处(`+220`/`+260`),坏状态延续过去照样崩,应当两个方法都包。另已验证:吞掉 Will 的异常**不会级联**,状态机 `_expectWindowOrderingState:andAdvanceTo:` 零断言站点,失配只走 `vbLog`。改进版见 [`tools/RemoteViewCrashGuard.m`](../tools/RemoteViewCrashGuard.m),它同时是**探针**(记录每次调用的 `isValid`/`window`/`note.object`/是否相等),使"安静期"能产出**正面记录**而非仅仅"没崩"。
 
 该规避手段以 swizzle 包裹私有方法并只吞掉特定断言,作者称已在生产环境跑了三周以上,作用域控制得相当克制。但仍有三点无法回避:**(1)** 它 swizzle 的是私有类与私有方法,对 App Store 审核是实打实的风险,且 Apple 一改该方法就可能静默失效;**(2)** 吞掉断言 ≠ 修复状态 —— 断言之所以触发,正是因为该 remote view 期望的容器窗口为 `null`,吞掉之后进程带着 AppKit 认为不一致的状态继续跑,界面是否正常、是否泄漏,本文未做验证;**(3)** 它是崩溃防护,不是修复,底层竞态未动。对于崩溃已成常态的非 MAS 应用是合理的临时手段,对沙盒 App Store 提交则较难论证,且应在 Apple 修复后移除。
+
+## beta4 ↔ beta5 diff: what Apple actually changed / Apple 到底改了什么
+
+Apple changed **one method**, and it is the one that owns the registration this bug leaks.
+
+**How the comparison was obtained.** No APFS local snapshot survived the upgrade, so beta4 came from the official restore image — `UniversalMac_27.0_26A5388g_Restore.ipsw`, sha256 verified against [appledb](https://github.com/littlebyteorg/appledb). Its **Rosetta system cryptex** dmg is unencrypted (the main system dmg is `.aea`-encrypted), and it carries a full `dyld_shared_cache_x86_64`; this machine has the matching beta5 cryptex at `/System/Volumes/Preboot/Cryptexes/Rosetta/`. So the comparison is **x86_64 vs x86_64, same source, different OS build** — the encrypted main image is never needed. Dylibs were extracted with the system's own `/usr/lib/dsc_extractor.bundle` (a ~30-line `dlopen` wrapper; no third-party tooling).
+
+**Control for a stale cryptex.** If the Rosetta cryptex had simply not been rebuilt, "ViewBridge unchanged" would be meaningless. It was rebuilt: AppKit, Foundation, CoreFoundation and libobjc all differ by sha256 between the two builds.
+
+**The change**, in `-[NSRemoteView maintainContainingWindowNotifications:]`:
+
+```objc
+// beta4 26A5388g — the whole teardown sits inside the nil-guard
+old = objc_loadWeak(&self->_containingWindow);
+if (old != nil) {
+    objc_storeWeak(&self->_containingWindow, nil);
+    [center _removeObserver:self notificationNamesAndSelectors:notifications object:old];
+    [old removeObserver:self forKeyPath:@"level"];
+    [old removeObserver:self forKeyPath:@"backgroundColor"];
+}
+
+// beta5 26A5406e — the notification removal is hoisted OUT of the guard,
+// and object: changes from the old window to nil
+[center _removeObserver:self notificationNamesAndSelectors:notifications object:nil];
+old = objc_loadWeak(&self->_containingWindow);
+if (old != nil) {
+    objc_storeWeak(&self->_containingWindow, nil);
+    [old removeObserver:self forKeyPath:@"level"];
+    [old removeObserver:self forKeyPath:@"backgroundColor"];
+}
+```
+
+It is **not an added call** — the removal exists in both. What changed is that it now runs **unconditionally**, at the convergence point of both paths, and with `object:nil`. `_removeObserver:notificationNamesAndSelectors:object:` is an AppKit category that loops the dictionary calling `-removeObserver:name:object:`, and per Apple's docs a `nil` object means the receiver "does not use a sender as criteria for removal" — so beta5 sweeps **every** stale per-window registration of this view for those six notification names. Corroborating detail: the adjacent `vbLog` format string drops one argument (`"…removed containing %@ observers %@, %@, and %@"` → `"…removed containing %@ KVO observers %@ and %@"`), because notification-observer removal no longer happens inside that block.
+
+**Where the edit landed, pinned independently of the diff.** Extracting every `handleFailureIn` `__LINE__` constant attributed to `NSRemoteView.m` in both builds and plotting the shift against source line: **+0 through beta4 line 3217, then +10 from line 3235** — both inside this method. So ~10 source lines were inserted **inside `maintainContainingWindowNotifications:` and nowhere before it**. (Later steps at 3947/8441/8491 are unrelated edits further down the file.)
+
+**Why it fits this bug.** Under beta4, if the weak `_containingWindow` ivar was already nil at teardown — zeroed, or overwritten without passing through this path — the entire removal block was skipped and the `object:oldWindow` registration leaked. The view keeps receiving `_NSWindowWillBecomeVisible` for a window that is no longer `[self window]`, and `[self window]` is now `nil` → exactly the forum's reason string, `"… notified of <NSWindow: 0x…> but expected (null)"`.
+
+**What this does and does not establish.** It establishes that **Apple hardened precisely the spot our hypothesis blames**. It does **not** establish that the bug is fixed:
+
+- The sweep only helps when `maintainContainingWindowNotifications:` is actually called. Its only caller, `-[NSRemoteView _maintainWindowNotifications:]`, is **byte-identical** between builds; whether a stale registration can arise on a path that never calls it is unverified.
+- "Stale per-window registration causes this crash" remains our hypothesis. The diff shows Apple hardened that spot; it does not prove that spot was the cause.
+- All assertion sites remain present in beta5.
+- beta4 is only available here as the x86_64 Rosetta build. Same source, so the arm64e change is expected to match — *a guess*, though beta5's arm64e and x86_64 builds do agree with each other.
+
+**Everything else in ViewBridge is unrelated.** Of 4,838 functions, 688 differ, but **502 are pure `__LINE__`/immediate shifts** and none of the 186 real code changes touch the order-on-screen path. Notably **byte-identical** — i.e. *not* hardened alongside: `viewWillMoveToWindow:`, `_invalidate`, `invalidate`, `dealloc`, `_maintainWindowNotifications:`, and the sibling registrars `maintainKeyTestWindowNotifications:`, `maintainAppWideNotifications:`, `-[NSViewServiceMarshal maintainNotificationsForWindow:]`. The siblings still carry beta4's conditional-teardown shape, so this was a **targeted one-method fix, not a systematic sweep** — consistent with fixing the reported bug, and it means the same pattern still exists elsewhere.
+
+Apple **只改了一个方法**,正是持有本 bug 所泄漏注册的那个。beta4 把整段拆除放在 `if (old != nil)` 里,弱引用一旦已被清零就整块跳过,`object:oldWindow` 的注册便泄漏;beta5 把通知注销**提到判断之外无条件执行,且 `object:` 改为 `nil`**(按 Apple 文档即"不以发送者为移除条件"),从而清扫全部残留注册。行号偏移分析独立佐证:**beta4 第 3217 行前偏移为 0、第 3235 行起为 +10**,两处均在该方法内 —— 即约 10 行源码恰好插在此方法内部,之前一行未动。对比方式为 **x86_64 ↔ x86_64**(beta4 取自官方 IPSW 内未加密的 Rosetta cryptex,beta5 取自本机同名 cryptex),并以 AppKit/Foundation/CoreFoundation/libobjc 四者哈希均不同**排除了"cryptex 根本没更新"**这一伪阴性。**但这只证明代码改了,不证明 bug 修好了**:该清扫仅在此方法被调用时生效,其唯一调用者 `_maintainWindowNotifications:` 两版逐字节相同;且"注册泄漏导致此崩溃"仍是我们的假设。兄弟方法(`maintainKeyTestWindowNotifications:` 等)**未同步修改**,说明这是**针对性单点修复**,同样的形态在别处依然存在。
 
 ## Corrections (2026-08-11) / 更正
 
