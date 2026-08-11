@@ -5,20 +5,20 @@
 
 | | |
 |---|---|
-| **Status** | ⚪ **Suspected fixed on beta5 `26A5406e`, pending retest** (2026-08-11) — **⚠️ see [Basis for the verdict](#basis-for-the-beta5-verdict--这个判断建立在什么之上) before relying on this.** Deliberately *not* 🟢: no positive signal exists yet. The suspicion rests on the *shape* of the bug (a deterministic assertion on one predicate, reached through a stable call path, previously firing 1–2×/day) plus zero occurrences since the beta5 upgrade — **not** on a measured observation window: at the time of the call, beta5 had been up **1.1 hours**, during which a completely unfixed bug would also most likely have produced zero crashes. No confirming evidence exists from Apple's release notes, the Developer Forums thread, or a code diff. **Flip back to 🔴 on the first recurrence.** Prior state: 🔴 Open — **32 verified crashes** across 4 unrelated apps / 4 UI toolkits (WeChat ×26 + CleanShot X ×3 + DingTalk ×2 + duo-pasted ×1), 2026-07-09 → 08-10, **byte-identical throw site, always `+216`**, surviving `26A5378j` → `26A5378n` → `26A5388g` |
+| **Status** | 🟢 **Fixed in beta5 `26A5406e`** (2026-08-11) — Apple changed **one method**, and it is the one that leaks the registration this crash depends on: `-[NSRemoteView maintainContainingWindowNotifications:]` now removes the notification observers **unconditionally and with `object:nil`**, sweeping every stale per-window registration, where beta4 skipped the removal entirely whenever the weak `_containingWindow` ivar was already nil. Established by a beta4↔beta5 binary diff — see [beta4 ↔ beta5 diff](#beta4--beta5-diff-what-apple-actually-changed--apple-到底改了什么). **Residual gap, stated plainly:** the sweep only runs when that method is called (its sole caller is byte-identical between builds), all assertion sites remain, and beta4 was only comparable as its x86_64 Rosetta build. Behavioural confirmation is still accumulating — at the time of writing the machine had ~2.5 h on beta5, far short of the 3–5 days that the prior 1–2 crashes/day rate would make meaningful. **Flips back to 🔴 on the first recurrence.** Prior state: 🔴 — **32 verified crashes** across 4 unrelated apps / 4 UI toolkits (WeChat ×26 + CleanShot X ×3 + DingTalk ×2 + duo-pasted ×1), 2026-07-09 → 08-10, **byte-identical throw site, always `+216`**, surviving `26A5378j` → `26A5378n` → `26A5388g` |
 | **macOS** | 27.0 — **beta3 `26A5378j`** (8 crashes) → **beta3 rev `26A5378n`** (11 crashes) → **beta4 `26A5388g`** (**13 crashes**, 07-21 → 08-10). Fixed by neither the 07-14 beta3 revision nor the beta4 update; **beta4 released 2026-07-20, still the current build as of 2026-08-10 (21 days, no beta5)**. |
 | **Component** | Apple **ViewBridge / AppKit** (`NSRemoteView`) — reproduced via **WeChat 4.1.11** (Chromium-based WeChatAppEx / `flue` engine), **CleanShot X 4.8.9** (Cocoa + QuickLookUI `QLSeamlessDocumentOpener`), **DingTalk 8.3.15** (**Qt** — `QtWidgets`/`QtGui`) and **duo-pasted 0.1.1270** (**Swift/AppKit**, own code) |
 | **Reproducers** | **WeChat 4.1.11 (269136)** MAS (`adam_id` 836500024) · **CleanShot X 4.8.9** (`pl.maketheweb.cleanshotx`, team `AFJU4P8ZV4`) · **DingTalk 8.3.15 (54703766)** MAS (`adam_id` 1435447041) · **duo-pasted 0.1.1270** (own app, Swift/AppKit) |
 | **Machine** | `Mac15,11` — Apple M3 Max, 36 GB |
 | **Report** | Apple Feedback: `FB________` *(ours, still unfiled)* · **Apple has acknowledged the bug** via [Developer Forums 837342](https://developer.apple.com/forums/thread/837342) — DTS routed it, and a third-party Feedback there reports "Potential fix identified — For a future OS update" · a crash-guard workaround exists (see [External corroboration](#external-corroboration--apple-has-acknowledged-it-and-the-exception-text-is-now-known--外部佐证apple-已受理异常文本已知)) · vendor email to CleanShot X drafted |
 
-## Basis for the beta5 verdict / 这个判断建立在什么之上
+## Basis for the verdict / 这个判断建立在什么之上
 
-Recorded explicitly so nobody mistakes this for a measured result.
+Recorded explicitly, because this call went through two revisions in one day and the reasoning matters more than the emoji.
 
-**What the ⚪ "suspected fixed" rests on** — the reporter's judgement that this bug's *shape* makes a short quiet window meaningful: it is a deterministic assertion on a single predicate, reached through a stable, high-traffic call path, and it previously fired **1–2 times a day** across four apps. On that reading, a fix should show up as an immediate and total stop rather than a gradual decline.
+**What the 🟢 rests on** — the [beta4↔beta5 binary diff](#beta4--beta5-diff-what-apple-actually-changed--apple-到底改了什么). Apple hardened precisely the teardown that leaks the per-window registration, and the shape of the fix (`object:nil`, unconditional) directly destroys the state the assertion tests for. Being notified about a window that is not your own is hard to achieve *except* through a leftover per-window registration, which is why this is treated as decisive rather than merely suggestive.
 
-**What it does NOT rest on** — every independent check came back empty or inapplicable:
+**What it does NOT rest on** — behavioural evidence, which remains thin:
 
 | check | result |
 |---|---|
@@ -28,11 +28,15 @@ Recorded explicitly so nobody mistakes this for a measured result.
 | [Developer Forums 837342](https://developer.apple.com/forums/thread/837342) | **no mention of beta5**; latest discussed is beta4, still reproducing there as of ~2026-08-04 |
 | Reproducer | none achieved — **0 hits in 800 stress cycles** (~4,800 order-on-screen ops), and the harness was shown never to reach the bad state, so this is not evidence either way |
 | Assertion present in beta5's ViewBridge binary | **yes**, still there — but this is uninformative: a fix can prevent entry into the bad state while leaving the defensive assertion in place |
-| beta4 ↔ beta5 disassembly diff | **done — and it is the one positive signal here.** Apple modified the registration teardown in exactly the method that owns the leaked registration. See [beta4 ↔ beta5 diff](#beta4--beta5-diff-what-apple-actually-changed--apple-到底改了什么). It establishes that **the code changed**; it does not establish that **the bug is fixed** |
+| beta4 ↔ beta5 disassembly diff | **done — this is what the 🟢 is built on**, and it is listed here rather than above only to keep the whole evidence set in one table. See [beta4 ↔ beta5 diff](#beta4--beta5-diff-what-apple-actually-changed--apple-到底改了什么) |
 
 **Falsification is cheap and immediate: one recurrence flips this back to 🔴.** `~/Library/Logs/crash-notify.log` records every crash and is not subject to log rotation, so no action is needed to catch it. Given the prior rate, **3–5 days of normal use with zero crashes** would be the first genuinely informative signal; 7 days would be strong.
 
-**这个 ⚪「疑似修复」是报告者的判断,不是实测结论。** 依据是 bug 的*形态*:单一判据上的确定性断言、经稳定高频链路触发、此前 1–2 次/天 —— 按此读法,修好了应表现为立刻彻底停止。**但所有独立检验都是空的**:判断作出时 beta5 只开机 **1.1 小时**(以历史频率算,即使完全没修,该窗口内零崩溃的概率也约 95%);Apple beta5 release notes 全文未提;论坛帖零提及 beta5;复现器 800 次压测 0 命中且从未到达坏状态;断言在 beta5 二进制里仍在(两边都不能说明);beta4↔beta5 反汇编对比**本机无法进行**(无 APFS 本地快照,beta4 的 dyld cache 已被升级替换)。**再崩一次即翻回 🔴**,`crash-notify.log` 常驻记录、不受轮转影响,无需任何操作即可捕获。按先前频率,**连续 3–5 天零崩溃**才是第一个真正有信息量的信号,7 天为强信号。
+**这个 🟢 建立在 [beta4↔beta5 二进制 diff](#beta4--beta5-diff-what-apple-actually-changed--apple-到底改了什么) 上,不是建立在"没看见它崩"上。** Apple 恰好加固了泄漏按窗口注册的那处拆除,且修法形态(无条件 + `object:nil`)直接摧毁断言所检测的状态;而"收到一个不属于自己的窗口的通知",除残留的按窗口注册外很难有别的来源 —— 故视为决定性证据而非仅仅提示。
+
+**行为证据仍然薄弱,如实列出**:定性时 beta5 仅开机 **1.1 小时**(以历史 1–2 次/天算,即使完全没修,该窗口内零崩溃的概率也约 95%);Apple beta5 release notes 全文未提;论坛帖零提及 beta5;复现器 800 次压测 0 命中且从未到达坏状态;断言在 beta5 二进制里仍在(此项两边都不能说明)。**残留缺口**:该清扫仅在 `maintainContainingWindowNotifications:` 被调用时生效,其唯一调用者两版逐字节相同;beta4 仅有 x86_64 版可比,arm64e 属推断。
+
+**再崩一次即翻回 🔴** —— `crash-notify.log` 常驻记录、不受日志轮转影响,无需任何操作即可捕获。按先前频率,**连续 3–5 天零崩溃**为第一个有信息量的行为信号,7 天为强信号。
 
 ## Symptom / 症状
 
