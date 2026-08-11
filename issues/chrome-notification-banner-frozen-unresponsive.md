@@ -6,7 +6,7 @@
 | | |
 |---|---|
 | **Status** | 🔴 **Root cause established by controlled experiment** (2026-08-12). Clicking a persistent/actionable Chrome web notification does nothing at all once `Google Chrome Helper (Alerts).app` has exited. `usernoted` **does** receive every click — it just has no live client left to forward it to, and neither relaunches one nor falls back, dropping the click with no error logged. Anything that respawns the helper (a new notification arriving, quitting/reopening Chrome) instantly un-sticks **every** backlogged notification at once. |
-| **macOS** | 🔴 27.0 beta5 `26A5406e` — hits roughly **4 of 7** real web-push notifications. Also seen on beta4 `26A5388g`. 🟢 **macOS 26 control: 7/7 clean** on the same harness, same Chrome build, same account |
+| **macOS** | 🔴 27.0 beta5 `26A5406e` — hits roughly **4 of 7** real web-push notifications. Also seen on beta4 `26A5388g`. 🟢 **macOS 26.6 `25G72` control: 9/9 clean** on the same harness, same Chrome build, same account — and its Alerts helper stays alive while a notification is outstanding (7+ min observed), which is exactly what macOS 27 fails to do |
 | **Component** | Apple `usernoted` (notification response routing) ↔ `Google Chrome Helper (Alerts).app` |
 | **Chrome** | `151.0.7922.109` (Official Build) (arm64) |
 | **Hardware** | MacBook Pro `Mac15,11`, M3 Max (27 beta5) vs. a second Mac on macOS 26 (control) |
@@ -58,13 +58,53 @@ Response <...mac27-1...> sent to NSUserNotification client
 
 confirmed independently server-side (the service worker's `notificationclick` handler pinged the test server for `webpush-repro-mac27-1-…` only at that point, ~13 minutes after delivery).
 
-So the chain is:
+### Why the OS recovery path can never work / 为什么系统的兜底路径注定失败
+
+`usernoted` does **not** just give up — it tries to relaunch the client on every single click, and the relaunched helper dies within ~100 ms each time. Counted over the same stuck window:
+
+```
+clicks received by usernoted : 61
+helper appDeath events        : 60      ← ~1 relaunch-and-die per click
+clicks forwarded to client    : 2
+```
+
+RunningBoard shows the pattern in the raw:
+
+```
+00:25:50.081  Acquiring assertion targeting [anon<Google Chrome Helper (Alerts)>(501):147]
+00:25:50.123  [anon<Google Chrome Helper (Alerts)>(501):147] termination reported by proc_exit   ← 42 ms
+00:25:50.229  usernoted: Delivering / Presenting the notification
+00:25:58, 00:25:59, 00:26:00, 00:26:12, 00:26:13 …   appDeath, appDeath, appDeath …   ← one per click
+```
+
+The reason is structural: a Chromium helper process launched **standalone by LaunchServices** has none of the mojo channel arguments its browser process would pass it, so it exits immediately by design. macOS's "relaunch the registered client and deliver the response to it" recovery is therefore fundamentally incompatible with how Chrome's Alerts helper works — the OS relaunches it, it dies, the response is dropped, forever.
+
+*(Credit where due: an early hypothesis in the investigation — that the helper "refuses to run standalone" and so the system cannot fall back — was dismissed here on the grounds that the helper is connection-reused rather than one-shot. The connection-reuse point was right, but the standalone-launch point was **also** right, and is exactly the mechanism above.)*
+
+### The full chain / 完整链条
 
 1. Chrome delivers a persistent notification via the Alerts helper → helper registers as an `usernoted` client;
-2. helper goes idle and **exits**; its registration dies with it;
+2. the helper **exits while the notification is still outstanding** — on macOS 27 sometimes only **140 ms** after posting (see lifetimes below); its registration dies with it;
 3. user clicks → **`usernoted` receives the click normally** (so mouse input, WindowServer hit-testing and event dispatch are all fine — this rules out the whole input-latency family of explanations);
-4. `usernoted` has no live client for that notification. It does still run its `Search for url to launching … in background` path (59 such lines during the stuck window, so it is *not* that it never tries) — but **no client is ever produced, nothing is forwarded, and no error is logged**. The click is silently discarded;
-5. any event that respawns the helper — a new notification arriving, or quitting and reopening Chrome — restores the registration and **instantly un-sticks every backlogged notification simultaneously**.
+4. `usernoted` runs its `Search for url to launching … in background` path, LaunchServices starts the helper standalone, and it dies in ~100 ms. **Nothing is forwarded, and no error is logged.** The click is silently discarded — and this repeats identically for every subsequent click;
+5. any event that gets Chrome itself to spawn a *proper* helper — a new notification arriving, or quitting and reopening Chrome — restores the registration and **instantly un-sticks every backlogged notification simultaneously**.
+
+### Step 2 is where the versions diverge / 两个版本的分水岭在第 2 步
+
+Helper lifetimes measured from RunningBoard on macOS 27 beta5 are wildly erratic — three orders of magnitude apart under nominally identical conditions:
+
+```
+pid 74467   38.62s
+pid 78969    3.28s
+pid 79617    0.14s   ← died instantly
+pid 87903  164.85s
+pid 147      0.14s   ← died instantly; this is the stuck mac27-1 notification
+pid 4210    19.16s   ← the click that worked
+```
+
+On macOS 26, by contrast, the helper simply **stays alive as long as a notification of its own is outstanding** — observed alive for 7+ minutes with one undismissed notification, exiting only after it was handled. That is the correct behaviour, and it is why the OS's broken relaunch path is never exercised there.
+
+**Why the helper sometimes exits ~immediately on 27 while a notification is still outstanding is the one link still unexplained.** Chromium decides this itself (`CheckIfServiceCanBeTerminated`, which asks the OS what notifications remain), so a plausible — but **untested** — reading is that the query returns empty on 27 and Chrome concludes it is safe to terminate. That is a hypothesis, not a finding.
 
 Point 5 retroactively explains every "it healed by itself after N minutes" observation from this investigation: on one occasion three separately-stuck notifications all became clickable within 21 seconds of each other, exactly when Chrome was restarted.
 
@@ -88,7 +128,7 @@ Recorded deliberately, because several of these looked convincing and cost real 
 
 | Hypothesis | How it died |
 |---|---|
-| `usernoted` logging `com.google.Chrome.framework.AlertNotificationService Failed to source application bundle` is the fault | It fires on essentially **every** cold reconnect of the helper — including 3 of the notifications that clicked **fine**. Byte-identical log output either way. Pure noise for this bug |
+| `usernoted` logging `com.google.Chrome.framework.AlertNotificationService Failed to source application bundle` is the fault | It fires on essentially **every** cold reconnect of the helper — including 3 of the notifications that clicked **fine**. Byte-identical log output either way. **Settled cross-version:** the macOS 26 control machine logs the *same* error for the *same* bundle (11 times in 2 h) while being 9/9 clean. Pure noise for this bug |
 | The Alerts helper must stay alive *at delivery time* | Force-killed the helper immediately after one delivery → that notification clicked **fine**. What matters is the helper's state *at click time*, not delivery time |
 | Service-worker version changed between delivery and click | Built on a contaminated data point: the "dead" notification had **already been clicked and consumed** at 22:32:29 (visible in `usernoted`'s `_removeDelivered` log), so the later "retest" wasn't clicking a live notification at all |
 | Elapsed time alone | Fired a push, waited 4 minutes untouched, then clicked → **worked fine** |
@@ -107,10 +147,10 @@ Both un-stick *all* pending notifications at once. Note that restarting the noti
 
 ## Who can fix this / 谁能修
 
-Both sides have something to fix, and the failure is squarely in Apple's process:
+The failure needs **both** halves to happen, and each half has an owner:
 
-- **Apple (`usernoted`)** — it accepts the click, has the notification record, knows the client bundle identifier and its on-disk path, runs a launch-search path, and then silently drops the user's interaction with no error and no fallback. Relaunching the registered client, or falling back to the app's main bundle, would fix it. **This is the actual defect** and is why the same Chrome build is 7/7 clean on macOS 26.
-- **Chrome (Chromium)** — its own architecture creates the precondition by letting the Alerts helper exit while notifications it delivered are still on screen and expected to be interactive. Keeping the helper alive while any alert-style notification of its own is still outstanding would sidestep the OS bug entirely.
+- **Chrome (Chromium)** — the Alerts helper exits while a notification it posted is still on screen and expected to be interactive (sometimes 140 ms after posting). On macOS 26 it correctly stays alive until the notification is handled. Keeping the helper alive whenever any of its own alert-style notifications are outstanding removes the precondition entirely. **Whether this premature exit is Chrome misjudging, or Chrome being fed a wrong answer by a broken macOS 27 query, is the open question above** — that determines whether this is the primary fix or a mitigation.
+- **Apple (`usernoted`)** — its recovery path is a dead end by construction: it relaunches the registered client through LaunchServices, which for a Chromium helper means a process that exits in ~100 ms, and then it drops the user's click with **no error, no retry against the app's main bundle, and no user-visible feedback**. 61 clicks, 60 relaunch-and-die cycles, 2 forwarded. Even granting Chrome's premature exit, silently discarding every interaction is the OS's own defect.
 
 ## Variations honestly recorded / 如实记录的变体
 
@@ -129,8 +169,9 @@ Superficially the same complaint as the long-running macOS 15 issue ([MacRumors 
 
 ## Open questions / 待定
 
-1. Why does the failure only hit ~50–60% of pushes rather than every push once the helper has exited? Presumably a race between helper exit and the click, but the exact window was not characterised.
-2. Does this affect **any** app whose alert-style notifications come from a short-lived helper, or is something Chrome-specific involved? (See the 2026-08-04 lead above.)
-3. What exactly happens inside the `Search for url to launching …` path during the stuck window — it runs, but never yields a client. Needs a `usernoted` trace beyond what the public log exposes.
-4. The one instance where right-click and swipe also died and a Chrome restart did not fix it — same bug or a second one?
-5. Was the equivalent path broken in earlier 27 betas (beta1–3)? Only beta4 and beta5 were tested.
+1. **Why does the Alerts helper sometimes exit ~140 ms after posting, while its own notification is still outstanding?** This is the one unexplained link. Chromium decides helper termination itself (`CheckIfServiceCanBeTerminated`, which queries the OS for remaining notifications), so "the query returns empty on 27" is a plausible but **untested** reading. Measured lifetimes on 27 are erratic (0.14 s / 0.14 s / 3.3 s / 19 s / 39 s / 165 s); on 26 the helper simply stays alive. Answering this decides whether the primary fix belongs to Apple or to Chrome.
+2. Why does the failure only hit ~50–60% of pushes rather than every push? It tracks the erratic helper lifetime above, but the exact race was not characterised.
+3. Does this affect **any** app whose alert-style notifications come from a short-lived helper, or is something Chrome-specific involved? (See the 2026-08-04 lead above.)
+4. ~~What happens inside the `Search for url to launching …` path~~ — **answered:** it launches the helper via LaunchServices and the helper dies in ~100 ms (60 `appDeath` events for 61 clicks), because a Chromium helper cannot run standalone.
+5. The one instance where right-click and swipe also died and a Chrome restart did not fix it — same bug or a second one? Its helper (pid 87903) was alive for 165 s, which does **not** fit the mechanism above, so it is likely something else.
+6. Was the equivalent path broken in earlier 27 betas (beta1–3)? Only beta4 and beta5 were tested.
