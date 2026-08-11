@@ -39,6 +39,31 @@ isBuiltinPanel=YES externalPanel=YES prefersHDR10=NO
 - **Tell-tale bug**: `externalPanel=YES` is reported even though the machine has **only the internal panel** — the parameters themselves are wrong, pointing at a framework regression, not the apps.
 - `logd` cumulative CPU: 2:35 at 13 min uptime (≈20% avg). The flood is **post-boot / app-init transient** — it quiesced to 0 lines/30s by ~21 min uptime, and `logd` dropped back to ~1.6%.
 
+
+## Retest 2026-08-11 — beta5 `26A5406e` — STILL PRESENT, and it no longer decays / 仍在,且不再衰减
+
+Captured in a **deliberate post-boot window** — the reason this entry sat at ⚪ for three builds is that the earlier retests simply never looked in the first minutes after a boot. This time the machine was rebooted specifically to catch it.
+
+`log show --start <boot>` over the first 8 minutes: **1,744 hits**, emitters exactly as originally documented —
+
+| process | hits | toolkit |
+|---|---|---|
+| **DingTalk** | 1,338 | Electron |
+| WeType | 263 | — |
+| Mail | 136 | WebKit content |
+| textunderstandingd | 3 | — |
+
+Per-minute rate: `0.7 → 4.2 → 4.1 → 2.5 → 4.6 → 6.3 → 4.2 → 2.1 /s`.
+
+**Two differences from the beta1/beta2 description:**
+
+1. **Lower rate** — ~2–6/s aggregate here, against "~16/sec **per app**" originally. `logd` costs **2.38%** cumulative since boot, against the ~20% originally recorded.
+2. **It does not die down.** The original write-up says the loop runs "then dying down after a few minutes". At 8 minutes in it was still emitting 2–6/s with no downward trend. Whatever throttling produced the original decay is either absent or operating on a longer timescale.
+
+**Net: not fixed.** The ⚪ that stood since beta3 was a missed observation window, not evidence of a fix — a distinction this ledger has had to make more than once.
+
+2026-08-11 于 beta5 专门重启后取样:**仍复现**,8 分钟内 1,744 次,发出者与原记录一致(钉钉 1,338 为最大来源)。两点差异:**速率更低**(合计 ~2–6/秒,原为"每个 app ~16/秒"),`logd` 仅 **2.38%**(原 ~20%);但**不再衰减** —— 原文称"几分钟后自行衰减",而 8 分钟后仍稳定在 2–6/秒。**结论:未修复**;此前三个 build 的 ⚪ 是**错过了观测窗口**,不是修复的证据。
+
 ## Reproduction / 复现
 
 1. Boot into macOS 27 beta2.
