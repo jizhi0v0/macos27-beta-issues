@@ -47,7 +47,13 @@ cpu_cum() {
 }
 
 probe() { # -> CoreDuet lines seen in the last $PROBE seconds
-  $LOG show --last "${PROBE}s" --predicate 'process == "mds"' --style syslog 2>/dev/null \
+  # --info --debug is REQUIRED. Verified 2026-08-11 on one 60 s window:
+  # without it this command counted 1,451 CoreDuet lines, with it 3,032 — a
+  # ~52% undercount, because those lines are emitted below default level.
+  # The consequence was a threshold that silently needed ~2x the real traffic
+  # to trip. Same family of trap as `log` being a zsh builtin: it fails by
+  # returning a plausible small number, not an error.
+  $LOG show --last "${PROBE}s" --info --debug --predicate 'process == "mds"' --style syslog 2>/dev/null \
     | grep -c 'CoreDuet' || true
 }
 

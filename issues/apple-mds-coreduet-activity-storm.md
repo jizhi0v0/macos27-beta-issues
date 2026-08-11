@@ -148,3 +148,42 @@ It probes `mds`'s CoreDuet rate every 60 s (idle ≈2/s, storm ≈2,420/s; trigg
 
 - [ecosystemd trust-evaluation retry loop](apple-ecosystemd-trust-retry-loop.md) — the #3 log emitter in the same capture
 - [WindowServer high CPU](apple-windowserver-invalid-window.md) — Spotlight load was explicitly **excluded** as the cause there (`mds+mdworker` = 0.0% during the decisive replicated run)
+
+## Retest 2026-08-11 — beta5 `26A5406e` — much reduced, and a defect in our own watcher / 大幅减轻,以及监视脚本自身的缺陷
+
+Captured in a deliberate post-boot window. CoreDuet lines from `mds`, per minute since boot (17:29:08):
+
+| minute | lines | rate |
+|---|---|---|
+| 17:36 | 8,328 | 139/s |
+| 17:37 | 10,365 | 173/s |
+| **17:38** | **16,715** | **279/s** |
+| 17:39 | 8,399 | 140/s |
+| 17:40 | 7,839 | 131/s |
+| 17:41 | 812 | 14/s |
+
+**Peak 279/s against beta4's ~2,420/s** — roughly an order of magnitude lower — and it behaves as a boot-time burst that decays rather than a sustained storm. Every companion metric fell in step:
+
+| | beta4 `26A5388g` | beta5 `26A5406e` |
+|---|---|---|
+| CoreDuet lines/s | ~2,420 | **279** peak |
+| `mds` CPU | 39–43% | **14.0%** |
+| `contextstored` CPU | 24–39% | **1.7%** |
+| `mdworker.shared` | 341 respawns/min | 35 processes resident |
+
+**Not closed.** This is one post-boot window on one machine, and the beta4 storm was itself intermittent — the entry already records that it is *not* predicted by uptime. A quiet or reduced window is not proof it cannot still reach beta4 levels.
+
+### Defect in `tools/mds-storm-watch.sh` — it undercounted by ~52%
+
+The probe ran `log show --last Ns --predicate 'process == "mds"'` **without `--info --debug`**. Those CoreDuet lines are emitted below default level, so the probe saw about half of them. Measured on a single 60 s window while the burst was live:
+
+```
+without --info --debug : 1,451 CoreDuet lines
+with    --info --debug : 3,032
+```
+
+So the 300/s trigger silently required ~600/s of real traffic to fire, and every "0/s" and "1/s" reading this watcher produced was low by roughly 2×. Fixed.
+
+This is the same failure family as the `log`-is-a-zsh-builtin trap already documented here: **it fails by returning a plausible small number rather than an error**, which reads exactly like "no storm".
+
+2026-08-11 于 beta5 专门重启后取样:**峰值 279 行/秒**(beta4 为 ~2,420/秒),且呈开机后爆发并衰减的形态而非持续风暴;配套指标同步下降 —— `mds` **14.0%**(原 39–43%)、`contextstored` **1.7%**(原 24–39%)、`mdworker` 常驻 35 个(原每分钟重生 341 次)。**不予关闭**:仅一次开机窗口、一台机器,且 beta4 的风暴本就是间歇性的。**并修正本仓库脚本的缺陷**:`tools/mds-storm-watch.sh` 的探测未加 `--info --debug`,漏计约 52%(同一 60 秒窗口:1,451 vs 3,032),导致 300/秒的阈值实际需要 ~600/秒才触发,此前所有 "0/s"、"1/s" 读数都偏低约一倍。与"`log` 是 zsh 内建"属同一类陷阱 —— **它以一个看似合理的小数字失败,而不是报错**。
