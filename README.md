@@ -11,7 +11,8 @@ If a Google/GitHub search for a crash signature or a process eating CPU on macOS
 | | |
 |---|---|
 | Machine | MacBook Pro `Mac15,11` — Apple M3 Max, 36 GB |
-| OS | macOS **27.0** beta — builds seen: `26A5353q` (beta1), `26A5368g` (beta2), `26A5378j` (beta3), `26A5378n` (beta3 revision, 2026-07-14), **`26A5388g`** (beta4 — [released 2026-07-20](https://www.macrumors.com/2026/07/20/apple-releases-macos-27-beta-4/), installed here 07-21, **still current on 2026-08-10: 21 days, no beta5**) |
+| OS | macOS **27.0** beta — builds seen: `26A5353q` (beta1), `26A5368g` (beta2), `26A5378j` (beta3), `26A5378n` (beta3 revision, 2026-07-14), `26A5388g` (beta4, 2026-07-21 → 08-11), **`26A5406e`** (beta5 — [released 2026-08-10](https://www.macrumors.com/2026/08/10/apple-releases-macos-27-beta-5/), installed here 08-11) |
+| Toolchain | Xcode **27.0** beta — `27A5194q` (**beta1**, installed 2026-06-09/10, unchanged for 2 months) → **`27A5237l`** (beta5, installed 08-11). Tracked separately on purpose: SDK-level entries (e.g. [#11](issues/swift-charts-conditionalcontent-macos27-sdk.md)) move with **this** row, not the OS row |
 | Reporter | [@jizhi0v0](https://github.com/jizhi0v0) |
 
 ## Status legend / 状态
@@ -73,11 +74,11 @@ A beta3 revision **`26A5378n`** replaced `26A5378j` on 2026-07-14. **Every verdi
 
 ### New build `26A5388g` (beta4) / 新 build(beta4,2026-07-21 见)
 
-**beta4 `26A5388g`** — [released by Apple 2026-07-20](https://www.macrumors.com/2026/07/20/apple-releases-macos-27-beta-4/), installed here 07-21 — is **still the current build as of 2026-08-10: 21 days, no beta5**. So none of the carried-over verdicts have had a chance to be invalidated by a newer build; they simply remain unverified on `…g`.
+**beta4 `26A5388g`** — [released by Apple 2026-07-20](https://www.macrumors.com/2026/07/20/apple-releases-macos-27-beta-4/), installed here 07-21 — held for **21 days**, until beta5 landed 08-10. So through that whole window none of the carried-over verdicts had a chance to be invalidated by a newer build; they simply remained unverified on `…g`.
 
 The entry with by far the most beta4 data is **#17**, which **keeps crashing — 13 times on beta4 alone** (07-21 → 08-10), and has now spread to **4 apps across 4 UI toolkits** (WeChat/Chromium, CleanShot X/QuickLook, **DingTalk/Qt**, **duo-pasted/Swift-AppKit**), byte-identical throw at `+216`. #21 was also reconfirmed on beta4. Everything else carries over from `…n`/`…j` unverified.
 
-**beta4 `26A5388g`**(Apple 于 2026-07-20 发布,本机 07-21 安装)**截至 2026-08-10 仍是最新版本 —— 已 21 天,beta5 未发布**。因此上面沿用的结论并非被新版本推翻,只是尚未在 `…g` 上验证。
+**beta4 `26A5388g`**(Apple 于 2026-07-20 发布,本机 07-21 安装)**维持了 21 天,直到 08-10 beta5 发布**。这段窗口内上面沿用的结论并非被新版本推翻,只是尚未在 `…g` 上验证。
 
 beta4 数据最多的是 **#17 —— 仍在崩,光 beta4 上就 13 次**(07-21 → 08-10),且已扩散到**4 个 app、4 种 UI 技术栈**(微信/Chromium、CleanShot X/QuickLook、**钉钉/Qt**、**duo-pasted/Swift-AppKit**),抛点逐字一致于 `+216`。#21 亦已在 beta4 复验。其余结论均沿用 `…n`/`…j`,未验证。
 
@@ -117,6 +118,24 @@ A single 60 s `/usr/bin/log show` window (39,686 lines total) + a process-CPU sn
   - ~~**OrbStack Charts** — kept on the Activity Monitor view **3h21m**, RSS plateaued ~150–185 MB (no runaway), no crash.~~ ⚠️ **This inference does not hold.** A non-reproducing window is not evidence of a fix — and the workaround was in use, so not seeing it proves nothing either way. OrbStack shipped the actual fix app-side in **2.2.2** on 2026-08-02 — see [the write-up](issues/orbstack-charts-attributegraph-crash.md#resolution--结论如何收场).
   - **Chrome MediaRemote** — **1h45m** of heavy Now-Playing churn on .201 (up to 640 events/min), no crash.
   - ~~**WindowServer high CPU** — RESOLVED as load~~ — ⚠️ **this beta2-era verdict has been overturned.** It was based on a single un-replicated observation (quitting Telegram dropped CPU to single digits). On beta4, 10 replicates on a **fully idle** desktop show a **~42–46% floor that no app quit removes** and that is **independent of refresh rate**. See row **#3** above and [the write-up](issues/apple-windowserver-invalid-window.md); the GitHub issue was closed under the old verdict and needs reopening.
+
+### New build `26A5406e` (beta5) / 新 build(beta5,2026-08-11 装)
+
+**beta5 `26A5406e`** — [released 2026-08-10](https://www.macrumors.com/2026/08/10/apple-releases-macos-27-beta-5/), installed here 08-11, ending beta4's 21-day run. Also swapped the toolchain the same day: Xcode `27A5194q` → **`27A5237l`** (both kept side by side for A/B).
+
+**Nothing in this ledger has been retested on `…e` yet, except [#11](issues/swift-charts-conditionalcontent-macos27-sdk.md)** — and #11 moved because of the *Xcode* swap, not the OS one. Every other verdict now carries over across **two** unverified build bumps (`…n`/`…g` → `…e`).
+
+Read of Apple's beta5 release notes (fetched as the docs JSON and diffed by radar ID against the archived beta2 JSON — **no beta3/beta4 snapshot exists on Wayback, so this diff spans beta2→beta5, not beta4→beta5**):
+
+- **Of our 25 entries, exactly one is mentioned: #11**, moved Known → Resolved (radar 174168981). The same entry is Resolved in the tvOS 27 and watchOS 27 beta5 notes too.
+- **#17 is not mentioned at all** — no `NSRemoteView` / ViewBridge entry anywhere in the document. The third-party FB in [forum 837342](https://developer.apple.com/forums/thread/837342) showing "Potential fix identified — For a future OS update" is *not* evidence that beta5 is that update. Only a crash count on `…e` can settle it.
+- None of our six filed FB numbers appear among the 24 FBs the document cites.
+
+**beta5 `26A5406e`**(2026-08-10 发布,本机 08-11 安装),结束了 beta4 的 21 天。同日工具链也换了:Xcode `27A5194q` → **`27A5237l`**(两个并存,便于 A/B)。
+
+**除 [#11](issues/swift-charts-conditionalcontent-macos27-sdk.md) 外,台账里没有任何条目在 `…e` 上复验过** —— 而 #11 是因为换了 *Xcode* 才翻的,不是换了 OS。其余结论现在都跨了**两次**未验证的 build 变更。
+
+beta5 release notes 通读结论(抓 docs JSON,按 radar ID 与存档的 beta2 JSON 做 diff —— **Wayback 上没有 beta3/beta4 快照,所以这是 beta2→beta5 的差集,不是 beta4→beta5**):**25 条里只提到 #11 一条**(Known → Resolved);**#17 全文未提**,论坛里第三方 FB 的 "Potential fix identified" 不能证明 beta5 就是那个 update,只能靠 `…e` 上的崩溃计数说话;我们提交的 6 个 FB 号也都不在文档引用的 24 个里。
 
 ## How to contribute / 如何补充
 
