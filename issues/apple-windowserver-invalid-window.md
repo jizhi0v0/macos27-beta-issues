@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | 🔴 **CONFIRMED regression on beta4 `26A5388g`** (2026-07-25) — stable **~42–46%** floor on a genuinely idle desktop; 10 replicates across two refresh rates, and **independent of refresh rate** (so not per-frame compositing). Supersedes the earlier "resolved as load" verdict. See [beta4 re-test](#re-test-2026-07-25--beta4-26a5388g--confirmed-regression-supersedes-resolved-as-load) |
+| **Status** | 🟢 **Fixed on beta5 `26A5406e`** (2026-08-11) — the 42–46% floor is **gone**: **~4%** on a clean idle desktop and **7.7%** with the same menu-bar apps running that were up during the beta4 runs. The two distributions do not overlap — beta4's *minimum* across 10 replicates was 42.0%, beta5's *maximum* on a valid window is 6.9%. The `Invalid window` log line survives at **0.5/s** (was ~4/s) and stays decoupled from CPU, as it always was. See [beta5 re-test](#re-test-2026-08-11--beta5-26a5406e--the-floor-is-gone). Prior state: 🔴 CONFIRMED regression on beta4 `26A5388g` (2026-07-25) — stable ~42–46% floor, 10 replicates across two refresh rates, independent of refresh rate |
 | **macOS** | seen on 27.0 beta2 `26A5368g`; **re-confirmed on beta4 `26A5388g`** |
 | **Component** | Apple **WindowServer / SkyLight** (`com.apple.SkyLight`) |
 | **Hardware** | `Mac15,11`, M3 Max, single internal display (no external monitor, no mirroring) |
@@ -148,7 +148,56 @@ Quit every app during the lead-in (including menu-bar apps — Alcove, Klack, Su
 - **Single-shot measurements are not decision-grade here.** Two nominally identical states gave 22.5% and 50.0%. Only replication (sd 0.9) settled it.
 - Measuring from inside a heavyweight Electron app makes the measuring process the largest perturbation on the machine — the same structural blocker documented in [#12](apple-menubaragent-idle-cpu.md). The scripts above are `disown`ed so the app can be quit while they run.
 
+## Re-test 2026-08-11 — beta5 `26A5406e` — the floor is gone
+
+Two valid measurements, both via [`tools/ws-replicate.sh`](../tools/ws-replicate.sh) / [`ws-idle-baseline.sh`](../tools/ws-idle-baseline.sh) — same method, same script, same 120 Hz as the beta4 runs, cumulative `utime+stime` deltas rather than the decaying `ps %cpu`:
+
+| desktop state | WindowServer | detail |
+|---|---|---|
+| beta4 `26A5388g`, 10 replicates | **45.9%** (sd 0.9), 60 Hz run 42.0% | min across all replicates **42.0%** |
+| beta5, menu-bar apps running (incl. Alcove) | **7.7%** | single 123 s window |
+| beta5, clean desktop | **~4%** | two runs: mean 3.9% (min 2.7, max 6.2) and mean 4.2% (min 2.5, max 6.9) |
+
+**The distributions do not overlap.** beta4's minimum (42.0%) sits more than six times above beta5's maximum on a valid window (6.9%). The characteristic this issue documented — a *stable, tight floor that no app quit removes and that is independent of refresh rate* — does not exist on beta5. Alcove's contribution is ~3.7 points (7.7% → 4%), i.e. ordinary per-app compositing, not a floor.
+
+`Invalid window` spam persists but at **30 lines/60 s ≈ 0.5/s**, down from ~4/s on beta2–beta4. It remains decoupled from CPU (0 hot stacks in the beta2 spindump), so it stays a cosmetic log issue.
+
+### Methodology: the screen lock trap — and an attribution we got wrong / 锁屏陷阱
+
+**A locked screen RAISES WindowServer CPU, it does not park it.** This is the opposite of what the scripts' own header comments assume, and it invalidated an entire run before it was caught.
+
+The first beta5 replicate run read `5.7 → 18.1 → 24.5 → 24.5 → 21.7` and was initially read as a warm-up ramp attributed to Alcove. **That attribution was wrong.** Correlating the run against `loginwindow` screensaver events showed:
+
+```
+lock intervals            overlap with each measurement window
+  16:03:45 → 16:03:49       baseline  16:02:19-16:04:22 :   4 s =  3.3%   valid
+  16:12:15 → 16:17:12       round 1   16:10:55-16:15:56 : 221 s = 73.4%   VOID
+  16:23:46 → 16:23:49       round 2   16:22:26-16:27:27 :   3 s =  1.0%   valid
+```
+
+rep 1 ran with the screen awake and read 5.7%; the lock began at 16:12:15 and reps 2–5 ran almost entirely inside it, reading 18–24%. The lock screen is itself animated content (`LUI2Window` / `CABasicAnimation` in the loginwindow log), so it costs *more* to composite than a static idle desktop. The "ramp" was the lock, not Alcove.
+
+**Two things follow for anyone re-running these scripts:**
+
+1. **`pmset -a displaysleep N` is the wrong knob.** It governs display sleep. What locks the screen is the loginwindow screensaver idle timer, read with `defaults -currentHost read com.apple.screensaver idleTime` — it was **120 s** here, while a full replicate run takes ~5.5 min, so it fires mid-run every time. Disable it (`… write com.apple.screensaver idleTime 0`, restore afterwards) or the run is worthless.
+2. **Always verify afterwards rather than trusting that nobody touched the machine.** The check is cheap:
+
+```bash
+/usr/bin/log show --start "<run start>" --end "<run end>" --style compact   --predicate 'process == "loginwindow" AND (eventMessage CONTAINS "screensaver.didstart" OR eventMessage CONTAINS "screensaver.didstop")'
+```
+
+**Open question we cannot answer retroactively:** whether the beta4 42–46% figures carried the same contamination. Those were measured 2026-07-25 and the unified log has long since rotated. Against it: beta4's spread was very tight (sd 0.9), whereas lock contamination produces exactly the kind of within-run split seen above (5.7 vs 24.5). That argues the beta4 set was clean — but it is an inference, not a check.
+
+2026-08-11 于 beta5 复测:**42–46% 的地板消失** —— 干净桌面 **~4%**,保留菜单栏 app 时 **7.7%**;beta4 十次重复的**最小值 42.0%** 高于 beta5 有效窗口的**最大值 6.9%** 六倍以上,两组分布无重叠。Alcove 的贡献约 3.7 个百分点,属普通逐 app 合成开销,不构成地板。`Invalid window` 仍在但降至 **0.5/秒**(原 ~4/秒),且一如既往与 CPU 解耦。
+
+**方法论教训:锁屏会抬高 WindowServer CPU,不是让它停摆** —— 与脚本注释里的假设相反。第一轮 beta5 复测的 `5.7 → 24.5` 被我们误读为"预热爬升并归因于 Alcove",实为**该轮 73.4% 的时间屏幕处于锁定状态**(锁屏界面本身是动画内容)。`pmset displaysleep` 管不了这个,真正的开关是 loginwindow 屏保 idle 计时器(本机 120 秒,而一轮要跑 5.5 分钟)。**跑完务必用 `loginwindow` 的 `screensaver.didstart/didstop` 事件回查**,不要凭"我没碰机器"下结论。
+
 ## Independent corroboration — [#22](https://github.com/jizhi0v0/macos27-beta-issues/issues/22) (different machine, same floor) / 独立佐证
+
+> **⚠️ Superseded by the beta5 re-test above (2026-08-11).** The argument below rests on #22's post-recovery 44.9% "landing inside our 42–46% floor". That floor does not exist on beta5, so the two figures no longer corroborate each other — a 44.9% reading on beta5 would be an *anomaly*, not a match. #22's machine (M4 Air) is still on beta4 `26A5388g` and needs its own beta5 re-test; until then, treat this section as beta4-era history rather than current evidence.
+>
+> **⚠️ 已被上面的 beta5 复测取代。** 下文论证依赖"#22 恢复后的 44.9% 落在我们 42–46% 的地板内",而该地板在 beta5 上已不存在,两个数字不再互相佐证。#22 那台 M4 Air 仍在 beta4,需要它自己在 beta5 上复验。
+
 
 [#22](https://github.com/jizhi0v0/macos27-beta-issues/issues/22) (filed 2026-07-27 by [@andya1lan](https://github.com/andya1lan), independently) reports a **~100% WindowServer state on the same build `26A5388g`** on **different hardware** — MacBook Air, **M4 / 16 GB**, built-in display only — cleared immediately by `killall MenuBarAgent`. The decisive number for *this* issue is what it clears **to**:
 
