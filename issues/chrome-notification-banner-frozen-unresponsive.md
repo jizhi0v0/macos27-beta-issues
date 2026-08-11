@@ -150,7 +150,14 @@ A two-bundle demo sharing **none of Chrome's code** ([`tools/notifdemo-nonchrome
 02:03:05.741 OkayToTerminateService query: count=0 mineVisible=N issued=+0.49ms replied=+1.07ms ids=[]
 ```
 
-Three click conditions were then run, differing **only** in whether the helper can survive a standalone relaunch:
+**The same binary takes the opposite branch on macOS 26.6**, with the query issued at essentially the same instant — this is the cleanest single comparison in the whole investigation:
+
+```
+macOS 26.6  25G72     query: count=1 mineVisible=Y issued=+0.52ms  ->  returns NO  -> staying alive
+macOS 27.0  26A5406e  query: count=0 mineVisible=N issued=+0.49ms  ->  returns YES -> exit(0)  (14/14)
+```
+
+Three click conditions were then run on beta5, differing **only** in whether the helper can survive a standalone relaunch:
 
 | | helper alive at click? | `Received response` | forwarded? | `appDeath` on click | user-visible |
 |---|---|---|---|---|---|
@@ -174,7 +181,7 @@ Condition **A**, the whole failure in 78 ms:
 
 **Correction to an earlier claim in this file.** "No error is logged" is true of **Chrome's** case specifically — `Failed to notify application …` appears **0 times** across the 7-minute Chrome stuck window (61 clicks, 60 `appDeath`) — but not of the OS in general: the demo, which registers on the *modern* UN client path, does get that error logged. Correspondingly, `sent to NSUserNotification client` is a valid success signal only for the **legacy** `NSUserNotification` path Chrome's helper uses; on the modern path the equivalents are `Notifying UserNotifications client <bundle>:<pid> about response` → `Received … reply for response`. The demo never emits the legacy clause **even in condition C where delivery demonstrably worked**, so its absence there proves nothing — the Chrome-side inference stands on Chrome's own logs, where the successful click at 00:29:06 does carry `sent to NSUserNotification client … pid: 4210`.
 
-**Demo caveats.** Per-app presentation style resolved to `alertStyle=1` (banner) rather than Chrome's Alerts, so the clicks came from Notification Center rather than a persistent alert panel — the response path is the same but it is not a byte-identical match. A/B/C are one click each (the 14/14 figure covers the race, not the click conditions). The macOS 26.6 arm of this demo was **not** obtained: the new bundle id needs a physical **Allow** on that machine, so the 26.6 control remains the `getDeliveredNotifications` probe (16/16 visible at 0 ms).
+**Demo caveats.** Per-app presentation style resolved to `alertStyle=1` (banner) rather than Chrome's Alerts, so the clicks came from Notification Center rather than a persistent alert panel — the response path is the same but it is not a byte-identical match. A/B/C are one click each (the 14/14 figure covers the race, not the click conditions). The macOS 26.6 arm covers the race/decision only (n=1, `count=1` → helper stays alive); A/B/C were not re-run there, since with the helper alive there is nothing to test.
 
 ## Reproduction / 复现
 

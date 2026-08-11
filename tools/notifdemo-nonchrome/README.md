@@ -24,6 +24,16 @@ Click **Allow** on the first run. Results append to `~/notifdemo.log`.
 0.35–2.23 ms *after* `add()`'s completion handler had already fired. So an app implementing this
 entirely reasonable-looking idle check kills its own alerts helper 100 % of the time.
 
+**The same binary takes the opposite branch on macOS 26.6** — the cleanest single comparison in this
+investigation, since the query is issued at essentially the same instant on both:
+
+```
+macOS 26.6  25G72     OkayToTerminateService query: count=1 mineVisible=Y issued=+0.52ms replied=+2.38ms
+                      DECISION: notifications.empty() == false -> returns NO  -> staying alive
+macOS 27.0  26A5406e  OkayToTerminateService query: count=0 mineVisible=N issued=+0.49ms replied=+1.07ms
+                      DECISION: notifications.empty() == true  -> returns YES -> exit(0)   (14/14)
+```
+
 Three click conditions, differing only in whether the helper survives a standalone relaunch:
 
 | | helper alive at click? | `Received response` | forwarded? | `appDeath` on click | user-visible |
@@ -52,7 +62,8 @@ asymmetry: that `Failed to notify` error appears on the modern path but **0 time
 - Presentation style resolved to `alertStyle=1` (banner), not Chrome's Alerts; the response path is the
   same but this is not a byte-identical match.
 - A/B/C are one click each; the 14/14 figure covers the race, not the click conditions.
-- The macOS 26.6 arm was not obtained (the new bundle id needs a physical **Allow** on that machine);
-  the 26.6 control remains [`../un-delivered-race-probe/`](../un-delivered-race-probe/), 16/16 visible at 0 ms.
+- The macOS 26.6 arm covers the race/decision only (n=1, `count=1` → helper stays alive); the click
+  conditions A/B/C were not re-run there, since with the helper alive there is nothing to test.
+  The wider 26.6 control remains [`../un-delivered-race-probe/`](../un-delivered-race-probe/), 16/16 at 0 ms.
 - Do not `pkill` the helper while its permission prompt is up — that permanently records a denial for
   the bundle id.
