@@ -139,6 +139,43 @@ So the question reduces to a testable property of the OS API, with no browser in
 
 Point 5 retroactively explains every "it healed by itself after N minutes" observation from this investigation: on one occasion three separately-stuck notifications all became clickable within 21 seconds of each other, exactly when Chrome was restarted.
 
+## Proof it is not Chrome-specific: a non-Chrome app reproduces it end to end / 与 Chrome 无关的自建 demo 完整复现
+
+A two-bundle demo sharing **none of Chrome's code** ([`tools/notifdemo-nonchrome/`](../tools/notifdemo-nonchrome/)): a parent app launches `NotifDemoHelper.app` with a `--from-parent` marker; the helper posts one categorized notification, then evaluates Chromium's exact `OkayToTerminateService` predicate against its own `getDeliveredNotifications` and exits if the array is empty.
+
+**The race hits it every time: 14 / 14** `add()` cycles on beta5 returned `count=0`, queried 0.35–2.23 ms after `add()`'s completion handler had already fired:
+
+```
+02:03:05.740 add() completion fired, id=notifdemo-CLICKC-… addMs=2.28
+02:03:05.741 OkayToTerminateService query: count=0 mineVisible=N issued=+0.49ms replied=+1.07ms ids=[]
+```
+
+Three click conditions were then run, differing **only** in whether the helper can survive a standalone relaunch:
+
+| | helper alive at click? | `Received response` | forwarded? | `appDeath` on click | user-visible |
+|---|---|---|---|---|---|
+| **A** exits, refuses standalone (Chrome-faithful) | no | yes | **no** | **yes, +78 ms** | **click does nothing** |
+| **B** exits, standalone allowed | no → relaunched | yes | **yes, +159 ms** | no | works |
+| **C** stays alive | yes | yes | **yes, +2 ms** | no | works |
+
+Condition **A**, the whole failure in 78 ms:
+
+```
+01:58:48.754307 usernoted: Received response <NotificationRecord app:"com.jizhi0v0.notifdemo.helper" …>
+01:58:48.754759 usernoted: Error  Failed to notify application with com.jizhi0v0.notifdemo.helper for response
+01:58:48.758848 usernoted: Launching com.jizhi0v0.notifdemo.helper at path <private> for response
+01:58:48.827    helper pid=9617: STANDALONE LAUNCH (no --from-parent marker) -> exit(0) immediately
+01:58:48.832877 launchservicesd: kLSNotifyApplicationDeath … "LSExitStatus"=0, "pid"=9617
+01:58:48.832514 usernoted: Foreground launch of <private> for com.jizhi0v0.notifdemo.helper successful   ← already dead
+01:59:20.807817 launchservicesd: Launch of App:"NotifDemoHelper" … timed out, but the application is quitting
+```
+
+**Condition B is the important one.** Identical race, identical self-kill, identical `Failed to notify` — and the click still lands, 159 ms later, purely because the relaunched instance stayed alive. So **macOS's relaunch-based recovery is sound in principle and fails only for clients that cannot run standalone.** Chromium's helper is exactly such a client, which is what puts Chrome in condition A.
+
+**Correction to an earlier claim in this file.** "No error is logged" is true of **Chrome's** case specifically — `Failed to notify application …` appears **0 times** across the 7-minute Chrome stuck window (61 clicks, 60 `appDeath`) — but not of the OS in general: the demo, which registers on the *modern* UN client path, does get that error logged. Correspondingly, `sent to NSUserNotification client` is a valid success signal only for the **legacy** `NSUserNotification` path Chrome's helper uses; on the modern path the equivalents are `Notifying UserNotifications client <bundle>:<pid> about response` → `Received … reply for response`. The demo never emits the legacy clause **even in condition C where delivery demonstrably worked**, so its absence there proves nothing — the Chrome-side inference stands on Chrome's own logs, where the successful click at 00:29:06 does carry `sent to NSUserNotification client … pid: 4210`.
+
+**Demo caveats.** Per-app presentation style resolved to `alertStyle=1` (banner) rather than Chrome's Alerts, so the clicks came from Notification Center rather than a persistent alert panel — the response path is the same but it is not a byte-identical match. A/B/C are one click each (the 14/14 figure covers the race, not the click conditions). The macOS 26.6 arm of this demo was **not** obtained: the new bundle id needs a physical **Allow** on that machine, so the 26.6 control remains the `getDeliveredNotifications` probe (16/16 visible at 0 ms).
+
 ## Reproduction / 复现
 
 There is no deterministic trigger, but there is a **reliable recipe with a ~50–60% per-notification hit rate**: send a *real* web push (which wakes the service worker from a suspended state) rather than calling `showNotification()` from an open page.
@@ -180,8 +217,8 @@ Both un-stick *all* pending notifications at once. Note that restarting the noti
 
 The failure needs **both** halves to happen, and each half has an owner:
 
-- **Chrome (Chromium)** — it treats a single `getDeliveredNotifications` empty result as authoritative and kills the helper on it, with no confirmation and no grace period, even milliseconds after it has itself posted a notification and been told the add succeeded. Chrome is being *lied to*, so this is not where the defect originates — but re-checking, or simply not terminating within a short window of its own successful `add()`, would make it immune. On macOS 26 the same code never trips, because the OS never returns empty.
-- **Apple — two separate defects, both required.** First, `getDeliveredNotifications` reports **empty for ~15 ms after `add()` has already completed** (measured above; absent on macOS 26.6) — this is the trigger, and the more serious bug, since it makes any app's "do I still have notifications displayed?" logic unreliable. Second, `usernoted`'s recovery path is a dead end by construction: it relaunches the registered client through LaunchServices, which for a Chromium helper means a process that exits in ~100 ms, and then it drops the user's click with **no error, no retry against the app's main bundle, and no user-visible feedback**. 61 clicks, 60 relaunch-and-die cycles, 2 forwarded. Even granting Chrome's premature exit, silently discarding every interaction is the OS's own defect.
+- **Chrome (Chromium) — has a fix available today, without waiting for Apple.** Two independent ones, in fact: (1) don't treat a single `getDeliveredNotifications` empty result as authoritative milliseconds after being told its own `add()` succeeded; (2) **let the Alerts helper survive an argument-less relaunch** — condition B above shows that alone is sufficient, because macOS's recovery then works and the queued click is delivered. Chrome is being lied to by the OS, so this is not where the defect originates, but either change makes it immune. On macOS 26 the same code never trips, because the OS never returns empty.
+- **Apple — two separate defects, both required.** First, `getDeliveredNotifications` reports **empty for ~15 ms after `add()` has already completed** (measured above; absent on macOS 26.6) — this is the trigger, and the more serious bug, since it makes any app's "do I still have notifications displayed?" logic unreliable. Second, `usernoted`'s recovery path is a dead end by construction: it relaunches the registered client through LaunchServices, which for a Chromium helper means a process that exits in ~100 ms, and then it drops the user's click with **no retry against the app's main bundle and no user-visible feedback** — and, on the legacy client path Chrome uses, with no error logged either (0 `Failed to notify application` lines across the Chrome stuck window), while still logging the relaunch as `successful` against a process that has already exited. 61 clicks, 60 relaunch-and-die cycles, 2 forwarded. Even granting Chrome's premature exit, silently discarding every interaction is the OS's own defect.
 
 ## Variations honestly recorded / 如实记录的变体
 
