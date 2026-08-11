@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | ⚪ Needs retest on 149.0.7827.201 (originally seen on .115) |
+| **Status** | 🟢 Not reproduced on Chrome 149.0.7827.201 (originally seen on .115, beta1 `26A5353q`) — after a **live repro attempt**: the Now-Playing path driven hard for **1 h 45 m** at up to **640 events/60 s**, 0 crashes and 0 log-signature hits. ⚠️ **This rests on a failed reproduction attempt, not a positive signal.** It is stronger than passive silence — the exact path was actively driven with no workaround in place — but it is not proof, and the same class of reasoning had to be retracted in [#5](orbstack-charts-attributegraph-crash.md). Reopen on any recurrence. The header previously read ⚪ while the body concluded 🟢 — corrected 2026-08-11 |
 | **macOS** | 27.0 beta `26A5353q` (2026-06-14) |
 | **Component** | Apple **MediaRemote / MediaPlayer** ↔ Google Chrome |
 | **Chrome** | crashed on **149.0.7827.115**; machine now on **149.0.7827.201** (non-MAS) — retest needed |

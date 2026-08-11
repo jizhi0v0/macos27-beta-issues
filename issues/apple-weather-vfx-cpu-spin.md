@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | 🟡 Mitigated — beta regression in a system app |
+| **Status** | 🟢 **Fixed in Weather 6.0 build 1435** (beta1 bug was build 1431) — the fix rode in with the app-bundle update, not the OS. Confirmed by a rainy-condition re-test on beta2 `26A5368g`: backgrounded CPU 2.2%, VFX thread parked. The header previously still read 🟡 while the body concluded "CONFIRMED FIXED" — corrected 2026-08-11 |
 | **macOS** | 27.0 beta (`26A5353q`) |
 | **Component** | Apple **Weather.app 6.0 (1431.0.1)** — `com.apple.vfx.runtime-thread` |
 | **Report** | Apple Feedback: `FB________` *(to be filed)* |
