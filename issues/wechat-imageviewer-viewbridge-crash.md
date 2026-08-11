@@ -5,12 +5,34 @@
 
 | | |
 |---|---|
-| **Status** | 🔴 Open — confirmed recurring & **cross-app across 4 unrelated apps and 4 different UI toolkits** (WeChat ×26 + CleanShot X ×3 + DingTalk ×2 + duo-pasted ×1 = **32 verified crashes**, 2026-07-09 → 08-10, **byte-identical throw site, always `+216`**); **survives two beta3 builds AND beta4**, and **beta4 has now been out 21 days with no beta5** (`26A5378j` → `26A5378n` → `26A5388g`); root throw is 100% in Apple frameworks |
+| **Status** | ⚪ **Suspected fixed on beta5 `26A5406e`, pending retest** (2026-08-11) — **⚠️ see [Basis for the verdict](#basis-for-the-beta5-verdict--这个判断建立在什么之上) before relying on this.** Deliberately *not* 🟢: no positive signal exists yet. The suspicion rests on the *shape* of the bug (a deterministic assertion on one predicate, reached through a stable call path, previously firing 1–2×/day) plus zero occurrences since the beta5 upgrade — **not** on a measured observation window: at the time of the call, beta5 had been up **1.1 hours**, during which a completely unfixed bug would also most likely have produced zero crashes. No confirming evidence exists from Apple's release notes, the Developer Forums thread, or a code diff. **Flip back to 🔴 on the first recurrence.** Prior state: 🔴 Open — **32 verified crashes** across 4 unrelated apps / 4 UI toolkits (WeChat ×26 + CleanShot X ×3 + DingTalk ×2 + duo-pasted ×1), 2026-07-09 → 08-10, **byte-identical throw site, always `+216`**, surviving `26A5378j` → `26A5378n` → `26A5388g` |
 | **macOS** | 27.0 — **beta3 `26A5378j`** (8 crashes) → **beta3 rev `26A5378n`** (11 crashes) → **beta4 `26A5388g`** (**13 crashes**, 07-21 → 08-10). Fixed by neither the 07-14 beta3 revision nor the beta4 update; **beta4 released 2026-07-20, still the current build as of 2026-08-10 (21 days, no beta5)**. |
 | **Component** | Apple **ViewBridge / AppKit** (`NSRemoteView`) — reproduced via **WeChat 4.1.11** (Chromium-based WeChatAppEx / `flue` engine), **CleanShot X 4.8.9** (Cocoa + QuickLookUI `QLSeamlessDocumentOpener`), **DingTalk 8.3.15** (**Qt** — `QtWidgets`/`QtGui`) and **duo-pasted 0.1.1270** (**Swift/AppKit**, own code) |
 | **Reproducers** | **WeChat 4.1.11 (269136)** MAS (`adam_id` 836500024) · **CleanShot X 4.8.9** (`pl.maketheweb.cleanshotx`, team `AFJU4P8ZV4`) · **DingTalk 8.3.15 (54703766)** MAS (`adam_id` 1435447041) · **duo-pasted 0.1.1270** (own app, Swift/AppKit) |
 | **Machine** | `Mac15,11` — Apple M3 Max, 36 GB |
 | **Report** | Apple Feedback: `FB________` *(ours, still unfiled)* · **Apple has acknowledged the bug** via [Developer Forums 837342](https://developer.apple.com/forums/thread/837342) — DTS routed it, and a third-party Feedback there reports "Potential fix identified — For a future OS update" · a crash-guard workaround exists (see [External corroboration](#external-corroboration--apple-has-acknowledged-it-and-the-exception-text-is-now-known--外部佐证apple-已受理异常文本已知)) · vendor email to CleanShot X drafted |
+
+## Basis for the beta5 verdict / 这个判断建立在什么之上
+
+Recorded explicitly so nobody mistakes this for a measured result.
+
+**What the ⚪ "suspected fixed" rests on** — the reporter's judgement that this bug's *shape* makes a short quiet window meaningful: it is a deterministic assertion on a single predicate, reached through a stable, high-traffic call path, and it previously fired **1–2 times a day** across four apps. On that reading, a fix should show up as an immediate and total stop rather than a gradual decline.
+
+**What it does NOT rest on** — every independent check came back empty or inapplicable:
+
+| check | result |
+|---|---|
+| Observation window on beta5 at the time of the call | **1.1 h** (booted 12:23:31, called at ~13:30). At the historical 1–2/day rate, an **unfixed** bug produces zero crashes in that window with probability ≈95% — the observation carries almost no information |
+| Occurrences on `26A5406e` | 0 (of 3 signature reports surviving on disk, all are `26A5388g`) |
+| Apple macOS 27 beta5 release notes | **no entry** — the document does not mention `NSRemoteView` or ViewBridge anywhere |
+| [Developer Forums 837342](https://developer.apple.com/forums/thread/837342) | **no mention of beta5**; latest discussed is beta4, still reproducing there as of ~2026-08-04 |
+| Reproducer | none achieved — **0 hits in 800 stress cycles** (~4,800 order-on-screen ops), and the harness was shown never to reach the bad state, so this is not evidence either way |
+| Assertion present in beta5's ViewBridge binary | **yes**, still there — but this is uninformative: a fix can prevent entry into the bad state while leaving the defensive assertion in place |
+| beta4 ↔ beta5 disassembly diff of the method | **not possible on this machine** — no APFS local snapshots (`tmutil listlocalsnapshots /` is empty) and the beta4 dyld shared cache was replaced by the upgrade, so there is no baseline to diff against |
+
+**Falsification is cheap and immediate: one recurrence flips this back to 🔴.** `~/Library/Logs/crash-notify.log` records every crash and is not subject to log rotation, so no action is needed to catch it. Given the prior rate, **3–5 days of normal use with zero crashes** would be the first genuinely informative signal; 7 days would be strong.
+
+**这个 ⚪「疑似修复」是报告者的判断,不是实测结论。** 依据是 bug 的*形态*:单一判据上的确定性断言、经稳定高频链路触发、此前 1–2 次/天 —— 按此读法,修好了应表现为立刻彻底停止。**但所有独立检验都是空的**:判断作出时 beta5 只开机 **1.1 小时**(以历史频率算,即使完全没修,该窗口内零崩溃的概率也约 95%);Apple beta5 release notes 全文未提;论坛帖零提及 beta5;复现器 800 次压测 0 命中且从未到达坏状态;断言在 beta5 二进制里仍在(两边都不能说明);beta4↔beta5 反汇编对比**本机无法进行**(无 APFS 本地快照,beta4 的 dyld cache 已被升级替换)。**再崩一次即翻回 🔴**,`crash-notify.log` 常驻记录、不受轮转影响,无需任何操作即可捕获。按先前频率,**连续 3–5 天零崩溃**才是第一个真正有信息量的信号,7 天为强信号。
 
 ## Symptom / 症状
 
@@ -88,7 +110,7 @@ The header says `EXC_BAD_ACCESS (SIGSEGV) … KERN_INVALID_ADDRESS at 0x0` — *
 3  ViewBridge      -[NSRemoteView containingWindowWillOrderOnScreen:] + 216   ← throws here
 4  CoreFoundation  __CFNOTIFICATIONCENTER_IS_CALLING_OUT_TO_AN_OBSERVER__
 8  Foundation      -[NSNotificationCenter postNotificationName:object:userInfo:]
-9  AppKit          -[NSWindow _doWindowWillBeVisibleAsSheet:]                 ← window shown as a SHEET
+9  AppKit          -[NSWindow _doWindowWillBeVisibleAsSheet:]                 ← posts _NSWindowWillBecomeVisible (NOT proof of a sheet — see Corrections)
 …  AppKit          -[NSWindow _doOrderWindow:]
    WeChatAppEx Framework  (com.tencent.flue.framework)                        ← WeChat's embedded engine
    AppKit          -[NSWindow makeKeyAndOrderFront:]                          ← WeChat brings the viewer on screen
@@ -108,7 +130,7 @@ The `far: 0x0`, `byte write Translation fault` in the header comes from that las
 
 ## Diagnosis / 判断
 
-`NSRemoteView` is **ViewBridge's out-of-process (XPC-hosted) view**. WeChat's 4.x image viewer is drawn by the embedded **WeChatAppEx `flue` engine** (`com.tencent.flue.framework`; the process is full of `ANGLE-Worker` / `libGLESv2` / `webview_io_thread` threads). "View image" presents a **sheet window that embeds a remote WeChatAppEx view**. When AppKit posts *will-order-on-screen*, the ViewBridge observer `-[NSRemoteView containingWindowWillOrderOnScreen:]` reads a bundle Info-plist key (`_CFBundleGetValueForInfoKey`) and throws — unhandled → `terminate` → `abort`.
+`NSRemoteView` is **ViewBridge's out-of-process (XPC-hosted) view**. WeChat's 4.x image viewer is drawn by the embedded **WeChatAppEx `flue` engine** (`com.tencent.flue.framework`; the process is full of `ANGLE-Worker` / `libGLESv2` / `webview_io_thread` threads). "View image" presents a **sheet window that embeds a remote WeChatAppEx view**. When AppKit posts *will-order-on-screen*, the ViewBridge observer `-[NSRemoteView containingWindowWillOrderOnScreen:]` compares its own `[self window]` against the notification's object and throws when they differ — unhandled → `terminate` → `abort`. (The `_CFBundleGetValueForInfoKey` frame is **mis-symbolication**, not an Info.plist read — see [Corrections](#corrections-2026-08-11--更正).)
 
 **The faulting throw is 100% inside Apple frameworks** (ViewBridge → CFBundle). WeChat's only role is presenting an XPC-hosted view as a sheet on macOS 27. Same shape as **[#6 (Chrome ↔ MediaRemote)](chrome-mediaremote-nowplaying-crash.md)**: an uncaught ObjC exception raised *inside* an Apple framework during a system callback, killing the third-party app.
 
@@ -145,7 +167,7 @@ WeChat installs its own SIGABRT handler (`ilink_nostl::ForceCrashOnSigAbort`) th
                           WeChat 4.1.11                         CleanShot X 4.8.9
 throw   ViewBridge  -[NSRemoteView containingWindowWillOrderOnScreen:] + 216   ← identical, same +216
         CoreFoundation  _CFBundleGetValueForInfoKey + 0                        ← identical
-sheet   AppKit  -[NSWindow _doWindowWillBeVisibleAsSheet:]                     ← identical (shown as SHEET)
+sheet   AppKit  -[NSWindow _doWindowWillBeVisibleAsSheet:]                     ← identical (posts _NSWindowWillBecomeVisible; not proof of a sheet)
 order   AppKit  -[NSWindow _doOrderWindow:] → makeKeyAndOrderFront:            ← identical
 provider  WeChatAppEx (com.tencent.flue.framework)   |   QuickLookUI -[QLSeamlessDocumentOpener showWindow:…]   ← only this frame differs
 present   wechat.dylib …                             |   -[NSWindowController showWindow:] → CleanShot X
@@ -180,7 +202,7 @@ Verified throw site (`lastExceptionBacktrace`, DingTalk, incident `FCBDB4F1-13E6
 3  ViewBridge      -[NSRemoteView containingWindowWillOrderOnScreen:] + 216   ← identical, same +216
 4  CoreFoundation  __CFNOTIFICATIONCENTER_IS_CALLING_OUT_TO_AN_OBSERVER__
 8  Foundation      -[NSNotificationCenter postNotificationName:object:userInfo:]
-9  AppKit          -[NSWindow _doWindowWillBeVisibleAsSheet:]                 ← identical (shown as SHEET)
+9  AppKit          -[NSWindow _doWindowWillBeVisibleAsSheet:]                 ← identical (posts _NSWindowWillBecomeVisible; not proof of a sheet)
 10 AppKit          -[NSWindow _reallyDoOrderWindowAboveOrBelow:]
 11 AppKit          -[NSWindow _reallyDoOrderWindow:]
 12 AppKit          __27-[NSWindow _doOrderWindow:]_block_invoke.767
@@ -218,7 +240,7 @@ This one is the **strongest** data point of all: the presenting code is a handfu
 | DingTalk 8.3.15 | **Qt** (`QtWidgets`/`QtGui`) | DingTalk (unsymbolicated) | `EXC_CRASH (SIGABRT)` (unmasked) |
 | duo-pasted 0.1.1270 | **Swift/AppKit** (own code) | `PreviewPanelController.show(item:…)` | `EXC_CRASH (SIGABRT)` (unmasked) |
 
-Everything above the presenting frame — `_doOrderWindow:` → `_doWindowWillBeVisibleAsSheet:` → `NSNotificationCenter` → `-[NSRemoteView containingWindowWillOrderOnScreen:] + 216` → `_CFBundleGetValueForInfoKey` → throw — is **identical in all four**. No third-party app, engine, or toolkit is common to all four; **the only thing they share is Apple's ViewBridge order-on-screen path.**
+Everything above the presenting frame — `_doOrderWindow:` → `_doWindowWillBeVisibleAsSheet:` → `NSNotificationCenter` → `-[NSRemoteView containingWindowWillOrderOnScreen:] + 216` → throw — is **identical in all four**. No third-party app, engine, or toolkit is common to all four; **the only thing they share is Apple's ViewBridge order-on-screen path.**
 
 呈现帧以上的部分在四者中**完全一致**。四个 app 之间不存在任何共同的第三方 app / 引擎 / 技术栈,**唯一的共同点就是 Apple 的 ViewBridge 上屏路径**。
 
@@ -271,7 +293,83 @@ This changes what filing is for. It is no longer about establishing that the bug
 
 Reasonable stopgap for a non-MAS app whose alternative is aborting; harder to justify for a sandboxed App Store submission, and it should be removed once Apple ships the fix.
 
+### Two defects in the circulating guard — both verified here / 流传版本的两个缺陷
+
+An improved version is in [`tools/RemoteViewCrashGuard.m`](../tools/RemoteViewCrashGuard.m) (compiled and run on `26A5406e`; log output below is real). It fixes two problems the forum version has:
+
+**1. It installs nothing if called at the recommended time.** `ViewBridge` is loaded **lazily** — the first remote view (open/save panel, QuickLook, share sheet, status item, autofill…) pulls it in. Install at `applicationWillFinishLaunching:` and `NSClassFromString(@"NSRemoteView")` returns `nil`, so the guard hits its `if (!cls) return;` and **silently does nothing** — and the forum version logs nothing on that path, so you would never know. Verified:
+
+```
+E  guardtest[2595] [dev.jizhi.remoteviewguard] not installed: NSRemoteView not found
+```
+
+Fix: `dlopen("/System/Library/PrivateFrameworks/ViewBridge.framework/ViewBridge", RTLD_LAZY)` first — it works even though the binary exists only in the dyld shared cache.
+
+**2. It guards one of at least three assertion sites.** The Will handler has one; **`-[NSRemoteView containingWindowDidOrderOnScreen:]` has two more** (`handleFailureIn` at +220 and +260), downstream of its own `[self window] != [note object]` compare at +64. If the bad state survives into the Did handler, the forum guard does not stop it. Guard both.
+
+Also verified, and worth knowing before relying on either version: **swallowing the Will assertion does not cascade.** It skips `_expectWindowOrderingState:0 andAdvanceTo:2`, but that method has **zero** assertion sites — on mismatch it only calls `vbLog(kLogDomain_WindowVisibility)`. That is consistent with the forum reports of 3+ weeks without failures. Whether the panel then *draws and behaves* correctly remains unverified.
+
+**The guard doubles as a probe**, which is its main value here: it logs `isValid` / `window` / `note.object` / whether they matched on every invocation, so a quiet period yields a *positive* record ("the bad input never occurred") instead of mere absence of crashes — and a suppressed assertion logs `exception.reason` in full, which names the remote view's **service** and the containing window's class, the one piece our 32 reports structurally could not capture. Verified end-to-end:
+
+```
+I  guarded containingWindowWillOrderOnScreen:
+I  guarded containingWindowDidOrderOnScreen:
+I  installed for macOS 27.x
+I  containingWindowWillOrderOnScreen: rv=0x7ceccc2d00 isValid=YES window=0x7ceccc1500 note.object=0x7ceccc1500 match=YES
+I  containingWindowDidOrderOnScreen:  rv=0x7ceccc2d00 isValid=YES window=0x7ceccc1500 note.object=0x7ceccc1500 match=YES
+```
+
+Read with `log show --info --predicate 'subsystem == "dev.jizhi.remoteviewguard"'`. Note it must be `os_log_info`, not `os_log_debug` — debug-level messages are memory-only and get dropped, which would leave the probe recording nothing.
+
+流传的那版守卫有两个缺陷,均已在本机验证:**(1) 按推荐时机安装会静默失效** —— ViewBridge 是懒加载,进程启动时 `NSRemoteView` 类还不存在,`if (!cls) return;` 直接走掉且不打日志;修法是先 `dlopen`。**(2) 只挡了三处断言中的一处** —— Did 处理器另有两处(`+220`/`+260`),坏状态延续过去照样崩,应当两个方法都包。另已验证:吞掉 Will 的异常**不会级联**,状态机 `_expectWindowOrderingState:andAdvanceTo:` 零断言站点,失配只走 `vbLog`。改进版见 [`tools/RemoteViewCrashGuard.m`](../tools/RemoteViewCrashGuard.m),它同时是**探针**(记录每次调用的 `isValid`/`window`/`note.object`/是否相等),使"安静期"能产出**正面记录**而非仅仅"没崩"。
+
 该规避手段以 swizzle 包裹私有方法并只吞掉特定断言,作者称已在生产环境跑了三周以上,作用域控制得相当克制。但仍有三点无法回避:**(1)** 它 swizzle 的是私有类与私有方法,对 App Store 审核是实打实的风险,且 Apple 一改该方法就可能静默失效;**(2)** 吞掉断言 ≠ 修复状态 —— 断言之所以触发,正是因为该 remote view 期望的容器窗口为 `null`,吞掉之后进程带着 AppKit 认为不一致的状态继续跑,界面是否正常、是否泄漏,本文未做验证;**(3)** 它是崩溃防护,不是修复,底层竞态未动。对于崩溃已成常态的非 MAS 应用是合理的临时手段,对沙盒 App Store 提交则较难论证,且应在 Apple 修复后移除。
+
+## Corrections (2026-08-11) / 更正
+
+Four claims in earlier revisions of this file were wrong. All four were found by disassembling ViewBridge on this machine (macOS 27.0 beta5 `26A5406e`); the method lives only in the dyld shared cache, so it has to be `dlopen`ed first:
+
+```bash
+# holder.c: a 3-line program that dlopens ViewBridge, so lldb has something attachable
+# (/usr/bin/true is SIP-protected and cannot be attached to)
+lldb -b -o "b main" -o run \
+  -o 'expr (void*)dlopen("/System/Library/PrivateFrameworks/ViewBridge.framework/ViewBridge", 2)' \
+  -o 'disassemble -n "-[NSRemoteView containingWindowWillOrderOnScreen:]"' -o quit ./holder
+```
+
+**What the method actually does** (69 instructions, one assertion site):
+
+```objc
+-[NSRemoteView containingWindowWillOrderOnScreen:](self, _cmd, note) {
+    if (![self isValid]) return;                                    // +32
+    if ([self window] != [note object]) {                           // +44/+56/+64
+        e = handleFailureIn(..., NSRemoteView.m, 4232,
+                            @"%@ notified of %@ but expected %@");  // +208
+        [e raise];                                                  // +212  → return addr +216
+    }
+    [self _expectWindowOrderingState:0 andAdvanceTo:2 caller:...];  // +88
+}
+```
+
+1. **"The window is shown as a SHEET" — wrong.** `_doWindowWillBeVisibleAsSheet:` takes a `BOOL` (`tbnz w20, #0` at +48) saying *whether* it is a sheet; the method runs on **every** order-on-screen because it is simply where AppKit posts `_NSWindowWillBecomeVisible`. Its presence in 100% of our reports proves nothing about sheets. Two of our own WeChat reports reach it from `-[NSWindow makeKeyAndOrderFront:]`, which is not a sheet path. **Sheets remain one real trigger** — `NSAlert.beginSheetModalForWindow:` is reported on the forum — just not a necessary one.
+2. **"The observer reads a bundle Info-plist key (`_CFBundleGetValueForInfoKey`) and throws" — wrong.** There is no Info.plist read. That frame is **mis-symbolication** of an address inside a neighbouring CoreFoundation function on the `[NSException raise]` path. The real predicate is `[self window] != [note object]`.
+3. **`+216` is the return address of `[e raise]` at +212**, not of the `handleFailureIn` call at +208.
+4. **Same bug as the forum thread — now proven, not assumed.** The method contains exactly **one** assertion call site, and the format string loaded at +200 is verbatim the forum's `@"%@ notified of %@ but expected %@"`. Since backtraces record return addresses, our invariant `+216` frame *is* that one assertion. This matters: the claim "Apple has acknowledged it" rests entirely on the two being the same bug, and until now that was an untested assumption. (Our binary reports line **4232**; the forum quotes 4221, from an earlier build — consistent source drift.)
+
+**Registration side**, from `-[NSRemoteView maintainContainingWindowNotifications:]` — six notification→selector pairs, registered **per containing window**, not `object:nil`:
+
+```
+_NSWindowWillBecomeVisible                  → containingWindowWillOrderOnScreen:   ← ours
+_NSWindowDidBecomeVisible                   → containingWindowDidOrderOnScreen:
+NSWindowWillOrderOffScreenNotification      → containingWindowWillOrderOffScreen:
+NSWindowDidOrderOffScreenNotification       → containingWindowDidOrderOffScreen:
+NSWindowDidMoveNotification                 → containingWindowDidMove:
+NSWindowDidChangeOcclusionStateNotification → containingWindowDidChangeOcclusionState:
+```
+
+**WeChat's presenting frame is one presenter, not "the image viewer".** Both surviving WeChat reports carry the identical frame 15 — `WeChatAppEx Framework +11729020` — under `-[NSWindow makeKeyAndOrderFront:] + 40`. The reporter confirms **clicking an avatar crashes as well as clicking an image**, and that it happens **on opening, not on dismissal, and not necessarily the first time**. Both UI actions funnel through that one presenter, so the trigger is "WeChat orders its AppEx-hosted window on screen". DingTalk's is different again: its frames sit under `_dispatch_main_queue_drain` — timer-driven, no user action.
+
+以上四条是本机反汇编得出的更正:**(1)** "以 sheet 呈现"是**误读方法名** —— `_doWindowWillBeVisibleAsSheet:` 带 BOOL 参数,任何一次上屏都会走它,它就是 AppKit 发 `_NSWindowWillBecomeVisible` 的地方(但 sheet 确实是触发路径**之一**,只是非必要条件);**(2)** 根本没有读 Info.plist,那一帧是**符号化错误**,真实判据是 `[self window] != [note object]`;**(3)** `+216` 是 `[e raise]` 的返回地址;**(4)** 与论坛同一 bug **已被证明**(方法内仅一处断言,格式字符串逐字一致)—— 这条关系到"Apple 已受理"能否成立,此前只是未经检验的假设。另:微信点**图片**与点**头像**经由同一个呈现器(`WeChatAppEx +11729020` → `makeKeyAndOrderFront:`),**崩在打开时、且不一定是第一次**。
 
 ## Workaround / 临时规避
 
