@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | 🔴 Open · confirmed on `26A5378n` (live, still firing during investigation) |
+| **Status** | 🔴 Open · **filed with Apple as [FB24264605](https://feedbackassistant.apple.com/feedback/24264605)** (2026-08-11) · confirmed on `26A5378n`, `26A5388g` and **`26A5406e` (beta5)** — and **still accumulating**: 53,686 → **76,366** unconsumed rows between beta3 and beta5 (+42%). See [beta5 re-verification](#re-verification-2026-08-11--beta5-26a5406e--still-growing-and-two-findings-the-original-write-up-missed) |
 | **macOS** | 27.0 beta3 revision **`26A5378n`** (first measured 2026-07-16; not yet tested on earlier builds) |
 | **Component** | Apple **contactsd** `3837.100.1` (`/System/Library/Frameworks/Contacts.framework/Support/contactsd`) + **AddressBookManager** (`com.apple.AddressBook.abd`) + Contacts change-history (`_CNCDChangeHistoryResultIncrementalSyncQuery`) |
 | **Hardware** | MacBook Pro `Mac15,11`, M3 Max, 36 GB |
@@ -163,3 +163,46 @@ An Apple engineer with symbols resolves this in seconds; it defeated static anal
 - The machine was under heavy unrelated load during measurement (Xcode `swift-frontend`, WindowServer ~78%, load average 43). contactsd's ~13% average is *additive* to that and independent of it — cumulative CPU TIME can't be gamed.
 - **Methodology traps that produced false negatives here** (all fail *silently*, mimicking "nothing found"): `log` is a **zsh builtin** — bare `log show` errors or returns nothing through a pipe; use `/usr/bin/log` (exporting `PATH` does **not** help — builtins win). macOS has **no `timeout(1)`** — `timeout N log stream …` yields 0 lines. `otool -L` / `lsof` / `vmmap` **cannot** identify which process uses a system framework: everything is in the dyld shared cache, so `lsof` sees nothing and `vmmap` matches ~every process (false positives incl. Finder, Chrome). `grep -rl` silently missed a string in a 6.3 GB extract that `strings` found.
 - Shared-cache disassembly recipe used: Xcode's `dsc_extractor.bundle` via a 12-line `dlopen` shim extracts all 4,080 dylibs with **cache VM addresses preserved** (verified: `Contacts` `__TEXT` at `0x19c473000`); `ipsw dyld str <DSC> "<needle>"` (fast byte search) confirms the owning image and address without extracting.
+
+## Re-verification 2026-08-11 — beta5 `26A5406e` — still growing, and two findings the original write-up missed
+
+Measured before filing [FB24264605](https://feedbackassistant.apple.com/feedback/24264605), 23 minutes after a clean boot:
+
+| | beta3 `26A5378n` (2026-07-16) | beta5 `26A5406e` (2026-08-11) |
+|---|---|---|
+| unconsumed group change rows, all sources | 53,686 | **76,366** (+42%) |
+| worst single source | 17,918 | **23,849** |
+| contactsd CPU (cumulative average) | ≈13% | **20.2%** (273 s / 1349 s) |
+| contactsd log volume | ~210k lines/h | **~218k lines/h** (109,025 per 30 min) |
+
+**The backlog grows.** That is stronger evidence than any rate snapshot: the loop has never once drained, across three OS builds and a month.
+
+### Finding 1 — it spans four CardDAV providers, not just iCloud
+
+The original write-up said "7 CardDAV accounts" without identifying them. They are not one provider:
+
+| provider | accounts | stuck rows |
+|---|---|---|
+| iCloud (`p56-contacts.icloud.com`) | 1 | 23,849 |
+| Google (`/carddav/v1/principals/…`) | 4 | ~9,300 each |
+| Yahoo (`/dav/…@myyahoo.com/Contacts/`) | 1 | 9,521 |
+| one other CardDAV host (`/carddav/<hash>/contacts/`) | 1 | 5,663 |
+| **Exchange** | 1 | **1 — consumed normally** |
+
+Four unrelated server implementations produce the identical malformed state, and the only non-CardDAV account is clean. **That rules out a server-side quirk and points at Apple's CardDAV plugin.**
+
+### Finding 2 — 35 processes emit the failing fetch, not contactsd
+
+`Could not fetch group for change type` comes from **Contacts.framework**, so every client that consumes change history hits the same unconsumable row. In one 30-minute window: **7,569 occurrences across 35 distinct processes** —
+
+```
+corespotlightd 750 · AddressBookSourceSync 528 · studentd 470 · photoanalysisd 434
+Mail 424 · postersyncd 388 · familycircled 381 · searchpartyuseragent 374
+suggestd 373 · sharingd 369 · …            contactsd itself: 45
+```
+
+This corroborates the fan-out mechanism already described here (the rebroadcast notification re-querying 109 clients), but corrects the attribution: the message is **not** contactsd-specific.
+
+**Method note, recorded because it nearly went into the Feedback wrong:** an unfiltered `log show --predicate 'eventMessage CONTAINS "Could not fetch group…"'` returned **11,277** for the window and was about to be reported as contactsd's rate. It was not — it was the sum across all 35 clients, and the true contactsd figure is ~45. Always pin `process ==` when attributing a framework-emitted message. A separate query was also polluted by the `log` binary's own entries matching the predicate text.
+
+2026-08-11 提交 FB24264605 前于 beta5 复验:**积压仍在增长** —— 全部 source 的未消费变更行 53,686 → **76,366**(+42%),最严重的单个 source 17,918 → 23,849;contactsd CPU **20.2%**,日志 **~218k 行/小时**。**新发现一**:受影响的 7 个账户**横跨四家 CardDAV 服务商**(iCloud ×1、Google ×4、Yahoo ×1、其他 ×1),而唯一的 Exchange 账户完好 —— 四家互不相关的服务端产生同一种畸形状态,**排除服务端问题,指向 Apple 的 CardDAV plugin**。**新发现二**:`Could not fetch group for change type` 出自 **Contacts.framework**,30 分钟内由 **35 个不同进程**发出共 7,569 次(corespotlightd 750、AddressBookSourceSync 528、Mail 424…,contactsd 自己仅 45),原文将其归因于 contactsd 是不准确的。**方法论教训**:未按 `process ==` 过滤的查询给出 11,277,差点被当作 contactsd 的速率写进 Feedback —— 那是 35 个客户端的总和。

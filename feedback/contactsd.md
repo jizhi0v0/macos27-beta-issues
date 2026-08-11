@@ -1,3 +1,9 @@
+FILED 2026-08-11 as **FB24264605** (https://feedbackassistant.apple.com/feedback/24264605).
+Submitted with a beta5 re-verification header on top of the beta3 forensics below, plus two findings
+absent from this draft: the 7 affected accounts span FOUR CardDAV providers (Exchange clean), and the
+failing fetch is emitted by 35 processes from Contacts.framework, not by contactsd alone. The imagent
+section at the end was removed before submission — it is #19 and belongs in its own Feedback.
+
 VERIFICATION: CONFIRMED — 32:51 cumulative CPU TIME over 4h07m uptime (≈13% avg), peak burst ~143% (28.6 s CPU in 20 s wall, 14:00:45→14:01:05); 839,240 contactsd log lines in 4 h; 89,107 TCC authorization requests vs 85,516 persistence requests (1.04 each); 55 AddressBookManager spawns. Captured 2026-07-16, beta3 revision 26A5378n, contactsd 3837.100.1. Loop still firing during capture (ZTRANSACTIONID advanced 17929 → 17943 mid-session).
 
 NOTE BEFORE FILING: the iCloud DSID and account email are redacted below as <DSID> / <user> because this draft lives in a public repo. Restore the real values (and attach the unredacted sysdiagnose) when submitting to Apple — Apple needs them to identify the account.
