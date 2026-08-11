@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | 🟢 **FIX HOLDS on beta4 `26A5388g`** (2026-07-25) — idles at **0.0–0.1%** once no menu-bar app is feeding it. The high readings were app-fed (Alcove). Resolves the 2026-07-20 downgrade. See [beta4 retest](#retest-2026-07-25--beta4-26a5388g--fix-holds-high-readings-were-alcove-fed) |
+| **Status** | 🟢 **Fix holds on beta5 `26A5406e`** (2026-08-11) — **0.57% cumulative average over 4 h 42 m**, and 1.3% even while the menu bar is being actively used. Holds across beta3 → beta4 → beta5. The high readings were always app-fed (Alcove). The external report [#20](https://github.com/jizhi0v0/macos27-beta-issues/issues/20) is **still not reproduced here** and is now partly explained: see [interaction condition](#the-interaction-condition--and-what-macos-26-says--交互条件与-macos-26-的对照) |
 | **macOS** | seen on 27.0 beta2 `26A5368g`; fixed on beta3 `26A5378j`; **fix confirmed to hold on beta4 `26A5388g`** |
 | **Component** | Apple **MenuBarAgent** (`/System/Library/CoreServices/MenuBarAgent.app`, the macOS 27 menu-bar agent) |
 | **Hardware** | MacBook Pro `Mac15,11`, M3 Max, single internal display |
@@ -46,6 +46,44 @@ None app-side that fully clears it (it persists with menu-bar apps removed). Red
 - Distinct from [WindowServer high CPU](apple-windowserver-invalid-window.md): that is broader CoreAnimation compositing (dominated by live-rendering apps); MenuBarAgent's ~10–14% is its own process and only a partial contributor to WindowServer.
 - Consistent across many measurements this session (~12–14%), independent of which apps are running → reads as a macOS 27 beta2 baseline, not app-fed.
 - **Strongest confirmation:** after the user quit nearly all menu-bar apps (only system `ControlCenter` + a couple icon-only items left, `log show` showing **0** status-item redraws), MenuBarAgent still held **12.5%**. With essentially nothing feeding it, the cost is MenuBarAgent's own — confirms a genuine beta2 regression rather than app-driven load.
+
+## The interaction condition — and what macOS 26 says / 交互条件与 macOS 26 的对照
+
+Every measurement in this file before 2026-08-11 was taken on a **static, untouched** menu bar. The external report [#20](https://github.com/jizhi0v0/macos27-beta-issues/issues/20) says something different in its very title — *"when **interacting** with the top panel"* — and reports **MenuBarAgent 20–70%** plus **ControlCenter ~45%**. Those two conditions had never been compared, which is why the note below said #20 was "unexplained by anything observed here": **the condition it describes had simply never been measured.**
+
+Measured 2026-08-11 on beta5 `26A5406e` (M3 Max MBP), two back-to-back 60 s windows, cumulative `utime+stime` deltas:
+
+| | menu bar untouched | menu bar actively used |
+|---|---|---|
+| **MenuBarAgent** | 0.3% | **1.3%** |
+| **ControlCenter** | 2.1% | **33.5%** |
+
+So on this machine the interaction condition costs **ControlCenter** a great deal and **MenuBarAgent** almost nothing.
+
+### Is ControlCenter's 33.5% a regression? No — macOS 26 costs the same or more
+
+Cross-checked against a **macOS 26.6 `25G72`** machine (Mac16,10, M4 mini) over SSH, same script, same two conditions:
+
+| | ControlCenter untouched | ControlCenter in use | delta |
+|---|---|---|---|
+| **macOS 26.6** (M4 mini) | 0.5% | **36.4%** | **+35.9** |
+| **macOS 27 beta5** (M3 Max MBP) | 2.1% | **33.5%** | **+31.4** |
+
+**macOS 26's interaction cost is slightly *higher*.** Driving the Control Center costs ~30–36% CPU on both releases — that is the intrinsic cost of a live, continuously-redrawing control, not something the beta introduced. #20's ~45% for ControlCenter therefore reads as **normal cost for that action**, and the apparent contradiction with this issue's 0.0–0.1% figures is entirely a condition mismatch (a ~16× swing).
+
+**Caveats, stated rather than buried:** different hardware on each side; interaction vigour was not standardised, so the 36.4 vs 33.5 gap must **not** be read as "26 is more expensive"; the mini had a UURemote screen-sharing session active in *both* windows (it largely cancels in the delta, but if capture cost scales with how much the screen is changing, the mini's delta is inflated); and each cell is a single 60 s window.
+
+### Structural finding: MenuBarAgent does not exist on macOS 26
+
+`MenuBarAgent.app` is **absent** from macOS 26.6 — `/System/Library/CoreServices/MenuBarAgent.app` does not exist and a search of `/System`, `/usr/libexec` and `/Library` returns nothing. It is present on macOS 27. On macOS 26 the menu bar is driven by **ControlCenter** itself.
+
+Two consequences: **(a)** there is no macOS 26 baseline for MenuBarAgent, so its cost on 27 can never be compared like-for-like; **(b)** comparing "ControlCenter CPU" across the two releases is not comparing the same workload, since work that lives in MenuBarAgent on 27 is inside ControlCenter on 26.
+
+### What is still unexplained
+
+**#20's MenuBarAgent 20–70% is not reproduced here under either condition** — 0.3% untouched, 1.3% in use, a 46× gap from their figure. Hardware dependence remains possible but is **untested and unevidenced**; simpler explanations have not been exhausted (their build was beta3 `26A5378j`, three builds back; menu-bar app population; external display). Those are the details worth asking them for.
+
+2026-08-11 补测:本文此前所有数据都测于**静止、无人操作**的菜单栏,而 #20 标题写的是 *"when **interacting** with the top panel"* —— 两个条件从未被放在一起比较过,这正是"该外部报告无法用本机观测解释"的原因:**它描述的条件我们根本没测过。** 实测 beta5:菜单栏被操作时 **ControlCenter 2.1% → 33.5%**,而 **MenuBarAgent 仅 0.3% → 1.3%**。再以 **macOS 26.6**(M4 mini)对照:**0.5% → 36.4%**,**增量比 macOS 27 还略高** —— 说明操作控制中心吃 30%+ CPU 是该控件的固有成本,**不是 beta 回归**,#20 报的 ~45% 属正常范围。另一结构性事实:**`MenuBarAgent` 在 macOS 26 上不存在**,菜单栏由 ControlCenter 自己驱动,故 (a) MenuBarAgent 无跨版本基线可比,(b) 跨版本比较 ControlCenter 的百分比也不是同一份工作量。**仍未解释的是 #20 的 MenuBarAgent 20–70%** —— 本机两种条件下都复现不出(相差 46 倍),机型相关性有可能但**未经验证**,更简单的解释(他用的是三个 build 之前的 beta3、菜单栏第三方 app、外接显示器)尚未排除。
 
 ## Retest on beta3 `26A5378j` (2026-07-07) — FIXED / 已修
 
