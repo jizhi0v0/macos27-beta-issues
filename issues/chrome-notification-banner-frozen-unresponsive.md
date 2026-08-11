@@ -139,6 +139,27 @@ So the question reduces to a testable property of the OS API, with no browser in
 
 Point 5 retroactively explains every "it healed by itself after N minutes" observation from this investigation: on one occasion three separately-stuck notifications all became clickable within 21 seconds of each other, exactly when Chrome was restarted.
 
+## Why Chrome only fails ~half the time, while the demo fails 14/14 / 为什么 Chrome 只有一半中招，而 demo 是 14/14
+
+The race itself is deterministic — inside the window the query *always* answers empty. So the hit rate is decided entirely by **when Chrome happens to ask**, and Chromium's check is **not** tied to posting a notification. [`notification_dispatcher_mojo.cc`](https://chromium.googlesource.com/chromium/src/+/main/chrome/browser/notifications/mac/notification_dispatcher_mojo.cc) calls `CheckIfServiceCanBeTerminated()` from six places, and *showing* a notification is not one of them:
+
+| call site | when it fires |
+|---|---|
+| constructor | Chrome start-up |
+| `CloseNotificationWithId()` | after closing one notification |
+| `CloseNotificationsWithProfileId()` | after closing a profile's notifications |
+| **`OnNotificationAction()`** | **right after the user interacts with any notification** |
+| `DispatchGetNotificationsReply()` / `DispatchGetAllNotificationsReply()` | when a displayed-notifications query comes back empty |
+| `service_restart_timer_` | after an unexpected service teardown |
+
+So the check lands at an essentially arbitrary offset from the last `add()`. Sometimes that is a few milliseconds later — inside the ~15 ms window — and the helper kills itself; usually it is seconds later, when the notification is long since visible, and nothing happens. That accounts for all three otherwise-puzzling observations at once:
+
+- **~50–60 % hit rate on Chrome**, rather than the 100 % the race alone would predict;
+- **helper lifetimes scattered across three orders of magnitude** (0.14 s / 0.14 s / 3.3 s / 19 s / 39 s / 165 s) — these are different *events* firing the check at different times, not an idle countdown;
+- **the demo's 14/14**, because it queries ~0.5 ms after `add()` completes by construction and therefore never misses the window. The demo is a worst-case amplifier, not a model of Chrome's cadence.
+
+**The `OnNotificationAction()` entry deserves special attention**, because it makes the bug partly self-inflicted and contagious between notifications: *interacting with one notification triggers an immediate termination check*. If a second notification was posted moments earlier and is still inside its invisibility window, that check reads empty, the helper exits — and the **second** notification is the one that becomes permanently unclickable. Dismissing or clicking one notification can therefore break another one that arrived just before it. This is a plausible mechanism for the original real-world report, where several notifications were involved and only some went dead, though it was not isolated experimentally here.
+
 ## Proof it is not Chrome-specific: a non-Chrome app reproduces it end to end / 与 Chrome 无关的自建 demo 完整复现
 
 A two-bundle demo sharing **none of Chrome's code** ([`tools/notifdemo-nonchrome/`](../tools/notifdemo-nonchrome/)): a parent app launches `NotifDemoHelper.app` with a `--from-parent` marker; the helper posts one categorized notification, then evaluates Chromium's exact `OkayToTerminateService` predicate against its own `getDeliveredNotifications` and exits if the array is empty.
@@ -245,7 +266,7 @@ Superficially the same complaint as the long-running macOS 15 issue ([MacRumors 
 ## Open questions / 待定
 
 1. ~~Why does the Alerts helper exit while its own notification is still outstanding?~~ — **answered:** `getDeliveredNotifications` returns empty for ~7–24 ms after `add()` completes on macOS 27 (0 ms on 26.6), and Chrome kills the helper on exactly that answer. See the measurement above.
-2. ~~Why only ~50–60% of pushes?~~ — **explained:** it depends on which side of the ~15 ms window Chrome's termination check lands. Not separately characterised beyond that.
+2. ~~Why only ~50–60% of pushes?~~ — **answered from the source:** `CheckIfServiceCanBeTerminated()` is event-driven and is never called on *posting* a notification, so the check lands at an arbitrary offset from `add()` and only sometimes falls inside the ~15 ms window. See the table above.
 3. Is the underlying OS defect "the notification is not actually delivered yet" or "it is delivered but the query serves a stale snapshot"? The probe cannot tell them apart, and they imply different fixes on Apple's side.
 4. Does this affect **any** app whose alert-style notifications come from a short-lived helper, or is something Chrome-specific involved? (See the 2026-08-04 lead above.)
 5. ~~What happens inside the `Search for url to launching …` path~~ — **answered:** it launches the helper via LaunchServices and the helper dies in ~100 ms (60 `appDeath` events for 61 clicks), because a Chromium helper cannot run standalone.
