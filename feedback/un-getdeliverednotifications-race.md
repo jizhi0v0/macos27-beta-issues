@@ -1,8 +1,9 @@
-NOT YET FILED. Draft for Apple Feedback Assistant. Companion draft for the Chromium side lives in
-`feedback/crbug-alerts-helper-termination.md` — file both, they are two halves of one user-visible bug.
+FILED 2026-08-12 as **FB24273686** — macOS / Notification Center / Incorrect/Unexpected Behavior.
+Submitted with both reproducers attached (`un-delivered-race-probe.zip`, `notifdemo-nonchrome.zip`)
+plus the sysdiagnose and System Information Report that Feedback Assistant gathers automatically.
 
-Attach when filing: a sysdiagnose taken while a Chrome notification is in the stuck state, plus
-`tools/un-delivered-race-probe/` (the standalone reproducer — it needs no browser at all).
+Companion: the Chromium half was posted the same night as
+[comment #26 on issue 370536109](https://issues.chromium.org/issues/370536109#c26).
 
 # Title
 
