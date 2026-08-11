@@ -1,5 +1,7 @@
-FOLLOW-UP 2: STILL PRESENT ON BETA 4 (26A5388g). THE TRIGGER IS ANY OUTPUT-
-DEVICE CHANGE, NOT A SPOTIFY/AIRPLAY TRANSFER. COREAUDIOD PAYS 1.5-1.8 CORES.
+FOLLOW-UP 2: STILL PRESENT ON BETA 4 (26A5388g) AND BETA 5 (26A5406e). THE
+TRIGGER IS ANY OUTPUT-DEVICE CHANGE, NOT A SPOTIFY/AIRPLAY TRANSFER, AND THE
+DEVICE CHANGE ALONE IS SUFFICIENT. COREAUDIOD PAYS 1.5-1.9 CORES. ON BETA 5 THE
+LOOP ALSO CANCELS THE USER'S OWN MUTE ~30 TIMES A SECOND.
 
 Caught live twice more on macOS 27.0 beta 4 (26A5388g), on 2026-08-04 and
 2026-08-05, 15 and 16 days after that build shipped. The first of the two
@@ -180,12 +182,54 @@ hand. On the 2026-08-04 occurrence it did come back on its own. Stopping the
 runaway and recovering the volume are separate outcomes.
 
 
+8. STILL PRESENT ON BETA 5 (26A5406e), AND IT NOW CANCELS THE USER'S MUTE
+
+Reproduced on macOS 27.0 beta 5 (26A5406e) on 2026-08-11, the day after that
+build shipped. This occurrence is the simplest trigger so far and the most
+severe outcome so far.
+
+Trigger: switching the default output device, and nothing else. No application
+transfer, no synthetic writer, no rapid key adjustment. The output was moved
+Bluetooth -> built-in -> Bluetooth over 23 seconds; the ratchet's first write
+lands within 0.3 s of the last switch and is Control Center's own:
+
+  13:37:47.284  ControlCenter  ['vmvc']  0.250000
+  13:37:47.400  ControlCenter  ['vmvc']  0.312500
+  13:37:47.767  ControlCenter  ['vmvc']  0.375000
+  13:37:47.832  ControlCenter  ['vmvc']  0.437500
+  13:37:47.861  ControlCenter  ['vmvc']  0.500000
+  13:37:47.894  ControlCenter  ['vmvc']  0.562500   ... unbroken to 1.000000
+
+Scale of the loop, measured over the ~62 seconds until I killed the agent:
+
+  60 writes per second, sustained
+  11 distinct Control Center threads writing (previous maximum I reported: 7)
+  973 writes of volume 1.000000
+  coreaudiod at 185.8% CPU; ControlCenter at 24.6%
+
+The new and, in my view, most important detail: while pinned at full scale,
+Control Center also issued mute: 0.000000 1,098 times - it actively UN-mutes,
+about 30 times a second, for the entire runaway. In the occurrences I reported
+earlier the loop pinned either at full scale, or at zero with mute asserted.
+Here it holds full scale and simultaneously tears down the one mitigation a
+user can reach without a terminal. Pressing the mute key does not stop it; the
+next write cancels it roughly 33 ms later. The output device was a pair of
+Bluetooth headphones. A user wearing them has no way to make the sound stop
+except to pull them off.
+
+Recovery was the same as before: killing Control Center stopped the loop
+immediately (0 writes in the following 30 s, coreaudiod 185.8% -> 18.2%), and
+the volume did not restore itself.
+
+
 ENVIRONMENT
 
   macOS 27.0 beta 4, build 26A5388g (released 2026-07-20, still current
-    2026-08-04)
+    2026-08-04) - sections 1-7
+  macOS 27.0 beta 5, build 26A5406e (installed 2026-08-11) - section 8
   MacBook Pro Mac15,11, M3 Max, 36 GB
   Output device: AirPods, UID C4-B3-49-AA-E7-97, CoreAudio device ID 557
+    (beta 4) / 155 (beta 5)
   Alcove 1.7.9 (com.henrikruscon.Alcove) running
   Full log capture available on request; ControlCenter lines were pulled with
     /usr/bin/log show --info --debug --predicate 'process == "ControlCenter"'

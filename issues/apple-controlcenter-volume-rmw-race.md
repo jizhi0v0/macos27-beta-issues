@@ -5,12 +5,12 @@
 
 | | |
 |---|---|
-| **Status** | 🔴 Not fixed · confirmed on `26A5378n` (beta3) **and `26A5388g` (beta4)** — **10+ runaways captured in one day**, both directions, both output devices; reproducible on demand (see [Reproduction](#reproduction--复现)). **Still firing 2026-08-04** ([incident 3](#incident-3--2026-08-04-bluetooth-reconnect-full-up-then-down-cycle-in-one-runaway--事故-3蓝牙重连触发单次事故内先冲顶再坠底): 4,849 writes / 170.7 s, up to full scale **and** down to zero in one runaway, `coreaudiod` dragged to 150–180% CPU) . **Again 2026-08-05 (incident 4): 107,675 writes over 63 min**, triggered by an iPhone→Mac hand-off, with the ratchet demonstrably starting **before** any key press|
-| **macOS** | 27.0 beta3 revision **`26A5378n`**, reconfirmed on **beta4 `26A5388g`** (2026-07-22) — **not 27-specific**, see [Scope](#scope-not-a-27-regression--并非-27-回归) |
+| **Status** | 🔴 Not fixed · confirmed on `26A5378n` (beta3), `26A5388g` (beta4) **and `26A5406e` (beta5)** — **10+ runaways captured in one day**, both directions, both output devices; reproducible on demand (see [Reproduction](#reproduction--复现)). **Still firing 2026-08-04** ([incident 3](#incident-3--2026-08-04-bluetooth-reconnect-full-up-then-down-cycle-in-one-runaway--事故-3蓝牙重连触发单次事故内先冲顶再坠底): 4,849 writes / 170.7 s, up to full scale **and** down to zero in one runaway, `coreaudiod` dragged to 150–180% CPU) . **Again 2026-08-05 (incident 4): 107,675 writes over 63 min**, triggered by an iPhone→Mac hand-off, with the ratchet demonstrably starting **before** any key press. **Survives into beta5 ([incident 5](#incident-5--2026-08-11-beta5-26a5406e-device-switch-alone-pinned-at-full-scale-while-repeatedly-un-muting-itself--事故-5仅靠设备切换触发钉在满刻度并反复自行取消静音), 2026-08-11)**: 60 writes/s across **11 ControlCenter threads**, pinned at full scale on worn Bluetooth headphones, `coreaudiod` at **185.8%** |
+| **macOS** | 27.0 beta3 revision **`26A5378n`**, reconfirmed on **beta4 `26A5388g`** (2026-07-22) and **beta5 `26A5406e`** (2026-08-11) — **not 27-specific**, see [Scope](#scope-not-a-27-regression--并非-27-回归) |
 | **Component** | Apple **ControlCenter** (`com.apple.controlcenter`, `SoundSettings`) + CoreAudio HAL volume properties |
-| **Trigger** | **Alcove 1.7.9** (`com.henrikruscon.Alcove`, build 203) must be running — established by A/B, both directions. Fires on an **output-device change**: a Spotify Connect transfer (incident 1), the on-demand recipe's device switch + rapid manual adjustment, or — new in [incident 3](#incident-3--2026-08-04-bluetooth-reconnect-full-up-then-down-cycle-in-one-runaway--事故-3蓝牙重连触发单次事故内先冲顶再坠底) — a **Bluetooth headphone reconnect with no transfer involved**. Mechanism by which Alcove contributes is **unidentified**; see [Open question](#open-question--未解) |
+| **Trigger** | **Alcove 1.7.9** (`com.henrikruscon.Alcove`, build 203) must be running — established by A/B, both directions. Fires on an **output-device change**: a Spotify Connect transfer (incident 1), the on-demand recipe's device switch + rapid manual adjustment, or — new in [incident 3](#incident-3--2026-08-04-bluetooth-reconnect-full-up-then-down-cycle-in-one-runaway--事故-3蓝牙重连触发单次事故内先冲顶再坠底) — a **Bluetooth headphone reconnect with no transfer involved**. **[Incident 5](#incident-5--2026-08-11-beta5-26a5406e-device-switch-alone-pinned-at-full-scale-while-repeatedly-un-muting-itself--事故-5仅靠设备切换触发钉在满刻度并反复自行取消静音) narrows this further: the device switch *alone* is enough** — no synthetic writer, no rapid key adjustment, ratchet within 0.3 s of the switch. Mechanism by which Alcove contributes is **unidentified**; see [Open question](#open-question--未解) |
 | **Hardware** | MacBook Pro `Mac15,11`, M3 Max, 36 GB |
-| **Report** | Apple Feedback: **[FB23868196](https://feedbackassistant.apple.com/feedback/23868196)** (filed 2026-07-20 via Feedback Assistant — Control Center → "Incorrect/Unexpected Behavior"; sysdiagnose + ratchet log + concurrent-TID log + HID-absence log + before/after rate table attached)  · **follow-up 2 drafted 2026-08-04** for the beta4 recurrence — generalised trigger, both directions, coreaudiod CPU cost, and a retraction of the torn-read evidence ([paste text](../feedback/controlcenter-volume-followup2.txt)), **not yet submitted**|
+| **Report** | Apple Feedback: **[FB23868196](https://feedbackassistant.apple.com/feedback/23868196)** (filed 2026-07-20 via Feedback Assistant — Control Center → "Incorrect/Unexpected Behavior"; sysdiagnose + ratchet log + concurrent-TID log + HID-absence log + before/after rate table attached)  · **follow-up 2 drafted 2026-08-04, extended 2026-08-11** — generalised trigger, both directions, coreaudiod CPU cost, a retraction of the torn-read evidence, and now a beta5 section (device switch alone suffices; the loop cancels the user's own mute ~30×/s) ([paste text](../feedback/controlcenter-volume-followup2.txt)), **still not submitted**|
 
 ## Summary / 摘要
 
@@ -304,6 +304,71 @@ Three unrelated mechanisms, one shape. This is now solid support for stating the
 
 `killall ControlCenter` 立即止住循环(其后 5 秒 **0** 次写入),但与事故 3 不同,**音量没有自行恢复** —— agent 重启后仍为 `0` 且静音,需手动调回。使用该规避手段的人需注意:止住失控与恢复音量是两件事。
 
+## Incident 5 — 2026-08-11, beta5 `26A5406e`: device switch alone, pinned at full scale while repeatedly un-muting itself / 事故 5:仅靠设备切换触发,钉在满刻度并反复自行取消静音
+
+**First occurrence on beta5 `26A5406e`** (installed 2026-08-11), and the cleanest trigger yet: **an output-device switch with nothing else running**.
+
+| | |
+|---|---|
+| Wall time | 13:37:47.284 → 13:38:49 (~62 s, ended by `killall`) |
+| Direction | ratchets **up** → pinned `1.000000` |
+| Device | `C4-B3-49-AA-E7-97:output` — **AirPods, Bluetooth**; no device migration this time |
+| ControlCenter threads writing | **11 distinct** (previous maximum was 7) |
+| Rate | **60 writes/s sustained** for the whole runaway — 2,215 writes in the capture window |
+| Values written | `volume: 1.000000` ×973 · **`mute: 0.000000` ×1,098** · `mute: 1.000000` ×18 |
+| `coreaudiod` | **185.8%** — above the 150–180% band recorded in incident 3 |
+| ControlCenter | 24.6% |
+| Detection | `volwatch` `DETECT PINNED at 1.0000` ×5, each with the log probe confirming ControlCenter was still writing |
+
+### The trigger was the device switch, and only the device switch / 触发就是设备切换,别无其他
+
+`volwatch`'s `BIND` lines (emitted only when the default output device changes) bracket the onset:
+
+```
+13:37:24  BIND  device 155 uid=C4-B3-49-AA-E7-97:output  volume=0.27999997
+13:37:38  BIND  device 100 uid=BuiltInSpeakerDevice      volume=0.0
+13:37:47  BIND  device 155 uid=C4-B3-49-AA-E7-97:output  volume=0.3225
+13:37:50  DETECT PINNED at 1.0000
+```
+
+The ratchet's first write lands at **13:37:47.284 — within 0.3 s of the switch back to Bluetooth** — and it is ControlCenter's own, a clean monotonic 1/16 climb:
+
+```
+13:37:47.284  ControlCenter  ['vmvc']  0.250000
+13:37:47.400  ControlCenter  ['vmvc']  0.312500
+13:37:47.767  ControlCenter  ['vmvc']  0.375000
+13:37:47.832  ControlCenter  ['vmvc']  0.437500
+13:37:47.861  ControlCenter  ['vmvc']  0.500000
+13:37:47.894  ControlCenter  ['vmvc']  0.562500   … unbroken to 1.000000, then pinned
+```
+
+**What was *not* present, verified in the same log:**
+
+- **No synthetic writer.** `racetrigger`'s last write was **13:31:10** — 6 min 37 s before onset, process long gone.
+- **No rapid manual adjustment.** Alcove wrote only 2–13 lines/s in the seconds before onset (a few key presses), not the "hammer the volume keys" of [the recipe](#the-recipe--复现配方).
+
+This retires step 3 of the recipe as a requirement. **A default-output-device change, on its own, is sufficient.** It is also the single most ordinary user action in the whole report — putting headphones on.
+
+事故 5 是 beta5 上首次发作,也是迄今最干净的触发:**只有一次输出设备切换,别无其他**。`volwatch` 的 `BIND` 行(仅在默认设备变化时打)夹住了起爆点 —— 棘轮首条写入落在切回蓝牙后 **0.3 秒内**,且出自 ControlCenter 自己。同一份日志确认:`racetrigger` 早在 6 分 37 秒前就退出了,Alcove 起爆前只有每秒 2–13 条的零星写入(几下按键),**没有复现配方里的"猛敲音量键"**。因此配方第 3 步不再是必要条件 —— **单独一次默认输出设备切换就够**,而这恰是整份报告里最日常的用户动作:戴上耳机。
+
+### New: it repeatedly cancels the user's own mute / 新现象:它反复撤销用户自己的静音
+
+While pinned at `1.000000`, ControlCenter also wrote **`mute: 0.000000` 1,098 times** — actively *un*-muting, ~30 times a second, for the duration.
+
+Incidents 1–4 pinned either at full scale, or at zero *with* mute asserted. This is the first occurrence where the loop holds full scale **and** tears down the one mitigation a user can reach without a terminal. Pressing mute does not stop it; the next write cancels it ~33 ms later. On worn Bluetooth headphones this removes the last non-expert escape from a full-scale output.
+
+钉在满刻度的同时,ControlCenter 还写了 **1,098 次 `mute: 0.000000`** —— 以约 30 Hz 主动**取消**静音。事故 1–4 要么钉在满刻度,要么钉在 0 并置静音;这是第一次出现"满刻度 + 持续撤销静音"。用户按静音压不住,约 33 毫秒后就被下一条写入撤销 —— 在正戴着的蓝牙耳机上,这拆掉了非专业用户最后一条自救路径。
+
+### Recovery / 恢复
+
+`killall ControlCenter` stopped it — ControlCenter writes ceased at 13:38:49 and were **0** over the following 30 s; `coreaudiod` fell **185.8% → 18.2%**. Volume did not restore itself (matching incident 4, not incident 3) and was set back by hand.
+
+### Same-day negatives, recorded so they are not re-run / 当日负结果,记下以免重跑
+
+Three `racetrigger --mode open --duration 60 --threads 8` rounds against built-in speakers on beta5, Alcove running **and writing** (135 / ~910 / 2,340 writes — the middle and upper rounds exceed the 65 writes/min of the run that fired in the [writing A/B](#alcove-must-be-writing-not-merely-running--alcove-必须在写)), with continuous manual volume-key hammering throughout: **no runaway**, ControlCenter 0–16 writes. See [Reproduction on demand](#reproduction-on-demand--按需复现) for why.
+
+One negative control was also run **with Alcove quit**: 3 device switches (confirmed by 3 `BIND` lines, 168 writes to `BuiltInSpeakerDevice`), ControlCenter peaking at 26 writes/s — **no runaway**. This is **weak and must not be cited as confirming Alcove's necessity**: incident 5 fired after the same number of switches (3), so the two runs are indistinguishable on sample size. A positive control — the identical 3-switch sequence with Alcove restarted — was **not** run.
+
 ## Scope: not a 27 regression / 并非 27 回归
 
 The closest public prior art is **[Alcove #675](https://github.com/henrikruscon/alcove-releases/issues/675)** — "volume stuck at maximum, Alcove blocks it from going down" — reported on **macOS 26.3.1** with Alcove 1.6.12 on a MacBook Pro M2 Max. Symptom shape matches the up-direction case, so the defect **predates macOS 27**.
@@ -401,6 +466,7 @@ Recorded so Apple can skip these, and so this report is not read as "some app wr
 | Echo-from-listener with a 40 ms stale-read window, rate-limited to 12/s | no runaway (30 s) |
 | Bluetooth handoff (AirPods moving between iPhone and Mac) | **not required** — runaways occurred with AirPods idle, and on built-in speakers |
 | ToDesk app running | **not required** — the ToDesk app was quit for later runaways (its root service `ToDesk_Service` was still loaded, so ToDesk is not fully excluded) |
+| `racetrigger` + continuous volume-key hammering, 3 rounds on beta5 (2026-08-11) | no runaway — and **ControlCenter never wrote at all** (0 `set system volume` in the heaviest round). Mechanism identified below: [Alcove intercepts the media keys](#why-racetrigger-cannot-reach-the-race-on-this-machine--为什么-racetrigger-在这台机器上够不到那个-race) |
 
 The write signatures are identical where it matters: both Alcove and the synthetic tool issue `AudioObjectSetPropertyData` on `['vmvc', 'outp', 0]` against the same devices. Alcove additionally writes `['mute', 'outp', 0]`. Banner behaviour is also identical — `VolumeSystemBannerContent` events track volume writes at a ratio of ~2.0 with Alcove both running and quit, so Alcove is **not** suppressing the system HUD in a way that matters here.
 
@@ -438,6 +504,25 @@ Two things this rules out that look plausible:
 
 **Unexplained:** why Alcove writes when `racetrigger` is launched from the reporter's interactive terminal but not when launched from a non-interactive shell, despite identical arguments. Process QoS/scheduling differences between the two launch contexts are a candidate, untested. This is the current edge of the investigation.
 
+### Why `racetrigger` cannot reach the race on this machine / 为什么 `racetrigger` 在这台机器上够不到那个 race
+
+Established 2026-08-11 on beta5, by A/B on Alcove with the same manual action (pressing volume keys) — measured on ControlCenter's **own** `set system volume` line, not the CoreAudio HAL line:
+
+| Alcove | Action | ControlCenter writes |
+|---|---|---|
+| **running** | continuous volume-key hammering, ~2 min, `racetrigger` also writing 25,422× | **0** |
+| **quit** | volume-key presses, ~2 min | **218** HAL writes / **104** `set system volume` |
+
+**Alcove intercepts the media keys.** With it running, the volume keys never reach ControlCenter's `SoundSettings` path; Alcove consumes the event and issues the HAL write itself. (Ruled out at the same time: the alternative that volume keys simply never route through ControlCenter — they clearly do, once Alcove is gone.)
+
+This explains the negative rounds, and retroactively explains an older result. The defect is a lost update **among ControlCenter's own concurrent threads** — so ControlCenter has to be performing a read-modify-write for there to be an update to lose. `racetrigger` writes at the **HAL layer**: it changes the property, but never induces ControlCenter to run that path. With Alcove also eating the key presses, the three beta5 rounds contained **no ControlCenter RMW at all** — the tool was contending with nothing. That is a better account of "[write pressure is not the trigger](#alcove-is-necessary--controlled-and-reversible--alcove-是必要条件)" (38× the rate, no runaway) than volume-vs-quality: the synthetic writes were never landing in the racing code path.
+
+**Consequence for the recipe:** step 3 ("immediately hammer the volume keys") **contributes nothing on this machine while Alcove is running**. It was in the recipe because it is what the reporter actually did, not because it was isolated. A default-output-device change is a path Alcove cannot intercept — ControlCenter must re-read and re-apply that device's volume and mute state — which is consistent with all three of incidents 3, 4 and 5 starting at a device change.
+
+**This deepens the [open question](#open-question--未解) rather than settling it.** If Alcove *reduces* ControlCenter's participation in the volume path, the established "Alcove is necessary" A/B (5/5 and 6/6) becomes harder, not easier, to explain — one would expect quitting Alcove to make ControlCenter do *more* RMW and race *more*. The narrowest hypothesis that fits every observation so far is that **two things must coincide: ControlCenter performing its own RMW (forced by a device change) *and* a second HAL writer contending with it (Alcove)** — but this is **untested**, and it does not explain the [beta4 confirmation](#beta4-confirmation--beta4-复现确认), where a runaway followed `racetrigger` plus a few key taps with Alcove running. Both stand; neither is discarded.
+
+2026-08-11 在 beta5 上用 Alcove 开/关做 A/B(同一个动作:按音量键,统计 ControlCenter **自己**的 `set system volume` 行)测得:**Alcove 会拦截媒体键** —— 它在时,音量键根本到不了 ControlCenter,由 Alcove 自己发 HAL 写入。这解释了 beta5 三轮为何全阴:该缺陷是 ControlCenter **自身并发线程间**的 lost update,得它自己在做读-改-写才有更新可丢;而 `racetrigger` 只在 HAL 层写属性,从不诱发 ControlCenter 走那条路径,再加上 Alcove 吃掉了按键,三轮里 **ControlCenter 一次 RMW 都没做**,工具是在跟空气抢。这也给"写入压力不是触发条件"提供了比"质而非量"更好的解释:合成写入压根没落到出错的代码路径上。**配方第 3 步在 Alcove 运行时不起作用**;而默认输出设备切换是 Alcove 拦不住的路径 —— 与事故 3、4、5 全部起于设备切换一致。**但这加深而非解决了[未解问题](#open-question--未解)**:若 Alcove 反而减少了 ControlCenter 的参与,原本"Alcove 是必要条件"的 A/B 就更难解释了。目前唯一能兼容全部观测的最窄假设是"**需要两件事同时发生:ControlCenter 自己在做 RMW(由设备切换强制)+ 有第二个 HAL 写手与之竞争(Alcove)**",但该假设**未经验证**,且解释不了 beta4 那次复现。两者并列保留。
+
 ### Tools / 工具
 
 [`tools/volwatch/`](../tools/volwatch/) — LaunchAgent that records occurrences passively. Detection rule and the three rejected alternatives are documented in the source header; it has caught every runaway since the pinned-phase probe was added. [`racetrigger.swift`](../tools/volwatch/racetrigger.swift) in the same directory implements the negative results above and is kept so they stay reproducible.
@@ -468,11 +553,22 @@ A second, weaker signal followed: after the `killall`-triggered respawn (new PID
 
 beta4(`26A5388g`,2026-07-22)复现确认:同一套按需复现配方触发,单线程(`0x1b02`)以 30Hz 连续空转 **约 21 秒**才被手动 `killall ControlCenter` 打断,CoreAudio 层日志佐证。复现前先用 `log show` 独立核实了日志,不是单凭 `volwatch` 的 DETECT 行下的结论(那条信号单独看可能是人在按键的假阳性)。
 
+### beta5 confirmation / beta5 复现确认
+
+**Still present, unfixed, on `26A5406e` (2026-08-11)** — see [incident 5](#incident-5--2026-08-11-beta5-26a5406e-device-switch-alone-pinned-at-full-scale-while-repeatedly-un-muting-itself--事故-5仅靠设备切换触发钉在满刻度并反复自行取消静音) for the full capture. Two things changed about *how* it was reproduced:
+
+- The on-demand recipe (`racetrigger`) **failed three times** and is now understood not to reach the racing code path — see [above](#why-racetrigger-cannot-reach-the-race-on-this-machine--为什么-racetrigger-在这台机器上够不到那个-race).
+- A plain **output-device switch reproduced it on the first attempt**, with no tooling at all.
+
+Apple's beta5 release notes do not mention this defect; nothing in the ledger's [beta5 diff](../README.md#new-build-26a5406e-beta5--新-buildbeta52026-08-11-装) covers it either.
+
+beta5(`26A5406e`,2026-08-11)确认仍存在。复现方式有两处变化:按需复现工具 `racetrigger` **三轮全部失败**(原因见上节:它够不到出错的代码路径);而**单纯切换输出设备一次就复现**,未借助任何工具。
+
 ## Open question / 未解
 
 **What does Alcove do that a synthetic writer does not?**
 
-Alcove is necessary (A/B, both directions, twice) but the mechanism is unidentified. Everything observable from outside matches between Alcove and a synthetic writer that fails to trigger it: same API (`AudioObjectSetPropertyData`), same property (`['vmvc', 'outp', 0]`), same devices, same banner-to-write ratio. Alcove also writes `['mute', 'outp', 0]`; mirroring that did not close the gap.
+Alcove is necessary (A/B, both directions, twice) but the mechanism is unidentified. **Harder as of 2026-08-11:** Alcove is now known to *intercept the media keys*, i.e. to make ControlCenter do **less** volume work, not more — so "quitting it prevents the runaway" runs against the naive expectation. See [Why `racetrigger` cannot reach the race](#why-racetrigger-cannot-reach-the-race-on-this-machine--为什么-racetrigger-在这台机器上够不到那个-race) for the measurement and the narrowest hypothesis that still fits (untested). Everything observable from outside matches between Alcove and a synthetic writer that fails to trigger it: same API (`AudioObjectSetPropertyData`), same property (`['vmvc', 'outp', 0]`), same devices, same banner-to-write ratio. Alcove also writes `['mute', 'outp', 0]`; mirroring that did not close the gap.
 
 Hypotheses tested and **rejected** during this investigation, listed so they are not re-run:
 
@@ -481,7 +577,7 @@ Hypotheses tested and **rejected** during this investigation, listed so they are
 3. Alcove's off-grid values (`0.435`, `0.490`) are its fingerprint — 1,194 of its 1,324 daily writes are clean 1/16 multiples.
 4. ToDesk is required — later runaways occurred with the app quit.
 5. The Bluetooth handoff is required — runaways occurred on built-in speakers with AirPods idle.
-6. Enough concurrent write pressure suffices — 38× Alcove's rate produced nothing.
+6. Enough concurrent write pressure suffices — 38× Alcove's rate produced nothing. *(2026-08-11: now has a mechanism — the synthetic writer works at the HAL layer and never induces ControlCenter's own RMW, so it contends with nothing. See [Why `racetrigger` cannot reach the race](#why-racetrigger-cannot-reach-the-race-on-this-machine--为什么-racetrigger-在这台机器上够不到那个-race).)*
 7. The stale-read window is the missing ingredient — a 40 ms read-then-write-back loop produced nothing.
 8. Alcove suppresses the volume HUD and breaks the banner lifecycle — banner-to-write ratio is ~2.0 with Alcove running *and* quit.
 
