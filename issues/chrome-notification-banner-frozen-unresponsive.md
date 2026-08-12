@@ -251,6 +251,15 @@ The failure needs **both** halves to happen, and each half has an owner:
 ## Variations honestly recorded / 如实记录的变体
 
 - Usually **only left click** dies; right-click and swipe keep working. **Once**, all three died together, and that instance also survived a full Chrome quit-and-relaunch, self-healing only ~9.6 minutes after delivery. Whether that is the same bug in a worse state or a second, rarer problem is **unresolved**.
+
+- **2026-08-12 update — the total-freeze variant is NOT Chrome-specific, and is a different code path.** A macOS **Reminders** alert (`com.apple.reminders`, TIME SENSITIVE) went fully inert on beta5 `26A5406e`: left click, right click and swipe all dead, for minutes. Two measurements separate it cleanly from the Chrome bug documented above:
+  - **The click never reaches `usernoted` at all.** Five deliberate clicks produced **0** `Received response` lines for `com.apple.reminders` over a 20-minute window (a Mail notification clicked in the same window logged its `Received response` **and** was forwarded normally). The Chrome bug is the opposite shape — every click *is* received, it just cannot be forwarded.
+  - **Not a global event-dispatch failure:** Telegram notifications were interactive throughout, and `NotificationCenter.app` (pid 821, the process owning the on-screen notification window) sampled clean — main thread parked in its normal event loop, `NSEventThread` normal, zero blocking calls.
+  - Also observed: the notification was live in the store (`delivered=1, displayed=1`), `remindd` was running (in fact three instances), and `usernoted` logged a client connection for `com.apple.reminders` **once**, 25 minutes earlier, and never again.
+
+  **An attempted explanation was tested and withdrawn.** Interactivity oscillated rapidly between working and dead, and `UserNotificationCenter.app` was simultaneously churning (new PIDs roughly every minute). Four state checks lined up — UNC absent ⇒ frozen, UNC present ⇒ working — which looked like a mechanism. **It does not hold:** the reporter pointed out that verifying "is it alive?" *requires interacting with the notification*, and interaction is itself a plausible cause of `UserNotificationCenter` being spawned. The direction of causation is therefore unestablished, and the correlation is confounded by the measurement. A `killall UserNotificationCenter` control failed to run (the processes are not owned by the invoking user), so the causal test was never completed.
+
+  **What this needs:** an automated observer that synthesises interaction on a fixed cadence while independently logging process lifecycle, so liveness is never inferred from a human's clicks. Manual clicking cannot answer this question — it perturbs the thing being measured.
 - `NotificationCenter.app` was not perfectly idle during one stuck period (~9–10% of one core doing genuine SwiftUI layout work). At that magnitude it looks like ordinary panel refresh, not a hang, and it is **not** treated as evidence here.
 
 ## Possibly related, unconfirmed / 可能相关但未确认
