@@ -252,15 +252,20 @@ The failure needs **both** halves to happen, and each half has an owner:
 
 - Usually **only left click** dies; right-click and swipe keep working. **Once**, all three died together, and that instance also survived a full Chrome quit-and-relaunch, self-healing only ~9.6 minutes after delivery. Whether that is the same bug in a worse state or a second, rarer problem is **unresolved**.
 
-- **2026-08-12 update — the total-freeze variant is NOT Chrome-specific, and is a different code path.** A macOS **Reminders** alert (`com.apple.reminders`, TIME SENSITIVE) went fully inert on beta5 `26A5406e`: left click, right click and swipe all dead, for minutes. Two measurements separate it cleanly from the Chrome bug documented above:
-  - **The click never reaches `usernoted` at all.** Five deliberate clicks produced **0** `Received response` lines for `com.apple.reminders` over a 20-minute window (a Mail notification clicked in the same window logged its `Received response` **and** was forwarded normally). The Chrome bug is the opposite shape — every click *is* received, it just cannot be forwarded.
-  - **Not a global event-dispatch failure:** Telegram notifications were interactive throughout, and `NotificationCenter.app` (pid 821, the process owning the on-screen notification window) sampled clean — main thread parked in its normal event loop, `NSEventThread` normal, zero blocking calls.
-  - Also observed: the notification was live in the store (`delivered=1, displayed=1`), `remindd` was running (in fact three instances), and `usernoted` logged a client connection for `com.apple.reminders` **once**, 25 minutes earlier, and never again.
+- **2026-08-12, further corrected — it is a BANNER-LAYER defect, and it is probably the originally-reported bug.** Continued observation replaced the "total freeze" description twice. What is actually established:
 
-  **An attempted explanation was tested and withdrawn.** Interactivity oscillated rapidly between working and dead, and `UserNotificationCenter.app` was simultaneously churning (new PIDs roughly every minute). Four state checks lined up — UNC absent ⇒ frozen, UNC present ⇒ working — which looked like a mechanism. **It does not hold:** the reporter pointed out that verifying "is it alive?" *requires interacting with the notification*, and interaction is itself a plausible cause of `UserNotificationCenter` being spawned. The direction of causation is therefore unestablished, and the correlation is confounded by the measurement. A `killall UserNotificationCenter` control failed to run (the processes are not owned by the invoking user), so the causal test was never completed.
+  | notification is presented as | click reaches `usernoted`? | outcome |
+  |---|---|---|
+  | **persistent on-screen banner** | **no** — 0 of 5 (Reminders), 0 (a fresh Chrome push clicked within ~5 s of arrival) | activate and swipe-to-file both dead |
+  | **row in Notification Center** | **yes** — 1 of 1 (the *same* Reminders notification, minutes later) → `Search for url to launching` → app launched in 13 ms | works, unless the client process is dead (that is the separate defect documented in the main body) |
 
-  **What this needs:** an automated observer that synthesises interaction on a fixed cadence while independently logging process lifecycle, so liveness is never inferred from a human's clicks. Manual clicking cannot answer this question — it perturbs the thing being measured.
-- `NotificationCenter.app` was not perfectly idle during one stuck period (~9–10% of one core doing genuine SwiftUI layout work). At that magnitude it looks like ordinary panel refresh, not a hang, and it is **not** treated as evidence here.
+  **The banner is not frozen and events are not lost.** Its **`✕` still works** while activation is dead, and it works *properly*: dismissing one produced a full, clean `_removeDelivered` → `_removeDisplayed` → Spotlight de-index sequence in `usernoted`. So the banner↔`usernoted` channel is open the whole time. What fails is specifically the **activate** and **swipe-to-file** branches, which are silently dropped before reaching `usernoted`. The earlier characterisations here — "total freeze", "the click never reaches `usernoted`", "`UserNotificationCenter` liveness is the cause" — were all too coarse or simply wrong, and are withdrawn.
+
+  **Timing rules out the client-lifecycle explanation for this one.** A Chrome push clicked **within ~5 seconds** of `Presenting` was already inert, so "the helper idled out" cannot account for it.
+
+  **Why this matters for the reports already filed:** the original symptom that started this investigation — banner sitting on screen, unswipeable, unclickable — is *this* defect, not the `getDeliveredNotifications` race filed as FB24273686 / posted to crbug 370536109. Both are real and independently measured, and they compose (banner layer swallows the gesture; if you reach the notification via the list instead, the client-lifecycle bug can then swallow the click). But the filed reports do **not** cover this one.
+
+  **Still unexplained:** what puts a given banner into this state. It is intermittent — other banners in the same session activate normally — and no trigger has been isolated.
 
 ## Possibly related, unconfirmed / 可能相关但未确认
 

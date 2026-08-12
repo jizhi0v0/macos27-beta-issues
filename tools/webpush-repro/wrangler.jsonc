@@ -1,0 +1,12 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "notif-webpush-repro",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "kv_namespaces": [{ "binding": "PUSH_SUBS", "id": "d5e0c274d5fc40ff8881885ebad838a8" }],
+  "vars": {
+    "VAPID_PUBLIC_KEY": "BNYeUqH_TQdzNkGdFvqHS5yUeYzz2O3fWFGXLlk_xRpFWWlhZqdg3wib9WnQFCzb_13qK3AnUBTtQo504Uq0WMA",
+    "VAPID_SUBJECT": "mailto:test@example.com"
+  }
+}

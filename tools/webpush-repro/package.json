@@ -1,0 +1,1 @@
+{ "name": "notif-webpush-repro", "private": true, "dependencies": { "web-push": "^3.6.7" } }
