@@ -160,6 +160,39 @@ So the check lands at an essentially arbitrary offset from the last `add()`. Som
 
 **The `OnNotificationAction()` entry deserves special attention**, because it makes the bug partly self-inflicted and contagious between notifications: *interacting with one notification triggers an immediate termination check*. If a second notification was posted moments earlier and is still inside its invisibility window, that check reads empty, the helper exits — and the **second** notification is the one that becomes permanently unclickable. Dismissing or clicking one notification can therefore break another one that arrived just before it. This is a plausible mechanism for the original real-world report, where several notifications were involved and only some went dead, though it was not isolated experimentally here.
 
+## Three distinct failure shapes — do not conflate them / 三种必须区分的失败形态
+
+Most of the confusion in this investigation came from treating one symptom ("clicking a notification does nothing") as one bug. `usernoted`'s log separates them cleanly, and the distinction decides who can fix what:
+
+| | click reaches `usernoted` | forwarded to the app | right-click / swipe | where it breaks |
+|---|---|---|---|---|
+| **A** | ✅ (61, and later 15) | ❌ 0 | **still work** | client process gone — **this is the filed bug** |
+| **B** | ❌ 0 of 5 | — | **also dead** | before `usernoted` — **unexplained** |
+| **C** | ✅ | ✅ | work | inside Chrome, after delivery — matches [crbug 370536109](https://issues.chromium.org/issues/370536109) |
+
+**A is not a freeze.** Only activation fails; right-click and swipe behave normally. **B is the freeze** — the whole banner stops responding except its `✕`, and it is the symptom that originally started this investigation. Earlier revisions of this file used "stuck"/"frozen" loosely for both; that was sloppy.
+
+### A reliable recipe for shape A / shape A 的可靠复现配方
+
+Shape A was originally hit ~4 times in 7 pushes, seemingly at random. The missing variable was the **service worker's running state**, which was never controlled — the test page stayed open in every early run, keeping the SW warm and the Alerts helper alive. Controlling it makes the failure land:
+
+1. subscribe a page to Web Push, then **close the tab**;
+2. wait until `chrome://serviceworker-internals` shows that origin's worker `Running Status: STOPPED` (a push wakes it, so re-check ~60 s after the push — it stays `RUNNING` for a while);
+3. send a push and leave the notification alone;
+4. click it.
+
+Measured on beta5 `26A5406e` with the SW confirmed `STOPPED`: **15 clicks → 15 `Received response`, 0 forwarded**, `Google Chrome Helper (Alerts)` not running, and the service worker's own server-side probe never pinged. RunningBoard shows the helper dying the same second it was spawned (`13:31:37 Acquiring → proc_exit → appDeath`), then one `appDeath` per subsequent click.
+
+This is worth adding to the filed reports: it converts "roughly half the time" into a procedure.
+
+### Independent corroboration of the filed mechanism / 对已提交机制的旁证
+
+Two notifications outstanding at once were observed to **both** stay clickable, while single outstanding notifications went dead. That is exactly what the filed mechanism predicts — a non-empty `getDeliveredNotifications` makes `OkayToTerminateService` return false, so the helper survives — and it independently reproduces what reporters in comments #22/#23 of crbug 370536109 noticed years earlier without an explanation ("when multiple notifications are present simultaneously, notificationclick becomes effective").
+
+### Things that look related but are not / 看着相关其实无关
+
+- **Chrome's "This site has been updated in the background" placeholder.** It appeared repeatedly on one site during this session, which looked like a lead. It is Chrome's mandated fallback when a service worker takes a push event but does not call `showNotification()` in time — i.e. that site's SW is slow to wake, a property of that SW's own workload. Our harness, whose push handler does nothing but `showNotification()`, never produced it across 4 rapid pushes with the SW cold. It also cannot explain shape C, where the notification's real content displayed correctly (so the SW *did* wake and complete) and only the later click did nothing.
+
 ## Proof it is not Chrome-specific: a non-Chrome app reproduces it end to end / 与 Chrome 无关的自建 demo 完整复现
 
 A two-bundle demo sharing **none of Chrome's code** ([`tools/notifdemo-nonchrome/`](../tools/notifdemo-nonchrome/)): a parent app launches `NotifDemoHelper.app` with a `--from-parent` marker; the helper posts one categorized notification, then evaluates Chromium's exact `OkayToTerminateService` predicate against its own `getDeliveredNotifications` and exits if the array is empty.
