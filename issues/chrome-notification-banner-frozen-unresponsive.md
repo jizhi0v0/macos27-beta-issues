@@ -252,20 +252,23 @@ The failure needs **both** halves to happen, and each half has an owner:
 
 - Usually **only left click** dies; right-click and swipe keep working. **Once**, all three died together, and that instance also survived a full Chrome quit-and-relaunch, self-healing only ~9.6 minutes after delivery. Whether that is the same bug in a worse state or a second, rarer problem is **unresolved**.
 
-- **2026-08-12, further corrected — it is a BANNER-LAYER defect, and it is probably the originally-reported bug.** Continued observation replaced the "total freeze" description twice. What is actually established:
+- **2026-08-12, corrected twice more.** Two things were claimed here this morning that later measurement does not support, and one that survives.
 
-  | notification is presented as | click reaches `usernoted`? | outcome |
-  |---|---|---|
-  | **persistent on-screen banner** | **no** — 0 of 5 (Reminders), 0 (a fresh Chrome push clicked within ~5 s of arrival) | activate and swipe-to-file both dead |
-  | **row in Notification Center** | **yes** — 1 of 1 (the *same* Reminders notification, minutes later) → `Search for url to launching` → app launched in 13 ms | works, unless the client process is dead (that is the separate defect documented in the main body) |
+  **Survives:** every confirmed failure of this variant happened while the notification was showing as an **on-screen banner**, and in each case the banner was *stuck there* — not auto-dismissing when it should have. Banner state is a **necessary** condition as far as the evidence goes. The one clean cross-over remains the Reminders notification: 0 of 5 clicks reached `usernoted` as a banner, then 1 of 1 reached it minutes later as a Notification Center row and launched the app in 13 ms.
 
-  **The banner is not frozen and events are not lost.** Its **`✕` still works** while activation is dead, and it works *properly*: dismissing one produced a full, clean `_removeDelivered` → `_removeDisplayed` → Spotlight de-index sequence in `usernoted`. So the banner↔`usernoted` channel is open the whole time. What fails is specifically the **activate** and **swipe-to-file** branches, which are silently dropped before reaching `usernoted`. The earlier characterisations here — "total freeze", "the click never reaches `usernoted`", "`UserNotificationCenter` liveness is the cause" — were all too coarse or simply wrong, and are withdrawn.
+  **Withdrawn — "banner state is what determines it".** It is necessary but plainly **not sufficient**. Controlled pushes through the harness in [`tools/webpush-repro/`](../tools/webpush-repro/), each `requireInteraction: true` with an action button, were clicked as banners and worked normally: **59 s ✅, 65 s ✅, and 24 s with a full screen lock/unlock cycle in between ✅**. (Two further successes at 5 min and 8 min 50 s are *excluded* from this count — they were clicked 4 seconds apart, which suggests they were clicked from an open Notification Center list rather than as banners, and no measurement distinguishes the two.)
 
-  **Timing rules out the client-lifecycle explanation for this one.** A Chrome push clicked **within ~5 seconds** of `Presenting` was already inert, so "the helper idled out" cannot account for it.
+  **Withdrawn — every mechanism proposed for it so far.** Each was tested and failed:
+  - *banner "expires" some seconds after presentation* — falsified: 65 s as a banner, still fine;
+  - *a screen lock/unlock cycle breaks it* — falsified: locked and immediately unlocked, then clicked, worked;
+  - *`UserNotificationCenter` liveness causes it* — withdrawn as reverse causality (checking liveness requires interacting, which may itself spawn the process);
+  - *elapsed time* — falsified.
 
-  **Why this matters for the reports already filed:** the original symptom that started this investigation — banner sitting on screen, unswipeable, unclickable — is *this* defect, not the `getDeliveredNotifications` race filed as FB24273686 / posted to crbug 370536109. Both are real and independently measured, and they compose (banner layer swallows the gesture; if you reach the notification via the list instead, the client-lifecycle bug can then swallow the click). But the filed reports do **not** cover this one.
+  **What the shape of the evidence now suggests:** not a property of an individual notification at all, but a **system state the machine intermittently enters**, during which notifications displayed as banners stop accepting activation while everything else about them keeps working (the `✕` still dismisses cleanly, with a full `_removeDelivered` → `_removeDisplayed` → Spotlight de-index sequence). Outside that state, banners survive minutes and a lock cycle without trouble. **What puts the machine into that state is unknown.**
 
-  **Still unexplained:** what puts a given banner into this state. It is intermittent — other banners in the same session activate normally — and no trigger has been isolated.
+  **Automated measurement is not available for this.** macOS ignores synthetic clicks on notification banners — a `CGEvent` posted at the banner's exact centre (obtained live from the accessibility tree) registered **nothing**: no `Received response`, no service-worker ping, and the banner stayed on screen. The accessibility tree exposes the banner's text and geometry but no `AXPress` action, and `NotificationCenter` cannot be granted through the automation permission path (it is not in the application index). This is sensible platform hardening, not a defect — but it means every data point for this variant needs a human click, which is why the sample is small.
+
+  **Bearing on the filed reports:** none of the above affects them. The `getDeliveredNotifications` race (FB24273686, crbug 370536109 comment) was measured independently of all of this and stands. But it remains true that the symptom which *started* this investigation is this variant, not the one filed.
 
 ## Possibly related, unconfirmed / 可能相关但未确认
 
