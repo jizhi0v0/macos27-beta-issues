@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | 🟡 Open · **the NaN brightness state reproduces on beta5 at high volume, but it is not shown to be a 27 regression and has no known user impact** — see the 2026-08-13 correction at the bottom, which also retires the "~116 Hz toggle" half of the title |
+| **Status** | ⚪ **Resolved 2026-08-13 — not a defect.** `nan` is an unset-field sentinel; the one permanently-`nan` field (`indicator brightness`) needs the dedicated silicon of [MacBook Neo / A18 Pro](https://support.apple.com/guide/security/mac-on-screen-camera-indicator-light-sec75a2d237d/web), which this Mac does not have (`IOMFBSupportsSecureIndicator = No`). The title's "~116 Hz toggle" is a brightness ramp. See the two 2026-08-13 sections at the bottom. No Feedback filed |
 | **macOS** | 27.0 beta4 `26A5388g` |
 | **Component** | Apple **CoreBrightness** (`corebrightnessd`) → **QuartzCore** (`com.apple.coreanimation:Brightness`) |
 | **Hardware** | `Mac15,11`, M3 Max, built-in Liquid Retina XDR, 120 Hz, **Auto-Brightness ON** |
@@ -152,3 +152,56 @@ That is two major versions before 27, so "NaN brightness state" is **not new in 
 A window recorded live as 2,357 lines / 1,031 `nan`, re-queried 40 minutes later, returned **240 lines / 0 `nan`**. `--info --debug` messages live in an in-memory ring buffer and are evicted oldest-first, and `log show` reports the loss as a smaller plausible number rather than an error. Any window that turns out to be interesting is usually unexaminable by the time you notice it. The watcher therefore gzips every window's raw log at capture time (~50 KB per 5-minute window per stream).
 
 `--info --debug` 级别的日志活在内存环形缓冲里，几十分钟就被挤掉：同一窗口实时记为 2,357 行 / 1,031 nan，40 分钟后重查只剩 240 行 / 0 nan，且失败形式是「返回一个看起来合理的小数字」而非报错。因此 watcher 现在在采样当时就把每个窗口的原始日志 gzip 落盘。
+
+## RESOLVED 2026-08-13 — `indicator brightness: nan` is a hardware capability that this Mac does not have. Not a defect. / 定案：`indicator brightness: nan` 是本机没有的硬件能力，非缺陷
+
+`nan` here is **an unset-field sentinel written by Apple's code**, and the one field that is *never* populated — `indicator brightness` — belongs to a security feature that requires dedicated silicon this machine does not have. Nothing in this entry is a defect. **No Feedback will be filed.**
+
+### The official source
+
+Apple Platform Security, [**Mac on-screen camera indicator light**](https://support.apple.com/guide/security/mac-on-screen-camera-indicator-light-sec75a2d237d/web) (published 2026-03-11):
+
+> MacBook Neo combines system software and dedicated silicon elements within A18 Pro to provide additional security for the camera feed. The architecture is designed to prevent any untrusted software—even with root or kernel privileges in macOS—from engaging the camera without also visibly lighting the on-screen camera indicator light.
+
+[MacBook Neo](https://www.macrumors.com/2026/03/04/apple-announces-low-cost-macbook-neo-with-a18-pro-chip/) shipped 2026-03-11 (A18 Pro, the first A-series Mac) — the same date the guide section was published. So the indicator pipeline present throughout macOS is the *system software* half of a feature whose *silicon* half exists only on that hardware generation.
+
+### Verified on this machine
+
+| check | result |
+|---|---|
+| `ioreg -c IOMobileFramebuffer -lw0` | **`IOMFBSupportsSecureIndicator = No`** — sibling keys are hardware-capability flags (`SupportsAOTPowerSaving = No`, `PCC2DEnable = Yes`, `calibrationType = 1`) |
+| `IODeviceTree:/backlight` (45 properties) | **no indicator property at all** — and that node is what the CoreBrightness gate reads |
+| every archived window (`indicator brightness:`) | **70,037 lines, 0 real values** — 8 apparent exceptions are the `-1` sentinel from the other branch |
+| corebrightnessd (`Indicator.brightness=`) | **10,501 lines, 0 non-`nan`** |
+| **live mic test** (Chrome requests `kTCCServiceMicrophone`, `Dependent controller changed: sensor indicators` fires 3×) | **field stays `nan`** — the on-screen dot lights without touching this channel |
+| `PIL` activity in 3 h of log | **0 lines**; no PIL node anywhere in `ioreg` |
+| fixed-point decode (16.16) | `BLNitsCap = 26227508` → **400.2 nits**, exactly matching `brightness limit: 400.2` in the logs; `IOMFBIndicatorNitsCap` → 1600 nits (panel HDR peak) |
+
+The mic test is the one that could have overturned this and did not: the indicator lights, the field does not move — consistent with the indicator being rendered on screen and this hardware channel being absent.
+
+### Binary analysis — by **DeepSeek v4 Pro**, partially re-verified here
+
+Static reverse engineering of the shipped binaries (log format string → cross-reference scan → disassembly → symbol archaeology) established:
+
+- both emitters assign NaN as a **literal constant** (`mov x8, #0x7ff8000000000000` / `mov w8, #0x7fc00000`), never as the result of arithmetic — `CA::WindowServer::IOMFBDisplay::swap_brightness()` and `-[CAWindowServerDisplay commitBrightness:withBlock:]_block_invoke`; the same code also *checks* for NaN, so it is a designed-for state;
+- three sentinel conventions coexist in one record: NaN, `-1.0`, and integer `-1`;
+- `-[CBDisplayModuleSKL displayBrightnessUpdate]` writes the NaN when `CBU_IsSecureIndicatorSupported()` is false, and that gate reads a bool from `IODeviceTree:/backlight`.
+
+**What was re-verified here:** every cited string exists in the shared cache (7/7 including a control), and the `PIL` string family is real — `PIL Camera State Set to`, `PIL Mic State Set to`, `PIL Duty cycle overriden to`, `PIL calibration from EDT`. **What was not:** the disassembly itself, the instruction-level claims, and the function identifications — those rest on DeepSeek's analysis.
+
+### Corrections this supersedes
+
+- **"~116 Hz toggle" (this entry's title)** — a brightness ramp, not an oscillation. See the 2026-08-13 correction above.
+- **"every field including `ambient lux` reads `nan`, so Auto-Brightness runs on garbage input"** — false. `commitBrightness` records carry a valid `ambient lux: 419.248` at the same instant a `swap` record shows `nan`, matching corebrightnessd's own `AggregatedLux value=419.2484`. The `swap` record simply does not carry those fields.
+- **"a physical LED in the display module"** — wrong, and it was ours as well as DeepSeek's; Apple's own title says **on-screen**. Retracted.
+- **"% of windows with nan" as a defect rate** — it is not. It measures how much brightness/EDR churn happened in that period. Display-off silences the stream entirely, and so does a static desktop with the display *on* (observed: 25 minutes of zero lines with the display awake).
+
+### Still unexplained (kept rather than buried)
+
+- The `PIL` string family reads like a physically driven light (PWM duty cycle, calibration from EDT) while Apple's Mac-facing documentation says *on-screen*. Plausibly shared code with platforms that do have a physical indicator — **unverified**.
+- What `SILMgr`'s four regions are; the exact EDT property name the gate reads (its string sits behind a PAC'd pointer).
+- Dead ends recorded so they are not re-walked: RTTI is stripped and vtables are PAC-signed, so vtable archaeology fails; `lldb image lookup -r -s` on the cache returns nothing for these strings; and `log` is a zsh builtin that silently returns empty through a pipe (already documented in [`tools/mds-storm-watch.sh`](../tools/mds-storm-watch.sh) and hit again independently).
+
+**Status: ⚪ not a defect — expected logging on hardware without the Secure Indicator capability.**
+
+**结论**：`nan` 是苹果代码显式赋的「本字段未设置」哨兵；唯一永远填不上的 `indicator brightness`，对应的是 [MacBook Neo(A18 Pro)专用硅](https://support.apple.com/guide/security/mac-on-screen-camera-indicator-light-sec75a2d237d/web) 才具备的屏内安全摄像头指示灯能力，本机 `IOMFBSupportsSecureIndicator = No`，整条通道关闭，故恒为 `nan`，与 macOS 版本无关。开麦克风实测不改变该字段（橙点是屏幕渲染，不走这条通道）。非缺陷，不报 Feedback。反汇编由 **DeepSeek v4 Pro** 完成，本机复核了其引用的全部字符串与 ioreg 门控，未复核指令级断言。
