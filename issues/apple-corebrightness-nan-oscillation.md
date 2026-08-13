@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | 🟡 Open · confirmed on beta4, low frequency (once per ~30 min) |
+| **Status** | 🟡 Open · **the NaN brightness state reproduces on beta5 at high volume, but it is not shown to be a 27 regression and has no known user impact** — see the 2026-08-13 correction at the bottom, which also retires the "~116 Hz toggle" half of the title |
 | **macOS** | 27.0 beta4 `26A5388g` |
 | **Component** | Apple **CoreBrightness** (`corebrightnessd`) → **QuartzCore** (`com.apple.coreanimation:Brightness`) |
 | **Hardware** | `Mac15,11`, M3 Max, built-in Liquid Retina XDR, 120 Hz, **Auto-Brightness ON** |
@@ -93,3 +93,62 @@ worst window    :  4,609 lines
 So any arbitrary five-minute look has about a **7-in-10** chance of catching it, and it is still fully present on beta5 — the entry was previously left at 🟡 on beta4 data alone.
 
 What does **not** change: the beta4 mechanism description (1,396 toggles each way in 12 s — once per frame at 120 Hz; every field including `ambient lux` reading `nan` while Auto-Brightness is ON), and the explicit falsification of this as the cause of [#3](apple-windowserver-invalid-window.md). Only the frequency claim was wrong, and it was wrong because it came from spot checks rather than a continuous watcher.
+
+## CORRECTION 2026-08-13 — the toggle is a brightness ramp; the NaN state is real but is not shown to be a 27 regression / 更正：翻转是亮度斜坡；NaN 状态属实，但没有证据说明它是 27 的回归
+
+Three findings, in the order they overturned each other. Tooling: [`tools/corebrightness-nan-watch.sh`](../tools/corebrightness-nan-watch.sh).
+
+### 1. The "~116 Hz toggle" in the title is a brightness ramp, not an oscillation
+
+Captured whole on beta5 `26A5406e`, with the raw window archived at capture time:
+
+```
+17:15:17.798862  CBAutoBrightnessModuleSKL  key=AggregatedLux value=464.2102 -> 392.0533
+17:15:17.799283  CBRampManager              Insert ramp: SDR_RAMP
+17:15:17.803  ┐
+   ...        │  key=<private> value=1 / value=0   ×1,198 lines
+17:15:22.796  ┘  240 lines/s = 120 pairs/s = one update per frame at 120 Hz
+17:15:22.795930  CBRampManager              Finished ramps / remove ramp: SDR_RAMP
+```
+
+The run is bounded by `Insert ramp` and `Finished ramps`, triggered by an ambient-light change, and lasts exactly as long as the ramp (5.0 s here; beta4's 12 s episode was a larger brightness delta). Once-per-frame updates are what a ramp *is*. These lines are emitted below the default log level (`--info --debug` only) and `corebrightnessd` costs **0.25–0.29%** CPU across a 1 h 23 m watcher run. **On this evidence the toggle is normal behaviour**, and the first half of this entry's title no longer describes a defect. (Inference from the log's own structure — CoreBrightness is a private framework with no public documentation to check this against.)
+
+标题里的「~116 Hz 翻转」是一次亮度渐变：环境光变化触发 `SDR_RAMP`，每帧更新一次，`Finished ramps` 结束，全程 5.0 s，且这些行默认日志级别根本不输出，CPU 0.25–0.29%。按现有证据这不是缺陷。
+
+### 2. The NaN state does reproduce on beta5 — and it was being measured on the wrong stream
+
+The all-NaN evidence in this entry comes from **WindowServer**'s `(QuartzCore) [com.apple.coreanimation:Brightness]` lines, not from `corebrightnessd`. The first version of the watcher followed only `corebrightnessd`, whose own lines carry a valid `lux=464.21`, which produced the wrong reading *"`ambient lux: nan` does not reproduce on beta5"*. It does. Querying the stream this entry was actually built on, 30 minutes on `26A5406e`:
+
+```
+WindowServer Brightness lines : 24,809   (~14/s sustained)
+  containing nan              : 23,843   (96%)
+  with `ambient lux: nan`     : 11,761   (47%)
+```
+
+Three states interleave: fully NaN, fully valid (`swap brightness: 304.849, ambient lux: 419.227`), and mixed (`swap brightness` valid while `ambient lux: nan`). The watcher now follows **both** streams per window.
+
+原始的 all-NaN 证据来自 **WindowServer** 的 QuartzCore 日志，不是 corebrightnessd。watcher 最初只跟后者，而后者自己的行里 lux 是有效值，于是得出过一个错误结论。查对流之后：30 分钟 24,809 行，96% 含 nan，47% 是 `ambient lux: nan`。
+
+### 3. Not shown to be a 27 regression — and one external report puts it on macOS 15.7
+
+The same log family appears in an unrelated [V2EX report (2026)](https://www.v2ex.com/t/1206384) on **macOS 15.7**, M4 Mac with an external DELL display via a UGREEN CM818 adapter, posted while troubleshooting display wake-up failures:
+
+> "Display 1 swap brightness: nan, limit: 337.678, indicator brightness: nan, ambient lux: nan"
+
+That is two major versions before 27, so "NaN brightness state" is **not new in 27** on the present evidence. A same-family cross-version control could not be run here: the available macOS 26.6 machine (`25G72`, M4 mini) has no internal display or ALS and logs **1** Brightness line in 3 hours, 0 with `nan` — that is the code path not executing, not the defect being absent. Deciding regression-vs-longstanding needs a **macOS 26 laptop with a built-in display and ALS**, which we do not have.
+
+同族日志在 [macOS 15.7 的一份外部报告](https://www.v2ex.com/t/1206384) 里已经出现（M4 + 外接 DELL + 绿联 CM818 转接，排查唤醒失败时贴出），比 27 早两个大版本。本地无法做跨版本对照：26.6 的 M4 mini 无内置屏与环境光传感器，3 小时只有 1 行 Brightness 日志、0 个 nan —— 那是代码路径没跑，不是问题不存在。
+
+### Where that leaves this entry
+
+- **Reproduces on beta5**, at higher volume than this entry ever claimed. That part is solid and now has a rerunnable watcher behind it.
+- **No user-visible symptom** observed on this machine, and no CPU cost worth the name. The V2EX poster had a wake failure, but that is a different display path and correlation only.
+- **Not established as a beta regression.** No Feedback should be filed on this basis.
+- The `nan` values themselves remain unexplained: the panel hardware reads sane (`ioreg -c AppleARMBacklight`: `BrightnessMilliNits 381794`, `rawBrightness 1488/2047`) while the computed state is NaN, and NaN never compares equal to itself, so any "did it change?" check downstream fires every time. That is why this stays open rather than closed.
+- Still **not** the cause of [#3](apple-windowserver-invalid-window.md) — unchanged.
+
+### Methodology note: this evidence is perishable
+
+A window recorded live as 2,357 lines / 1,031 `nan`, re-queried 40 minutes later, returned **240 lines / 0 `nan`**. `--info --debug` messages live in an in-memory ring buffer and are evicted oldest-first, and `log show` reports the loss as a smaller plausible number rather than an error. Any window that turns out to be interesting is usually unexaminable by the time you notice it. The watcher therefore gzips every window's raw log at capture time (~50 KB per 5-minute window per stream).
+
+`--info --debug` 级别的日志活在内存环形缓冲里，几十分钟就被挤掉：同一窗口实时记为 2,357 行 / 1,031 nan，40 分钟后重查只剩 240 行 / 0 nan，且失败形式是「返回一个看起来合理的小数字」而非报错。因此 watcher 现在在采样当时就把每个窗口的原始日志 gzip 落盘。
