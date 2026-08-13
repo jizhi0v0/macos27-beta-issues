@@ -118,12 +118,18 @@ summarize() {
     echo "  5-minute average, against the ~116 lines/s documented in the issue."
   } > "$SUM"
 }
-trap 'summarize; echo; echo "stopped -- summary: $SUM"; exit 0' INT TERM
+# The sleep runs as a background child that we `wait` on, so a TERM to this
+# process is handled immediately. With a plain foreground `sleep`, bash defers
+# the trap until the sleep returns, so `kill` on a nohup'd run appeared to do
+# nothing for up to POLL seconds (observed: had to pkill -P the child).
+SLEEP_PID=""
+trap 'kill $SLEEP_PID 2>/dev/null; summarize; echo; echo "stopped -- summary: $SUM"; exit 0' INT TERM
 
 echo "watching corebrightnessd: ${POLL}s tiled windows. Summary rewritten each window: $SUM"
 
 while :; do
-  sleep "$POLL"
+  sleep "$POLL" & SLEEP_PID=$!
+  wait $SLEEP_PID 2>/dev/null
   END=$(date "+%Y-%m-%d %H:%M:%S")
   RAW=$($LOG show --start "$PREV_END" --end "$END" --info --debug \
           --predicate "$PRED" --style syslog 2>/dev/null)
