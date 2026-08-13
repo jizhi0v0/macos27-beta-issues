@@ -47,14 +47,25 @@ POLL=${POLL:-300}                  # window length in seconds (also the cadence)
 HOURS=${HOURS:-0}                  # 0 = run until Ctrl-C
 OUTROOT=${OUTROOT:-/tmp/cb-nan-watch}
 LOG=/usr/bin/log                   # never the zsh builtin
-PRED='process == "corebrightnessd"'
+
+# TWO STREAMS, AND THE SECOND ONE IS THE ISSUE'S ACTUAL EVIDENCE.
+# The first version of this watcher only followed corebrightnessd, and that led
+# straight to a wrong conclusion: corebrightnessd's own lines carry a valid
+# `lux=464.21`, so "the issue's `ambient lux: nan` does not reproduce on beta5"
+# looked true. It is not -- the all-NaN brightness state the issue is built on
+# is logged by WINDOWSERVER under (QuartzCore) [com.apple.coreanimation:
+# Brightness], a stream the corebrightnessd predicate never sees. Measured on
+# 26A5406e over 30 min: 24,809 WindowServer Brightness lines, 23,843 with nan,
+# 11,761 with `ambient lux: nan`. Always follow both.
+PRED_CB='process == "corebrightnessd"'
+PRED_WS='process == "WindowServer" AND category == "Brightness"'
 
 DIR="$OUTROOT/$(date +%Y-%m-%d-%H%M%S)"
 RAWDIR="$DIR/raw"
 mkdir -p "$RAWDIR"
 CSV="$DIR/windows.csv"
 SUM="$DIR/summary.txt"
-echo "window_start,window_end,secs,total_lines,nan_lines,peak_nan_per_sec" > "$CSV"
+echo "window_start,window_end,secs,cb_lines,cb_nan,cb_peak,ws_lines,ws_nan,ws_luxnan,ws_peak" > "$CSV"
 
 secs() { awk -F: '{if(NF==3) print $1*3600+$2*60+$3; else print $1*60+$2}'; }
 cb_cpu() {  # cumulative utime+stime of corebrightnessd, in seconds
@@ -67,11 +78,15 @@ lux_state() {
   # and com.apple.BezelServices both report "Domain not found" on 26A5406e), so
   # record the covariate that actually matters instead: whether the ambient-light
   # input itself is valid. The issue's beta4 capture had `ambient lux: nan` while
-  # Auto-Brightness was ON -- the feature running on garbage input.
-  $LOG show --last 60s --info --debug --predicate "$PRED" --style syslog 2>/dev/null \
-    | grep -o 'lux=[^ ]*' | sort | uniq -c | sort -rn | head -3 \
+  # Auto-Brightness was ON -- the feature running on garbage input. Read it from
+  # the WindowServer stream, which is where that field lives.
+  $LOG show --last 60s --info --debug --predicate "$PRED_WS" --style syslog 2>/dev/null \
+    | grep -o 'ambient lux: [^,]*' | sort | uniq -c | sort -rn | head -3 \
     | sed 's/^/    /' || true
   echo "    (record the Auto-Brightness checkbox by hand: System Settings > Displays)"
+  echo "    backlight hardware for comparison (the issue's control -- panel values were sane):"
+  ioreg -c AppleARMBacklight -r 2>/dev/null \
+    | grep -oE '"(BrightnessMilliNits|rawBrightness)" = [0-9]+' | head -2 | sed 's/^/      /'
 }
 
 T_START=$(date "+%Y-%m-%d %H:%M:%S")
@@ -88,6 +103,7 @@ CPU0=$(cb_cpu)
 } | tee "$SUM"
 
 WINDOWS=0; HITS=0; TOTAL_NAN=0; MAX_NAN=0; MAX_AT=""; MAX_PEAK=0
+WHITS=0; LUXHITS=0; TOTAL_WNAN=0; TOTAL_WLUX=0; MAX_WPEAK=0
 PREV_END=$(date "+%Y-%m-%d %H:%M:%S")
 T0=$(date +%s)
 
@@ -103,6 +119,15 @@ summarize() {
     echo "window: ${POLL}s, tiled (each start = previous end)"
     echo
     echo "windows sampled : $WINDOWS"
+    echo
+    echo "-- WindowServer (QuartzCore) Brightness -- the stream the issue is built on --"
+    echo "windows with nan     : $WHITS $(awk -v h="$WHITS" -v w="$WINDOWS" 'BEGIN{if(w>0) printf "(%.0f%%)", h/w*100}')"
+    echo "windows with lux=nan : $LUXHITS $(awk -v h="$LUXHITS" -v w="$WINDOWS" 'BEGIN{if(w>0) printf "(%.0f%%)", h/w*100}')"
+    echo "total nan lines      : $TOTAL_WNAN"
+    echo "  of which lux=nan   : $TOTAL_WLUX"
+    echo "peak burst rate      : $MAX_WPEAK nan lines/s within a window"
+    echo
+    echo "-- corebrightnessd -- mostly the brightness RAMP (see below) --"
     echo "windows with nan: $HITS $(awk -v h="$HITS" -v w="$WINDOWS" 'BEGIN{if(w>0) printf "(%.0f%%)", h/w*100}')"
     echo "total nan lines : $TOTAL_NAN"
     echo "worst window    : $MAX_NAN lines  ($MAX_AT)"
@@ -112,10 +137,15 @@ summarize() {
     echo
     echo "per-window detail: $CSV"
     echo "raw windows (gzip): $RAWDIR   -- gzcat one to drill into a window"
-    echo "HOW TO READ: a high windows-with-nan share means any short spot check"
-    echo "  has that chance of catching it -- which is what made the original"
-    echo "  'once every 30 min' estimate wrong. Compare peak burst rate, not the"
-    echo "  5-minute average, against the ~116 lines/s documented in the issue."
+    echo "HOW TO READ:"
+    echo "  - The WindowServer block is the defect: NaN brightness state, including"
+    echo "    'ambient lux: nan' while Auto-Brightness is on. A high windows-with-nan"
+    echo "    share means any short spot check has that chance of catching it, which"
+    echo "    is what made the original 'once every 30 min' estimate wrong."
+    echo "  - The corebrightnessd 1/0 churn is NOT that defect: measured 2026-08-13,"
+    echo "    it is a brightness ramp -- an AggregatedLux change inserts an SDR_RAMP"
+    echo "    and the key updates once per frame (120/s at 120 Hz) until 'Finished"
+    echo "    ramps' removes it 5.0 s later. Bounded, explained, ~0.3% CPU."
   } > "$SUM"
 }
 # The sleep runs as a background child that we `wait` on, so a TERM to this
@@ -132,21 +162,32 @@ while :; do
   wait $SLEEP_PID 2>/dev/null
   END=$(date "+%Y-%m-%d %H:%M:%S")
   RAW=$($LOG show --start "$PREV_END" --end "$END" --info --debug \
-          --predicate "$PRED" --style syslog 2>/dev/null)
+          --predicate "$PRED_CB" --style syslog 2>/dev/null)
+  WRAW=$($LOG show --start "$PREV_END" --end "$END" --info --debug \
+          --predicate "$PRED_WS" --style syslog 2>/dev/null)
   TOT=$(printf '%s\n' "$RAW" | grep -c '^2026' || true)
   NAN=$(printf '%s\n' "$RAW" | grep -c 'nan' || true)
+  WTOT=$(printf '%s\n' "$WRAW" | grep -c '^2026' || true)
+  WNAN=$(printf '%s\n' "$WRAW" | grep -c 'nan' || true)
+  WLUX=$(printf '%s\n' "$WRAW" | grep -c 'ambient lux: nan' || true)
   # peak per-second rate inside the window -- the 5-minute average hides bursts
   PEAK=$(printf '%s\n' "$RAW" | grep 'nan' | awk '{print $2}' | cut -d. -f1 \
            | uniq -c | awk 'BEGIN{m=0} {if($1>m) m=$1} END{print m+0}')
+  WPEAK=$(printf '%s\n' "$WRAW" | grep 'nan' | awk '{print $2}' | cut -d. -f1 \
+           | uniq -c | awk 'BEGIN{m=0} {if($1>m) m=$1} END{print m+0}')
 
   WINDOWS=$((WINDOWS+1)); TOTAL_NAN=$((TOTAL_NAN+NAN))
+  TOTAL_WNAN=$((TOTAL_WNAN+WNAN)); TOTAL_WLUX=$((TOTAL_WLUX+WLUX))
   [ "$NAN" -gt 0 ] && HITS=$((HITS+1))
+  [ "$WNAN" -gt 0 ] && WHITS=$((WHITS+1))
+  [ "$WLUX" -gt 0 ] && LUXHITS=$((LUXHITS+1))
   if [ "$NAN" -gt "$MAX_NAN" ]; then MAX_NAN=$NAN; MAX_AT="$PREV_END -> $END"; fi
   [ "$PEAK" -gt "$MAX_PEAK" ] && MAX_PEAK=$PEAK
+  [ "$WPEAK" -gt "$MAX_WPEAK" ] && MAX_WPEAK=$WPEAK
 
-  echo "$PREV_END,$END,$POLL,$TOT,$NAN,$PEAK" >> "$CSV"
-  printf '[%s] window %-3s  lines %-6s  nan %-6s  peak %s/s\n' \
-    "$(date '+%H:%M:%S')" "$WINDOWS" "$TOT" "$NAN" "$PEAK"
+  echo "$PREV_END,$END,$POLL,$TOT,$NAN,$PEAK,$WTOT,$WNAN,$WLUX,$WPEAK" >> "$CSV"
+  printf '[%s] w%-3s  cbd %-5s/nan %-5s  |  WS %-6s/nan %-6s luxnan %-6s peak %s/s\n' \
+    "$(date '+%H:%M:%S')" "$WINDOWS" "$TOT" "$NAN" "$WTOT" "$WNAN" "$WLUX" "$WPEAK"
 
   # keep one raw sample as evidence the count is real, not a grep artefact
   if [ "$NAN" -gt 0 ] && [ ! -f "$DIR/first-hit.txt" ]; then
@@ -162,7 +203,9 @@ while :; do
   # out to be interesting is usually un-analysable by the time you notice, and
   # `log show` will tell you so by returning a plausible smaller number rather
   # than an error. ~50 KB gzipped per 5-minute window (~5 MB per 9 h run).
-  printf '%s\n' "$RAW" | gzip > "$RAWDIR/$(echo "$PREV_END" | tr ' :' '-').txt.gz"
+  STAMP=$(echo "$PREV_END" | tr ' :' '-')
+  printf '%s\n' "$RAW"  | gzip > "$RAWDIR/$STAMP.corebrightnessd.txt.gz"
+  printf '%s\n' "$WRAW" | gzip > "$RAWDIR/$STAMP.windowserver.txt.gz"
 
   PREV_END=$END
   summarize
