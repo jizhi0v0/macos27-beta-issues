@@ -18,7 +18,11 @@
 #   - it records the covariates that decide how the numbers are read:
 #     Auto-Brightness state, cumulative corebrightnessd CPU, and the peak
 #     per-second rate inside each window (the issue documents ~116 lines/s
-#     bursts -- an average over 5 minutes hides those).
+#     bursts -- an average over 5 minutes hides those);
+#   - it gzips every window's raw log AS IT IS TAKEN, because these lines are
+#     evicted from the in-memory ring buffer within tens of minutes (see the
+#     comment at the archive step) -- without this, any window that turns out
+#     to be interesting can no longer be examined.
 #
 # USAGE:
 #   bash tools/corebrightness-nan-watch.sh              # runs until Ctrl-C
@@ -46,7 +50,8 @@ LOG=/usr/bin/log                   # never the zsh builtin
 PRED='process == "corebrightnessd"'
 
 DIR="$OUTROOT/$(date +%Y-%m-%d-%H%M%S)"
-mkdir -p "$DIR"
+RAWDIR="$DIR/raw"
+mkdir -p "$RAWDIR"
 CSV="$DIR/windows.csv"
 SUM="$DIR/summary.txt"
 echo "window_start,window_end,secs,total_lines,nan_lines,peak_nan_per_sec" > "$CSV"
@@ -106,6 +111,7 @@ summarize() {
       'BEGIN{if(e>0) printf "corebrightnessd CPU: %.2f%% cumulative over the run\n", (b-a)/e*100}'
     echo
     echo "per-window detail: $CSV"
+    echo "raw windows (gzip): $RAWDIR   -- gzcat one to drill into a window"
     echo "HOW TO READ: a high windows-with-nan share means any short spot check"
     echo "  has that chance of catching it -- which is what made the original"
     echo "  'once every 30 min' estimate wrong. Compare peak burst rate, not the"
@@ -141,6 +147,16 @@ while :; do
     { echo "=== first window with nan: $PREV_END -> $END ==="
       printf '%s\n' "$RAW" | grep 'nan' | head -40; } > "$DIR/first-hit.txt"
   fi
+
+  # ARCHIVE EVERY WINDOW NOW -- this evidence is perishable. Measured 2026-08-13
+  # on 26A5406e: a window recorded live as 2,357 lines / 1,031 nan re-queried 40
+  # minutes later returned 240 lines / 0 nan, because --info --debug messages
+  # live in an in-memory ring buffer and are evicted oldest-first. A newer
+  # window from the same run still had 1,386 of 1,437. So any window that turns
+  # out to be interesting is usually un-analysable by the time you notice, and
+  # `log show` will tell you so by returning a plausible smaller number rather
+  # than an error. ~50 KB gzipped per 5-minute window (~5 MB per 9 h run).
+  printf '%s\n' "$RAW" | gzip > "$RAWDIR/$(echo "$PREV_END" | tr ' :' '-').txt.gz"
 
   PREV_END=$END
   summarize
