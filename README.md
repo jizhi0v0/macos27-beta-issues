@@ -24,6 +24,10 @@ If a Google/GitHub search for a crash signature or a process eating CPU on macOS
 > The **`#`** in each row links to a matching **GitHub Issue** — **Watch / 👍 / comment** there to follow that specific problem. The **Issue title** links to the canonical, continuously-updated write-up in [`issues/`](issues/). (Resolved/not-a-bug entries are tracked as *closed* issues.)
 >
 > 每行的 **`#`** 链到对应的 **GitHub Issue**(想跟进某个问题就在那 Watch / 👍 / 评论);**问题标题**链到 [`issues/`](issues/) 里持续更新的权威正文。已解决/非 bug 的条目对应 *已关闭* 的 Issue。
+>
+> 🧭 **"Clicking a notification does nothing"?** Three unrelated defects share that symptom ([#26](https://github.com/jizhi0v0/macos27-beta-issues/issues/26) covers two of them, [#27](https://github.com/jizhi0v0/macos27-beta-issues/issues/27) the third). Classify yours from `usernoted`'s log first — [notification-click-failure-taxonomy.md](issues/notification-click-failure-taxonomy.md).
+>
+> 🧭 「点击通知没反应」底下压着三个互不相干的缺陷,先按 `usernoted` 的日志判型再对号入座。
 
 | # | Issue | Component / 影响 | Status | Workaround (short) | Report |
 |---|---|---|---|---|---|
