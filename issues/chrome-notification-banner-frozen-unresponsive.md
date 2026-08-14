@@ -2,6 +2,8 @@
 # 点击 Chrome 的 alert 样式通知没有任何反应：`usernoted` 收到了点击，但因 Alerts helper 已退出而静默丢弃
 
 > 🔗 **Track / 关注此问题:** [#26 — watch & discuss on GitHub](https://github.com/jizhi0v0/macos27-beta-issues/issues/26)
+>
+> 🧭 **Landed here from "clicking a notification does nothing"?** Classify the failure first — [notification-click-failure-taxonomy.md](notification-click-failure-taxonomy.md) tells the three shapes apart from `usernoted`'s log in one command. This file covers **A** (filed) and **C**; the freeze is [#27](notification-banner-inert-except-close.md).
 | | |
 |---|---|
 | **Status** | 🔴 **Root cause established and isolated to a system API, reproducible without Chrome** (2026-08-12). On macOS 27, `getDeliveredNotifications` returns an **empty array for ~7–24 ms after `add()` has already completed** (0 ms on macOS 26.6, 32 trials per OS) — and Chromium kills its Alerts helper on exactly that answer. Clicking a persistent/actionable Chrome web notification does nothing at all once `Google Chrome Helper (Alerts).app` has exited. `usernoted` **does** receive every click — it just has no live client left to forward it to, and neither relaunches one nor falls back, dropping the click with no error logged. Anything that respawns the helper (a new notification arriving, quitting/reopening Chrome) instantly un-sticks **every** backlogged notification at once. |

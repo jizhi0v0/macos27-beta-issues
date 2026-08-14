@@ -2,6 +2,8 @@
 # 通知横幅失效：激活与右滑在到达 `usernoted` 之前被静默丢弃，唯独 `✕` 仍然有效
 
 > 🔗 **Track / 关注此问题:** [#27 — watch & discuss on GitHub](https://github.com/jizhi0v0/macos27-beta-issues/issues/27)
+>
+> 🧭 **Landed here from "clicking a notification does nothing"?** Classify the failure first — [notification-click-failure-taxonomy.md](notification-click-failure-taxonomy.md) tells the three shapes apart from `usernoted`'s log in one command. This file is **B**, the freeze; **A** and **C** are [#26](chrome-notification-banner-frozen-unresponsive.md).
 
 | | |
 |---|---|
