@@ -2,13 +2,12 @@
 # 点击 Chrome 的 alert 样式通知没有任何反应：`usernoted` 收到了点击，但因 Alerts helper 已退出而静默丢弃
 
 > 🔗 **Track / 关注此问题:** [#26 — watch & discuss on GitHub](https://github.com/jizhi0v0/macos27-beta-issues/issues/26)
-
 | | |
 |---|---|
 | **Status** | 🔴 **Root cause established and isolated to a system API, reproducible without Chrome** (2026-08-12). On macOS 27, `getDeliveredNotifications` returns an **empty array for ~7–24 ms after `add()` has already completed** (0 ms on macOS 26.6, 32 trials per OS) — and Chromium kills its Alerts helper on exactly that answer. Clicking a persistent/actionable Chrome web notification does nothing at all once `Google Chrome Helper (Alerts).app` has exited. `usernoted` **does** receive every click — it just has no live client left to forward it to, and neither relaunches one nor falls back, dropping the click with no error logged. Anything that respawns the helper (a new notification arriving, quitting/reopening Chrome) instantly un-sticks **every** backlogged notification at once. |
 | **macOS** | 🔴 27.0 beta5 `26A5406e` — hits roughly **4 of 7** real web-push notifications. Also seen on beta4 `26A5388g`. 🟢 **macOS 26.6 `25G72` control: 9/9 clean** on the same harness, same Chrome build, same account — and its Alerts helper stays alive while a notification is outstanding (7+ min observed), which is exactly what macOS 27 fails to do |
 | **Component** | Apple `usernoted` (notification response routing) ↔ `Google Chrome Helper (Alerts).app` |
-| **Chrome** | `151.0.7922.109` (Official Build) (arm64) |
+| **Chrome** | `151.0.7922.109` (Official Build) (arm64); the 2026-08-14 shape C measurements are on `151.0.7922.138` |
 | **Hardware** | MacBook Pro `Mac15,11`, M3 Max (27 beta5) vs. a second Mac on macOS 26 (control) |
 | **Report** | Chromium: **posted 2026-08-12 as [comment #26](https://issues.chromium.org/issues/370536109#c26) and follow-up [#27](https://issues.chromium.org/issues/370536109#c27) (the reliable repro) on issue 370536109** — that issue has been open since 2024-10-01 with the identical symptom, was reproduced by Google in #12, and had no root cause in 16 months. Apple: **filed 2026-08-12 as `FB24273686`** (macOS / Notification Center), with both reproducers attached — draft kept in [`feedback/un-getdeliverednotifications-race.md`](../feedback/un-getdeliverednotifications-race.md) |
 
@@ -168,7 +167,7 @@ Most of the confusion in this investigation came from treating one symptom ("cli
 |---|---|---|---|---|
 | **A** | ✅ (61, and later 15) | ❌ 0 | **still work** | client process gone — **this is the filed bug** |
 | **B** | ❌ 0 of 5 | — | **also dead** | before `usernoted` — **unexplained** |
-| **C** | ✅ | ✅ | work | inside Chrome, after delivery — matches [crbug 370536109](https://issues.chromium.org/issues/370536109) |
+| **C** | ✅ | ✅ | work | inside Chrome, after delivery — matches [crbug 370536109](https://issues.chromium.org/issues/370536109). **Measured 2026-08-14: the discriminator is the notification's age, not its content** — see *Shape C, measured for the first time* below |
 
 **A is not a freeze.** Only activation fails; right-click and swipe behave normally. **B is the freeze** — the whole banner stops responding except its `✕`, and it is the symptom that originally started this investigation. Earlier revisions of this file used "stuck"/"frozen" loosely for both; that was sloppy.
 
@@ -184,6 +183,57 @@ Shape A was originally hit ~4 times in 7 pushes, seemingly at random. The missin
 Measured on beta5 `26A5406e` with the SW confirmed `STOPPED`: **15 clicks → 15 `Received response`, 0 forwarded**, `Google Chrome Helper (Alerts)` not running, and the service worker's own server-side probe never pinged. RunningBoard shows the helper dying the same second it was spawned (`13:31:37 Acquiring → proc_exit → appDeath`), then one `appDeath` per subsequent click.
 
 This is worth adding to the filed reports: it converts "roughly half the time" into a procedure.
+
+### Shape C, measured for the first time: notification **age** is the discriminator, not content / 首次量化 shape C：判别式是通知的「年龄」，与内容无关
+
+Shape C had only ever been asserted from the negative (clicks that were forwarded yet did nothing). On **2026-08-14**, beta5 `26A5406e`, Chrome `151.0.7922.138`, uptime 1 d 23 h, a set of five real YouTube web-push clicks was captured where **four failed and one worked**, with the OS side identical in all five.
+
+**All five were received *and* forwarded to a live helper**, and the record was torn down cleanly each time:
+
+| click | tag (`req` after `p#https://www.youtube.com/#1`) | what it was | `Received` → forwarded | `_removeDelivered` | navigated? |
+|---|---|---|---|---|---|
+| 09:45:37.069 | `iI1XBeAbCGA` | video *"iOS 26.6.1 RC is Out! - What's New?"* | ✅ → pid 46144 | +17 ms | ❌ |
+| 09:45:38.180 | `UCTJJX_LQcDED7MZbt9OSeQQ` | a channel | ✅ → pid 46144 | +48 ms | ❌ |
+| 09:45:38.966 | `UCTJJX_LQcDED7MZbt9OSeQQ` | same, clicked again | ✅ → pid 46144 | — | ❌ |
+| **09:47:49.197** | **`ANDl5Tkru7g`** | **video *"What does AI actually know about you?"*** | ✅ → pid 46144 | +34 ms | **✅** |
+| 09:51:44.718 | `UCD_cg9Tak9SvlPHRsWxUIpA` | channel *大耳朵TV* | ✅ → pid 46144 | +26 ms | ❌ |
+
+The helper was **not** the variable: pid 46144 had been alive since the previous evening 21:45 — **12 hours** — and served all five.
+
+**Content is not the variable either.** All five carry a byte-identical `staticCategory:"<LEGACY options=(legacyBehavior, hiddenPreviewShowsTitle) …>"` and an identical `<response action: contents actIdent: foreground: true>` (plain activation, not the `Settings` button). The `req` tag comes in two shapes — an 11-char video ID and a 24-char `UC…` channel ID — but the **success shares its shape with a failure** (`ANDl5Tkru7g` vs `iI1XBeAbCGA`), so tag shape is falsified as a discriminator.
+
+**What does separate them is how old the notification was.** Searching every `Presenting` event `usernoted` logged in the 8 h the buffer reaches back (earliest line 01:57:53), exactly one of the five appears:
+
+```
+09:47:45.506  Presenting <… AlertNotificationService … #1ANDl5Tkru7g …>
+09:47:49.197  Received response … sent to NSUserNotification client … pid: 46144   ← +3.69 s, navigated
+```
+
+The other four have **no `Presenting` record in 8 hours** — they were backlogged Notification Center rows, delivered overnight, and were clicked out of the stacked NC panel. So: **freshly presented banner (3.7 s old) works; rows sitting in Notification Center for 8+ hours are activated, consumed, and dropped.**
+
+**Candidate mechanism, unverified.** An overnight push's service worker has long since been reclaimed, so Chrome cannot replay `notificationclick` against it, while the 09:47 notification's SW had just been woken by its own push and was still warm. This is consistent with everything above but is *not* measured — confirming it needs [`tools/webpush-repro/`](../tools/webpush-repro/)'s server-side receipt with notification age as the controlled variable.
+
+**This gives shape C its first actionable recipe:** let a batch of web-push notifications accumulate overnight, then click them the next morning.
+
+**Do not conflate with [#27](notification-banner-inert-except-close.md).** That issue's one clean crossover runs the *opposite* way (Reminders: 0/5 as a banner, then 1/1 as an NC row). Here every click reached `usernoted`; there none did. Same user-visible complaint, opposite log signature.
+
+**Corollary, and a correction to how these logs were read earlier in this file.** `sent to NSUserNotification client` proves only that `usernoted` handed the response to a live registered client — **it does not prove the user-visible navigation happened.** Four of the five clicks above have that line and did nothing. Wherever the forwarding line is used as a success signal, it establishes the OS half only.
+
+### The last click of that set: the response and the helper's own exit raced / 同一组的最后一次点击：投递与 helper 自杀撞车
+
+Worth recording separately, because it does not fit the mechanism filed above. The 09:51:44 click was forwarded to a helper that had been alive 12 hours, and then:
+
+```
+09:51:44.718  usernoted: Received response … sent to NSUserNotification client … pid: 46144
+09:51:44.744  usernoted: _removeDelivered: Removing [9B7CFD8E-…]                      (+26 ms)
+09:51:44.754  runningboardd: [anon<Google Chrome Helper (Alerts)>(501):46144] termination reported by proc_exit   (+36 ms)
+```
+
+The click **killed the helper that was serving it.** The removal at +26 ms emptied the store, `OnNotificationAction()` fired `CheckIfServiceCanBeTerminated()`, `getDeliveredNotifications` now *legitimately* returned empty, and the helper exited 10 ms later. No Alerts helper was running afterwards.
+
+This is the `OnNotificationAction()` self-inflicted path already flagged above, but one step worse than predicted there: it was expected to kill a *neighbouring* notification that was still inside its invisibility window; here it terminated the client mid-flight on **the very click that triggered it**. Note this needs no OS race at all — the empty answer was correct.
+
+**Caveat:** the mojo hop from helper to browser process is not instrumented, so "the helper exited before relaying it" is a plausible 36 ms window, not a proof. n=1.
 
 ### Independent corroboration of the filed mechanism / 对已提交机制的旁证
 
@@ -322,3 +372,5 @@ Superficially the same complaint as the long-running macOS 15 issue ([MacRumors 
 5. ~~What happens inside the `Search for url to launching …` path~~ — **answered:** it launches the helper via LaunchServices and the helper dies in ~100 ms (60 `appDeath` events for 61 clicks), because a Chromium helper cannot run standalone.
 6. The one instance where right-click and swipe also died and a Chrome restart did not fix it — same bug or a second one? Its helper (pid 87903) was alive for 165 s, which does **not** fit the mechanism above, so it is likely something else.
 7. Was the equivalent path broken in earlier 27 betas (beta1–3)? Only beta4 and beta5 were tested.
+8. **Is shape C caused by the notification's age, and if so via the service worker being reclaimed?** The 2026-08-14 set (4 dead ≥8 h old, 1 live at 3.7 s, OS side identical in all five) makes age the only surviving discriminator, but the SW-reclamation mechanism is untested. Controlled A/B with `tools/webpush-repro/`'s server-side receipt would settle it — and would also answer whether this is a macOS 27 issue at all, since nothing in the evidence points at the OS.
+9. Does the 09:51:44 pattern — the click's own `_removeDelivered` emptying the store and terminating the helper mid-flight — reproduce? If it does, it is a Chromium bug needing no OS race, and Chromium can fix it by not running the termination check on the same notification it is currently dispatching.
