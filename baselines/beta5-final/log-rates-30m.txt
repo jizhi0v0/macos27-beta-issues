@@ -1,0 +1,29 @@
+=== 30-min retrospective log rates ===
+build: 27.0 26A5406e
+taken: 2026-08-18 15:44:01 +0800   window: --last 30m
+
+-- #19 imagent (recorded beta5: 6,522 CAS + 4,894 sandbox / 30 min) --
+  ContactsAccountsService lines : 14801
+  sandbox/deny lines            : 11105
+  imagent total lines           :    37391
+
+-- #18 contactsd (recorded beta5: ~218k lines/h; contactsd itself ~45 'Could not fetch group' /30min) --
+  contactsd total lines         :   223653
+  'Could not fetch group' BY contactsd : 77
+  'Could not fetch group' ALL processes: 19832   <-- do NOT attribute to contactsd
+  AddressBookManager spawns     : 13
+
+-- #23 ecosystemd --
+  ecosystemd total lines        :   147364
+  trustd total lines            :      713
+
+-- #1 CoreMedia fpSupport (steady-state, NOT the post-boot window) --
+  fpSupport_GetVideoRange lines : 131
+
+-- #3 WindowServer 'Invalid window' spam --
+  Invalid window lines          : 2091
+
+-- #24 mds / CoreDuet --
+  mds+mds_stores total lines    :   118720
+
+done: 2026-08-18 15:45:35 +0800

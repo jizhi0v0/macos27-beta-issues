@@ -1,0 +1,48 @@
+=== crash-report (.ips) inventory at end of beta5 ===
+taken: 2026-08-18 15:45:27 +0800   build: 26A5406e   uptime: 15:45  up 3 days, 11:27, 1 user, load averages: 37.68 60.40 60.66
+
+NOTE (methodology): these globs MUST be run under bash. Under zsh an empty
+glob aborts the command and fakes a 0 result -- that trap produced a false
+empty inventory on the first attempt here.
+
+NOTE (evidence): the .ips history has rotated away. #17s 32 NSRemoteView
+crash reports are no longer on disk anywhere on this machine; only the
+write-ups in issues/ retain them. So the beta6 baseline for #17s
+"flips to red on first recurrence" rule is a clean 0 as of this snapshot.
+
+total .ips on machine: 9
+
+--- every .ips, newest first ---
+  Aug 18 15:40 /Users/bobby/Library/Logs/DiagnosticReports/ExcUserFault_nsattributedstringagent-2026-08-18-154005.ips
+  Aug 18 13:38 /Library/Logs/DiagnosticReports/Retired/JetsamEvent-2026-08-18-133757.ips
+  Aug 18 13:08 /Library/Logs/DiagnosticReports/Retired/ExcUserFault_nsattributedstringagent-2026-08-18-130823.ips
+  Aug 18 12:06 /Users/bobby/Library/Logs/DiagnosticReports/Retired/ExcUserFault_textunderstandingd-2026-08-18-120633.ips
+  Aug 18 12:03 /Library/Logs/DiagnosticReports/Retired/JetsamEvent-2026-08-18-120304.ips
+  Aug 18 11:38 /Library/Logs/DiagnosticReports/Retired/ExcUserFault_nsattributedstringagent-2026-08-18-113830.ips
+  Aug 18 11:31 /Users/bobby/Library/Logs/DiagnosticReports/Retired/ExcUserFault_nsattributedstringagent-2026-08-18-113103.ips
+  Aug 18 10:58 /Users/bobby/Library/Logs/DiagnosticReports/Retired/ExcUserFault_nsattributedstringagent-2026-08-18-105817.ips
+  Aug 18 10:49 /Library/Logs/DiagnosticReports/Retired/JetsamEvent-2026-08-18-104921.ips
+
+--- spin / hang / shutdownStall ---
+count: 8
+  Aug 18 14:21 /Library/Logs/DiagnosticReports/DuoUpdater_2026-08-18-142157_Bobbys-MacBook-Pro.spin
+  Aug 18 13:55 /Library/Logs/DiagnosticReports/DuoUpdater_2026-08-18-135531_Bobbys-MacBook-Pro.spin
+  Aug 16 18:19 SmartDelete_2026-08-16-181937_Bobbys-MacBook-Pro.spin
+  Aug 15 23:32 /Library/Logs/DiagnosticReports/DuoUpdater_2026-08-15-233218_Bobbys-MacBook-Pro.spin
+  Aug 15 04:23 /Library/Logs/DiagnosticReports/UURemote_2026-08-15-042303_Bobbys-MacBook-Pro.spin
+  Aug 15 04:22 /Library/Logs/DiagnosticReports/shutdown_stall_2026-08-15-041825_Bobbys-MacBook-Pro.shutdownStall
+  Aug 12 10:36 /Library/Logs/DiagnosticReports/shutdown_stall_2026-08-12-103056_Bobbys-MacBook-Pro.shutdownStall
+  Aug 11 17:32 /Library/Logs/DiagnosticReports/shutdown_stall_2026-08-11-172844_Bobbys-MacBook-Pro.shutdownStall
+
+--- signature greps across all .ips ---
+  NSRemoteView: 0
+  modelmanagerd: 3
+  imagent: 3
+  contactsd: 3
+  WindowServer: 3
+  JetsamEvent: 0
+
+Reading note: the modelmanagerd / imagent / contactsd / WindowServer hits above are
+all 3/3 inside the three JetsamEvent reports (which enumerate every live process),
+NOT crashes of those processes. Actual crashes in this window: ExcUserFault in
+nsattributedstringagent (x4) and textunderstandingd (x1), all on 2026-08-18.

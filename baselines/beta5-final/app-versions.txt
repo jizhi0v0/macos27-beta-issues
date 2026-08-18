@@ -1,0 +1,13 @@
+=== trigger-side app versions at end of beta5 ===
+taken: 2026-08-18 15:45:43 +0800
+(a beta6 delta is only attributable if these have NOT moved)
+
+APP                    VERSION          BUILD          recorded in repo
+Alcove                 1.7.9            203            1.7.9 -- #21 trigger, do NOT let it auto-update
+WeChat                 4.1.11           269136         4.1.11 -- #17
+CleanShot X            4.8.10           4.8.10         4.8.9 -- #17 (DRIFTED)
+DingTalk               8.3.15           54703766       8.3.15 -- #1 top emitter, #17
+Google Chrome          151.0.7922.138   7922.138       #6 #26
+Telegram               12.9             282526         12.8 -- #9 (DRIFTED)
+ToDesk                 4.9.9.2          2473           4.9.7.2 -- #7 (DRIFTED)
+OrbStack               2.2.3            20963          2.2.2 -- #5 (DRIFTED)

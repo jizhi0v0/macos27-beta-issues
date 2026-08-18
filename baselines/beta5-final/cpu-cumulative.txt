@@ -1,0 +1,40 @@
+=== cumulative-CPU delta over 100s (loaded state, not quiesced) ===
+build:  27.0 26A5406e
+start:  2026-08-18 15:57:37 +0800
+uptime: 15:57  up 3 days, 11:39, 1 user, load averages: 26.09 37.85 47.57
+
+--- co-running /Applications bundles (the load context) ---
+AndDrive.app AweSun.app ChatGPT.app Claude.app ClaudeUsageMenuBar.app DingTalk.app DuoShot.app DuoTerminal.app DuoTranslator.app DuoUpdater.app Fork.app Google Chrome.app HBuilderX.app Keka.app Klack.app Macs Fan Control.app Microsoft Word.app NotchBadge.app OrbStack.app Parallels Desktop.app Pearcleaner.app Postman.app RustDesk.app Spotify.app Surge.app TablePlus.app Tailscale.app Telegram.app ToDesk.app UURemote.app WeChat.app Xcode-beta.app wechatwebdevtools.app 
+
+process                     pid   cum_before   delta_%CPU
+WindowServer                403      112796s       79.74%
+mds_stores                  473        9040s        2.54%
+ecosystemd                 5186       38938s        0.94%
+ecosystemanalyticsd       95895         466s        0.54%
+trustd                      440       11444s        0.43%
+contactsd                 83057        3143s       26.96%
+imagent                     766         286s        0.22%
+MenuBarAgent                670         760s        0.25%
+ControlCenter               668        4419s        1.92%
+logd                        331        4882s        2.25%
+corebrightnessd             399         583s        0.12%
+usernoted                   682        3069s        1.03%
+
+elapsed: 100s
+end:     2026-08-18 15:59:18 +0800
+uptime:  15:59  up 3 days, 11:40, 1 user, load averages: 85.41 49.62 50.68
+
+--- lifetime averages (cum_before / process age), for the long-lived ones ---
+uptime at sample: 301200s (3 d 11 h 40 m)
+  WindowServer  112796s / 301200s = 37.4%   <-- pid 403, alive since boot
+  mds_stores      9040s / 301200s = 3.0%
+  trustd         11444s / 301200s = 3.8%
+  logd            4882s / 301200s = 1.6%
+  (ecosystemd / contactsd / ecosystemanalyticsd have restarted, so their
+   cum_before is not a whole-uptime figure and no lifetime % is given)
+
+--- reading note ---
+`ps %CPU` moments earlier showed ecosystemd at 42.7% and trustd at 21.8%.
+The cumulative-delta method puts them at 0.94% and 0.43%. The ps reading was
+the artifact; do not use it for verdicts. Conversely WindowServer is high by
+BOTH methods.

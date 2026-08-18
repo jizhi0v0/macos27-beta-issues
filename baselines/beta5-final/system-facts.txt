@@ -1,0 +1,48 @@
+=== macOS 27 beta5 pre-upgrade system facts ===
+taken: 2026-08-18 15:44:14 +0800
+
+-- OS / toolchain --
+ProductName:		macOS
+ProductVersion:		27.0
+BuildVersion:		26A5406e
+Xcode: Xcode 27.0 Build version 27A5237l 
+SDK:   27.0 / 26A5406c
+kernel: Darwin localhost 27.0.0 Darwin Kernel Version 27.0.0: Wed Aug  5 22:02:20 PDT 2026; root:xnu-13432.1.6.501.1~1/RELEASE_ARM64_T6031 arm64
+
+-- hardware --
+
+      Model Name: MacBook Pro
+      Model Identifier: Mac15,11
+      Model Number: MRW33CH/A
+      Chip: Apple M3 Max
+      Total Number of Cores: 14 (10 Performance and 4 Efficiency)
+      Memory: 36 GB
+      System Firmware Version: 20457.1.27
+      OS Loader Version: 20457.1.27
+      Serial Number (system): <redacted>
+      Hardware UUID: <redacted>
+
+-- uptime at snapshot --
+15:44  up 3 days, 11:25, 1 user, load averages: 60.17 69.38 63.62
+
+-- key on-disk versions --
+com.apple.imagent.sb lines:      404
+sandbox profiles total:          552
+profiles listing com.apple.AddressBook.ContactsAccountsService:       26
+
+-- framework versions (from loaded process, dyld cache) --
+  Contacts: 1.0
+  ContactsPersistence: 1.0
+  ContactsFoundation: 8.0
+  AppKit: 6.9
+  ViewBridge: 864
+  CoreBrightness: 1.0
+
+-- framework CFBundleVersion (the numbers the issues cite) --
+  Contacts: 3844.100.1
+  ContactsPersistence: 3844.100.1
+  ContactsFoundation: 1427.100.1
+  AppKit: 2775
+  ViewBridge: 864
+  CoreBrightness: 1
+  contactsd (running):  3844.100.1
