@@ -38,7 +38,7 @@ This is a **log-volume defect, not a performance one**: imagent burns only **19.
 
 imagent additionally carries `com.apple.Contacts.database-allow`, `com.apple.private.contacts`, and `kTCCServiceAddressBook` in its TCC allow list. **Every authorization layer grants it Contacts access.**
 
-But `/System/Library/Sandbox/Profiles/com.apple.imagent.sb` (403 lines, on disk) has an explicit `(allow mach-lookup …)` block at line 173 that **does not contain the service**:
+But `/System/Library/Sandbox/Profiles/com.apple.imagent.sb` (403 lines on beta3 `26A5378n`, 404 lines on beta5 `26A5406e`, on disk) has an explicit `(allow mach-lookup …)` block at line 173 that **does not contain the service**:
 
 ```
 173: (allow mach-lookup
@@ -72,6 +72,21 @@ imagent[783:6497] [com.apple.contacts:PersistentStoreBuilder] Skipping XPC store
 ```
 
 The third line matters: the **XPC store fallback is skipped** because preparation never produced a URL — so the designed fallback cannot rescue this, and control returns straight to a retry.
+
+### 2b. The retry policy, read from the binary (added 2026-08-13, beta5 `26A5406e`)
+
+The retry machinery is in `ContactsPersistence.framework` 3844.100.1 (linked by imagent via Contacts) and ContactsFoundation's `CNRetry` class:
+
+- The XPC-lookup itself is wrapped in `-[CNCDRemotePersistentStoreEndpointFactory newEndpointWithError:]`, which runs its block through `-[CNRetry performAndWait:]` with the factory as the delegate. That delegate **does implement a backoff policy**:
+  - `maximumNumberOfAttemptsForRetry:` → 2 attempts;
+  - `retry:delayAfterError:onAttempt:` → **2.0 s**;
+  - `retry:shouldContinueAfterError:onAttempt:` → retry **only if** the error is `CNErrorDomain` code **1012**.
+- The sandbox error here is `NSCocoaErrorDomain` 4099 (mach error 159), so `shouldContinueAfterError:` returns NO and this wrapper makes exactly **one** attempt — **the 2.0 s backoff is never engaged for this failure**. The loop that actually runs is the caller layer's, and it re-invokes the whole prepare attempt with **no delay**: 44 attempts in a live beta5 burst (2026-08-13 23:31), 1–2 ms apart, 3 log lines each, all on one thread. (The exact outer loop frame has not been pinned — every function on the per-attempt path is straight-line; a stack sample during a burst would identify it, but imagent is SIP-protected.)
+- `CNRetry` itself skips the sleep entirely when the delegate's delay is 0.0 — so the Contacts retry engine has no built-in default backoff either.
+
+### 2c. The contradiction, confirmed statically
+
+`com.apple.AddressBook.ContactsAccountsService` is listed in the `(allow mach-lookup …)` block of **26 other** system sandbox profiles (`contactsd.sb`, `suggestd.sb`, `sharingd.sb`, `gamed.sb`, `assistantd.sb`, `siriactionsd.sb`, `studentd.sb`, …). imagent's profile is the outlier: it carries the entitlement and is accepted by the *service* side, but its own profile default-deny blocks the *lookup* — two authorization layers disagreeing about the same call. Adding the one global-name line (matching its 26 siblings) closes the contradiction.
 
 Consecutive retry timestamps inside one burst (2026-07-16 14:54:36):
 

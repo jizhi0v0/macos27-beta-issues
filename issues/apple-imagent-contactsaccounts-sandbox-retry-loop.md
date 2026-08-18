@@ -107,6 +107,32 @@ Spawns occurred in 75 of ~420 uptime minutes (~18%), so a 5/5 coincidence would 
 
 imagent 的爆发不是独立的,而是被 #18 背后同一批 `AddressBookManager` 拉起驱动。5 个爆发分钟 5/5 全部命中拉起分钟(偶然概率约 0.02%)。**imagent 是 #18 触发源的后果,不是其原因**;反过来 #18 的 CPU 也不是 imagent 造成的(19 秒 CPU 变不出 143% 爆发)。两者是共享触发源的独立缺陷,应分开提交。
 
+## The three questions, answered from the binary / 三问的二进制答案 (beta5 `26A5406e`, 2026-08-13)
+
+Static analysis targets: `/System/Library/Sandbox/Profiles/com.apple.imagent.sb` (404 lines on beta5, was 403 on beta3), imagent's entitlements, and `ContactsPersistence.framework` **3844.100.1** (linked via `Contacts.framework` by imagent) + ContactsFoundation's `CNRetry`. Disassembly via lldb static + a live probe process; all claims below are read from these, not inferred from the log shape.
+
+### Q1 — What the sandbox profile actually denies / 沙盒到底禁了什么
+
+- **Default-deny by omission, not an explicit rule.** Line 11 is `(deny default)`. The *only* explicit `deny mach-lookup` in the file is the WebKit prefix rule (lines 286–288, `(with send-signal SIGKILL)`). There is no deny rule naming the Contacts service — it is blocked simply because the `(allow mach-lookup …)` block (lines 173–283) omits it, while explicitly allowing the **legacy** `com.apple.AddressBook.abd` (line 177).
+- **26 other system sandbox profiles** list `com.apple.AddressBook.ContactsAccountsService` explicitly (`contactsd.sb`, `suggestd.sb`, `sharingd.sb`, `gamed.sb`, `assistantd.sb`, `siriactionsd.sb`, `studentd.sb`, `contacts.sb`, `com.apple.iMessage.addressbook.sb`, …). imagent's profile is the outlier.
+- The profile contains **no `(require-entitlement …)` rules**, so the `ContactsAccountsService = true` entitlement cannot rescue a mach lookup: for a platform binary the *profile* is the client-side gate, while the *entitlement* is what the **server** (contactsd) checks. The `com.apple.security.exception.mach-lookup.global-name` entitlement array in the binary does not list the service either, so the legacy exception mechanism can't rescue it.
+
+### Q2 — Is there backoff on the retry path? / 重试路径有没有退避
+
+**The retry wrapper around the failing XPC lookup has a designed backoff — but it never engages for this error:**
+
+- `-[CNCDRemotePersistentStoreEndpointFactory newEndpointWithError:]` (ContactsPersistence) wraps `_fetchEndpoint` in ContactsFoundation's `CNRetry`, with the factory itself as the delegate:
+  - `maximumNumberOfAttemptsForRetry:` → returns literal **2**
+  - `retry:delayAfterError:onAttempt:` → returns literal **2.0 s** (`fmov d0, #2.0; ret`)
+  - `retry:shouldContinueAfterError:onAttempt:` → returns YES **only** for `CNErrorDomain` code **1012**. The sandbox error is `NSCocoaErrorDomain 4099` (mach error 159), so the predicate is **false** and this wrapper makes exactly **one** attempt.
+- The `CNRetry` engine (`-[CNRetry performAndWait:]`, ContactsFoundation) itself: attempt loop with a cap; the delay is delegate-supplied; a delegate delay of **0.0 skips the sleep entirely** (`fcmp d8, #0.0` → `b.eq` past the wait) → immediate retry. The only other backoff in the Contacts stack is `CNProcessSharedLock lockRetryOnEDEADLK` (`kRetryEDEADLKBackoff` / `kRetryEDEADMax`) — EDEADLK-specific, unrelated.
+- Every function on the per-attempt path was checked for backward branches and is **straight-line**: `-[CNCDDatabasePreparationTask run:]`, the out-of-process task block, `__46-[CNCDDatabaseCachingPreparer executeRequest:]_block_invoke`, `_fetchEndpoint`. The 1–2 ms re-invocation loop therefore lives in a **caller layer** (CoreData `NSXPCStoreConnection createConnectionWithOptions:` or the Contacts store-stack rebuild) — **not yet pinned to a specific frame** (stated gap; needs a root stack sample during a burst, which this machine cannot capture without disabling SIP).
+- **Live re-verification on beta5** (this machine, 2026-08-13 23:31): burst of **44 attempts** in two sub-bursts ~170 ms apart, **1–2 ms per attempt**, 3 lines each, all on one thread (`8cafac`) — no backoff *within* a sub-burst. Bursts **6/6-correlate** with `AddressBookManager` spawns in a 3 h window ("Successfully spawned AddressBookManager[…] because ipc (mach)", ~6 min cadence, and its launchd plist has **no** `StartInterval`/`KeepAlive` — something actively requests the `com.apple.AddressBook.abd` mach service every ~6 min).
+
+### Q3 — Are entitlement and profile really contradictory? / 授权与沙盒真的矛盾吗
+
+**Yes.** Two independent authorization layers disagree: the **entitlement** — the server-side gate by which contactsd would accept imagent as a client — grants the right; the **profile** — the client-side gate on whether imagent may issue the lookup at all — denies it. The entitlement is not "unused": it is checked by the *service*, which imagent can never reach. One-line fix on either side (add the global-name to the profile, matching all 26 siblings) closes the contradiction.
+
 ## Expected vs Actual / 预期与实际
 
 - **Expected:** a process explicitly entitled to `com.apple.AddressBook.ContactsAccountsService` can look it up. Failing that, a sandbox denial is a **permanent, non-retryable** condition — it should fail once, log once, and stop (or back off exponentially and give up), not retry every 1–2 ms indefinitely at `E` level.
