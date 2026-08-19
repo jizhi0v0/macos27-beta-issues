@@ -354,3 +354,53 @@ variables and the per-window story is dead.
 Only after that curve exists is there anything worth comparing to beta5, and the comparison has
 to be **window-count-matched** — which is the control that was missing from every reading in this
 file.
+
+---
+
+# #3 — CONTROL RUN, and the retraction
+
+**120 Hz, everything closed: WindowServer 4.5 %.** `ws-idle-120hz-allclosed.txt`.
+Both validity checks pass; `actualUserIdle 120.0` — a full window with nothing touching the
+machine, the cleanest run of the day. `Invalid window` 0/60 s. Refresh confirmed 120.0 Hz.
+
+## The like-for-like comparison, finally
+
+| build | refresh | on-screen windows | WindowServer |
+|---|---|---|---|
+| beta5 `26A5406e` (2026-08-11) | 120 Hz | clean idle desktop | **~4 %** (max on a valid window 6.9 %) |
+| **beta6 `26A5416b`** (2026-08-19) | 120 Hz | Finder 1, Terminal 1, WindowManager 1 | **4.5 %** |
+
+**#3 has not regressed on beta6.** 4.5 % sits inside beta5's own 4–6.9 % band, at the same
+refresh rate, on an equivalently bare desktop.
+
+## What today's readings actually were
+
+| reading | refresh | windows | result |
+|---|---|---|---|
+| 45.6 / 47.5 / 46.5 / 48.4 / 46.5 % | 120 Hz | Finder 13 + Claude + Surge | working desktop |
+| 34.2 % | 60 Hz | Finder 13 | working desktop |
+| 3.0 % | 60 Hz | bare | **control** |
+| **4.5 %** | **120 Hz** | **bare** | **control** |
+
+Every "floor" reading was a working desktop compared against a clean-desktop beta5 baseline. The
+missing control was window count, and it was missing from all five.
+
+## Retracted
+
+- 🔴 **"#3 regressed on beta6"** — withdrawn. It was committed on two validated runs, and the
+  runs *were* valid; the validity checks I built (screen saver, user input, reindex) all passed.
+  They just did not check the one variable that mattered.
+- **"it returned during beta5"** — withdrawn with it. beta5's 37.4 % lifetime average on 08-18
+  was a machine in use, nothing more.
+- **The binary diff is unchanged and was right.** Compositing code byte-identical beta5↔beta6 was
+  never a puzzle — it was the correct answer arriving before the correct question.
+
+## Left open — a different question, never part of #3
+
+On a bare desktop WindowServer costs 4.5 %; with 13 Finder windows it costs 34–47 %. That is
+roughly **2.6 points per window at 60 Hz** and ~2.9 at 120 Hz (the 120 Hz figure is polluted by
+Claude, an actively-rendering Electron app, so treat it as an upper bound).
+
+Whether that per-window cost is a defect is **untested and unclaimed**. It needs the
+window-count curve (1 / 4 / 8 / 13, everything else held), and then a **window-count-matched**
+beta5 comparison — which cannot be run any more on this machine. It is a question, not a finding.
