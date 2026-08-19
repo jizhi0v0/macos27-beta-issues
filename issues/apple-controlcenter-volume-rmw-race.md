@@ -715,13 +715,33 @@ This is consistent with the trigger description already in this file ("generalis
 output-device change") and narrows it: **a Bluetooth audio device that fails to reconnect makes
 Alcove poll, which produces the device churn that starts the race.**
 
-**Not established:** that the failing reads *cause* the writes rather than accompanying the same
-churn; which object and property the failures are on (both `<private>`); that the peer is AirPods;
-and anything about what beta6 changed in reconnection. n = 1 episode. The next falsifiable test is
-a hand-back where the AirPods **do** connect — if the storm follows a successful A2DP negotiation
-but not an absent one, the refined trigger holds.
+**A clean negative, same day: the refined trigger is NOT sufficient.** The reporter manually
+connected the AirPods and they disconnected again on their own — a flapping device, which is the
+state this hypothesis calls dangerous. Every known precondition was present: Alcove running and
+polling (89 bluetoothd XPC calls), Spotify running, all three HAL drivers restored, volume at a
+normal 44. Per minute:
 
-**Separately worth filing:** the reporter's own observation that **AirPods stopped auto-reconnecting
+| minute | `BTAudioHALPlugin` | HAL read failures | `Setting main volume` |
+|---|---|---|---|
+| 16:47–16:48 | 3 | 30 | 0 |
+| **16:50** | **446** | **197** | **0** |
+| **16:51** | **529** | **208** | **0** |
+| **16:52** | **677** | **316** | **0** |
+
+A2DP negotiation happened, HAL reads failed hundreds of times, and **no storm followed**.
+
+Media keys were checked as the missing ingredient and ruled out — **zero** media/volume key events
+in *either* window. The other differences (Alcove volume lines 1,860 vs 225, ControlCenter 77,622
+vs 4,580, `SoundSettings` 46,594 vs 1,104) are all **products of the storm**, not precursors.
+
+**So the trigger is still unidentified.** The score for the day is one positive episode and two
+negatives, and the A2DP-plus-failing-reads pattern is at best necessary, not sufficient. What
+would settle it is not another hypothesis but a **continuous watcher** recording the precursor
+metrics — `BTAudioHALPlugin` rate, `ObjectGetPropertyData` failures, Alcove→bluetoothd XPC rate,
+`Setting main volume` rate, per minute — so that several episodes can be compared instead of one.
+Every capture so far has been retrospective, which is why the precursor keeps being ambiguous.
+
+**Not established:** that the failing reads *cause* the writes**Separately worth filing:** the reporter's own observation that **AirPods stopped auto-reconnecting
 when Spotify hands audio back to the Mac after the beta6 upgrade** is a candidate defect in its own
 right, independent of this race.
 
