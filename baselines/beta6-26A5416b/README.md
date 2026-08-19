@@ -181,3 +181,67 @@ all up before reading anything into this. (UURemote is a new emitter not in the 
 | `Invalid window` (#3 spam) | 296 |
 | `Could not fetch group`, all processes (#18) | 1,054 |
 | `AddressBookManager` spawns | 1 |
+
+---
+
+# #3 — probe round 2 (2026-08-19 14:00–14:10): three leads, three negatives
+
+State at probe time: uptime 50 min, near-idle desktop (Finder 13 windows, Surge 2,
+WindowServer 2, WindowManager 1, Claude 1, DuoTerminal 1). Paired before/after design with the
+same app set throughout, cumulative `utime+stime` deltas over 60 s windows.
+
+## 1. `killall MenuBarAgent` — no effect
+
+| phase | WindowServer | MenuBarAgent |
+|---|---|---|
+| A (before) | **46.5 %** | 0.0 % |
+| B (after restart, 45 s settle) | **46.5 %** | 0.1 % |
+
+MenuBarAgent did restart (pid 683 → 66158); WindowServer kept pid 401. The number did not move
+by so much as 0.1 point, and MenuBarAgent's own CPU was ~0 throughout.
+
+**[#22](https://github.com/jizhi0v0/macos27-beta-issues/issues/22)'s mechanism does not explain
+#3 on beta6.** This also removes the proposed bridge between the binary diff's region changes and
+the CPU: those changes were interesting *because* #22 blamed region-state accumulation, and the
+one intervention #22 reports as clearing it does nothing here.
+
+Phase A's 46.5 % is also a fifth independent reading of the floor, matching 46.5 / 48.4 / 45.6 /
+47.5 — and this one with Claude open, so the floor is not sensitive to that either.
+
+## 2. Continuity / screen capture — no session
+
+`ContinuityCaptureAgent`, `replayd`, `SidecarRelay`, `AirPlayXPCHelper` all present but at
+**0.0 %**. One built-in display, `Mirror: Off`, no capture assertions. The 1.2–2.5 % that
+`ContinuityCaptureAgent` showed in two earlier midpoint samples was not a session.
+
+## 3. Brightness / EDR — **falsified again; an overstatement retracted**
+
+A 60 s sample showed WindowServer logging ~2,500 QuartzCore `commitBrightness` / `swap
+brightness` lines — ~42/s on a static desktop — and this was briefly written up here as "the
+driver". **That was wrong, from a single 60 s window that happened to land on bursts.** Checked
+properly:
+
+- **Coverage over 300 s: 46 seconds of 300 contain any brightness line** — bursty, not sustained.
+  (beta5's figure in [#25](issues/apple-corebrightness-nan-oscillation.md) was 21 of 300.)
+- Peak rate **240–242 lines/s**, exactly the 120 pairs/s = one update per frame at 120 Hz that
+  #25 already documented. Same mechanism, not a new one.
+- **Zero brightness frames in the hot stack.** A `grep -i` for brightness/EDR/tone-map over
+  `ws_main_thread` returns 5 hits, all false positives — `AGX…bindUntrackedResourcesToChannel`
+  and `initWithSharedResourceList`, where `trackedResources` contains the substring `edR`.
+  A strict grep for real symbols returns **0**.
+
+So **#25's original falsification survives on beta6**: brightness cannot account for a sustained
+floor when it covers 15 % of seconds and appears in none of the hot stacks. The one new fact
+worth carrying back to #25 is that its burst *coverage* is about 2× beta5's — a frequency data
+point for #25, not an explanation for #3.
+
+## Where #3 stands after this round
+
+The floor is real, replicated five times, and none of the three obvious external drivers explains
+it. The compositing code is identical to beta5's. What remains is the shape of the thing being
+composited: the spindump's `prepare_layer` recursion is **40+ levels deep**, and the update pass
+is not early-outing on a static scene.
+
+Next probe, and it needs no new tooling: **bisect the on-screen window owners.** Quit them one at
+a time — Finder (13 windows), Surge, WindowManager, DuoTerminal — measuring 60 s between each.
+If one of them owns the deep tree, the floor drops when it goes.
