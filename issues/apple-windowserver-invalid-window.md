@@ -5,8 +5,8 @@
 
 | | |
 |---|---|
-| **Status** | 🟢 **Fixed on beta5 `26A5406e`** (2026-08-11) — the 42–46% floor is **gone**: **~4%** on a clean idle desktop and **7.7%** with the same menu-bar apps running that were up during the beta4 runs. The two distributions do not overlap — beta4's *minimum* across 10 replicates was 42.0%, beta5's *maximum* on a valid window is 6.9%. The `Invalid window` log line survives at **0.5/s** (was ~4/s) and stays decoupled from CPU, as it always was. See [beta5 re-test](#re-test-2026-08-11--beta5-26a5406e--the-floor-is-gone). Prior state: 🔴 CONFIRMED regression on beta4 `26A5388g` (2026-07-25) — stable ~42–46% floor, 10 replicates across two refresh rates, independent of refresh rate |
-| **macOS** | seen on 27.0 beta2 `26A5368g`; **re-confirmed on beta4 `26A5388g`** |
+| **Status** | 🟢 **Verified NOT regressed on beta6 `26A5416b`** (2026-08-19) — **4.5 %** at 120 Hz on a bare desktop, inside beta5's own 4–6.9 % band, same refresh rate and equivalent window state. Corroborated by a beta5↔beta6 binary diff: **156/156** SkyLight functions in the updater/display/timer area byte-identical, plus QuartzCore's `prepare_layer`, `add_context`, `render_layers` and `variable_blur_surface`. **A 🔴 posted earlier that same day is retracted** — see [the beta6 verification](#verification-2026-08-19--beta6-26a5416b--not-regressed-and-a-retraction). Prior: 🟢 **Fixed on beta5 `26A5406e`** (2026-08-11) — the 42–46% floor is **gone**: **~4%** on a clean idle desktop and **7.7%** with the same menu-bar apps running that were up during the beta4 runs. The two distributions do not overlap — beta4's *minimum* across 10 replicates was 42.0%, beta5's *maximum* on a valid window is 6.9%. The `Invalid window` log line survives at **0.5/s** (was ~4/s) and stays decoupled from CPU, as it always was. See [beta5 re-test](#re-test-2026-08-11--beta5-26a5406e--the-floor-is-gone). Prior state: 🔴 CONFIRMED regression on beta4 `26A5388g` (2026-07-25) — stable ~42–46% floor, 10 replicates across two refresh rates, independent of refresh rate |
+| **macOS** | seen on 27.0 beta2 `26A5368g`; **re-confirmed on beta4 `26A5388g`**; fixed on beta5 `26A5406e`; **verified still fixed on beta6 `26A5416b`** (2026-08-19) |
 | **Component** | Apple **WindowServer / SkyLight** (`com.apple.SkyLight`) |
 | **Hardware** | `Mac15,11`, M3 Max, single internal display (no external monitor, no mirroring) |
 | **Report** | Apple Feedback: `FB________` *(to be filed)* |
@@ -226,3 +226,49 @@ after MenuBarAgent restart, settled   avg  44.9%   ← their "recovered" state
 `killall MenuBarAgent` removes the second layer and **not** the first — which is why #22 bottoms out at our floor instead of at single digits. Tracked separately on that basis; this issue owns the floor.
 
 `killall MenuBarAgent` 只清得掉第二层、清不掉第一层 —— 这正是 #22 恢复后停在我们的底噪上、而非停在个位数的原因。故两者分开跟踪,本 issue 负责底噪部分。
+
+## Verification 2026-08-19 — beta6 `26A5416b` — not regressed, and a retraction
+
+### The number
+
+| build | refresh | on-screen windows | WindowServer |
+|---|---|---|---|
+| beta5 `26A5406e` (2026-08-11) | 120 Hz | clean idle desktop | ~4 % (valid-window max 6.9 %) |
+| **beta6 `26A5416b`** | 120 Hz | Finder 1 (desktop layer), Terminal 1, WindowManager 1 | **4.5 %** |
+| beta6, same day | 60 Hz | same bare desktop | 3.0 % |
+
+Measured with [`tools/ws-idle-baseline.sh`](../tools/ws-idle-baseline.sh), both validity checks
+passing (`screen saver: did not start`, `user input: none detected`, `actualUserIdle 120.0`),
+`Invalid window` **0/60 s**, refresh confirmed via `CGDisplayCopyDisplayMode`.
+
+### The retraction, and why it happened
+
+Earlier the same day this file's status was flipped to 🔴 on five replicated readings —
+45.6 / 47.5 / 46.5 / 48.4 / 46.5 % at 120 Hz, plus a spindump, a `killall MenuBarAgent` A/B and a
+full binary diff. **Every one of those readings was taken on a desktop carrying 12 Finder windows
+that macOS had auto-restored at the first boot after the upgrade.** None were in the foreground,
+so the desktop looked idle. Closing them drops the same machine to 4.5 %.
+
+The runs were individually valid — the screen-saver, user-input and post-upgrade-reindex guards
+all passed. They were valid measurements of an unmatched comparison: beta5's ~4 % came from a
+clean desktop, beta6's 46 % from a working one. **Window count was the control nobody was
+holding.** Replication does not fix an uncontrolled variable; it reproduces it.
+
+The binary diff should have been read as the answer rather than a puzzle: if the compositing code
+is byte-identical across the two builds, a 10× CPU difference is a statement about the input, not
+the code.
+
+### Method requirement for anyone re-testing this
+
+Record the **on-screen owner list**, not just the running-app list — apps can be running with zero
+windows, and windows can exist with no visible app. `tools/ws-idle-baseline.sh` prints it. Match
+it before comparing builds. Also quit any agent/Electron app: **Claude.app alone measured ~41
+points** (45.6 % with it open and no Finder windows, against 4.5 % bare), because its activity
+indicator animates continuously.
+
+### Separate, still open — not this issue
+
+On this machine, with the brightness burst state active, WindowServer costs ~+20 points; with
+Finder windows present, ~+13 points (a step, flat from 4 to 12 windows). Neither is a regression
+against beta5 and neither has a macOS 26 comparison. Details and the full measurement log:
+[`baselines/beta6-26A5416b/`](../baselines/beta6-26A5416b/README.md).
