@@ -471,3 +471,52 @@ taken with no Finder window open.
 **Log-eviction note:** the 14:15 run's window returns 0 lines for everything now; the info-level
 QuartzCore lines had already been evicted from the ring buffer, as recorded before. Any log
 comparison has to be pulled within minutes.
+
+## XRGB: emitter identified, and downgraded from "lead" to "symptom"
+
+`Unsupported image function %s` is emitted by
+
+```
+CA::OGL::Context::variable_blur_surface(float, CA::OGL::Surface*, float, CA::OGL::Surface*,
+    float, CA::Render::Texture*, CA::Mat4<double> const&, CA::OGL::BlurParams const&,
+    float*, CA::OGL::Surface**)
+```
+
+Located by resolving the format string's VM address (file offset `0x4522bd` + `__TEXT` vmaddr
+`0x18af99000` = `0x18b3eb2bd`) and scanning the disassembly for the `adrp`/`add` pair that
+builds it — a single call site, at `0x18b0d5734`. The `%s` comes from a name table indexed by
+the image-function id, and after the log the code branches back into the function rather than
+returning, so it logs and continues.
+
+**It is byte-identical in beta5** — `0x1454`, 1301 instructions, same on both sides. beta5 would
+log the same thing under the same conditions. Not a beta6 change, like everything else examined.
+
+**And it is not the cost.** The spindump was taken with all 13 Finder windows open, so if this
+path were expensive it would be in the profile. In `ws_main_thread`'s 801 samples:
+
+- `variable_blur_surface`: **0 samples**
+- every blur-related frame combined: **5 samples (0.6 %)** — `get_glass_filter_bleed_blur_radius`
+  ×2, `get_glass_filter_shadow_blur_radius` ×1, `GaussianBlurFilter::get_edge_info` ×1,
+  `BlurFilter::DOD` ×1
+- whole spindump, all processes: 9 blur frames
+
+So the per-frame XRGB line is a genuine pre-existing defect signature — a variable-blur pass
+hitting an unsupported image format ~115 times a second — but it is **not** what costs the
+~13 points. Calling it "the most concrete lead in the investigation" was premature and is
+withdrawn.
+
+## Honest closing state
+
+**Settled:** beta6 has no WindowServer idle regression (4.5 % bare at 120 Hz vs beta5's ~4 %),
+and the compositing code is byte-identical to beta5's across 156 functions plus QuartzCore's
+`prepare_layer`, `add_context`, `render_layers` and now `variable_blur_surface`.
+
+**Unexplained, and needing cleaner experiments than today's:**
+
+- ~+13 points when Finder windows are present, flat from 4 to 12 windows.
+- ~+20 points while the brightness/EDR burst state is active (#25's mechanism, whose dismissal
+  rested on a duration that has since changed).
+
+Neither has a macOS 26 comparison, and today's curve was run entirely inside a brightness burst,
+so it cannot separate the two. A clean re-run would need the burst state controlled — which
+nothing here yet knows how to do.
