@@ -655,3 +655,40 @@ A single writer setting the volume to maximum does not do that.
 2026-08-19 在 beta6 上完整复现,签名不变:`setLevel` 间隔精确 **33.3ms = 30Hz**,步长精确 **1/16**,双向,
 撞顶后**仍以 30Hz 持续写 1.0**。Alcove 1.7.9 运行中(触发条件)。本次机器出现可感知的卡顿(`coreaudiod` 145%),
 这是该问题第一次与用户可感的卡死一同记录,而非仅表现为音量异常。25 分钟原始日志已归档(仓库外)。
+
+### Preliminary, 2026-08-19 — removing the virtual-audio HAL drivers stopped it (confounded)
+
+All three third-party HAL plugins were moved out of `/Library/Audio/Plug-Ins/HAL/`
+(`ToDeskOutputDriver`, `OrayVirtualAudioDevice`, `ParrotAudioPlugin`) and `coreaudiod` was
+restarted. The audio device list went from 4 devices to 3, and `BuiltInSpeakerDevice` — the sole
+target of all 4,265 writes in the capture above — changed id from 100 to 74.
+
+Result: **4–5 deliberate trigger attempts produced nothing**, and a clean 249 s window after the
+`coreaudiod` restart contains **zero** `Setting main volume` lines, with the volume sitting at a
+normal 25 rather than railed. Against a defect previously described as *reproducible on demand*,
+with 10+ runaways captured in a single day, that is a large change.
+
+**It is not yet a finding, because two variables moved together.** `killall coreaudiod` was
+required to unload the drivers, and restarting coreaudiod on its own clears whatever state the
+race is holding. Nothing here separates "the drivers participate in the trigger" from "the
+restart cured it".
+
+**The control that separates them:** move the drivers back, restart `coreaudiod` again, and
+attempt the trigger the same way.
+
+- **Triggers again** → the restart is ruled out (it happened here too and did not prevent it), so
+  the drivers participate in the *trigger*, not merely in the cost. That would rewrite this
+  issue's trigger description, which currently names only Alcove and an output-device change.
+- **Still does not trigger** → the cure was the `coreaudiod` restart, this lead is dead, and the
+  workaround section gains a more thorough remedy than `killall ControlCenter`.
+
+Also worth recording either way: `coreaudiod`'s lifetime average was **14.7 %** (36.64 s over
+249 s) with the drivers absent, which includes its startup cost. If it jumps once they are
+restored, that is independent evidence of plugin fan-out cost regardless of what the trigger
+test shows.
+
+2026-08-19 初步结果:移除三个第三方 HAL 虚拟音频驱动并重启 coreaudiod 后,4–5 次刻意触发均未复现,
+249 秒干净窗口内 `Setting main volume` 写入为 **0**,音量停在正常值 25。对一个原本"可按需复现、
+一天抓到 10+ 次"的缺陷,这个变化很大。**但两个变量是一起动的** —— 卸载驱动必须重启 coreaudiod,
+而重启本身就会清掉竞争持有的状态。需要把驱动放回、再次重启 coreaudiod 后重试,才能区分
+"驱动参与触发"与"重启治好了它"。
