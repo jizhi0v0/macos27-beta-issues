@@ -60,7 +60,28 @@ for (k,v) in c.sorted(by: {$0.value > $1.value}) { print(String(format: "  %3d  
   ps -Ao comm= | grep "^/Applications" | sed 's|/Contents/.*||; s|.*/||' | sort -u | tr '\n' ' ' >> "$OUT"
   echo >> "$OUT"; echo >> "$OUT"
 
+  # Hold a display + user-active assertion across the whole run.
+  #
+  # This is NOT optional: the screen saver idle time on this machine is 120 s
+  # (loginwindow: `idleTimePreference | idleTime: 120`), shorter than a full
+  # run, and the screen saver is a full-screen animation WindowServer has to
+  # composite -- on 2026-08-19 it started 75 s into the window and inflated the
+  # result. Two runs were wasted before this was added.
+  #
+  # Form matters, per caffeinate(8):
+  #   -u without -t is dropped after a DEFAULT 5 SECONDS, so -t is mandatory;
+  #   -t and -w are both IGNORED when a utility is invoked, so this has to be a
+  #     standalone background process, not `caffeinate ... some-command`;
+  #   -w $$ would be wrong here -- in bash 3.2 (which is what macOS ships) $$
+  #     inside a subshell is the PARENT's pid, and the parent exits immediately
+  #     after `run & disown`, which would release the assertion at once.
+  # A launching shell's own `caffeinate -t N &` is not reliable either: one such
+  # job was logged by powerd as ClientDied at age 00:00:12.
+  caffeinate -d -u -t $((WINDOW + 180)) &
+  CAFF=$!
+
   t0=$(date +%s)
+  WSTART=$(date '+%Y-%m-%d %H:%M:%S')
   b_ws=$(cpu_of "$WS"); b_mba=$(cpu_of "$MBA")
 
   sleep $((WINDOW/2))
@@ -82,15 +103,44 @@ for (k,v) in c.sorted(by: {$0.value > $1.value}) { print(String(format: "  %3d  
     echo "Invalid window / 60s: $(/usr/bin/log show --last 60s --style syslog \
       --predicate 'process == "WindowServer"' 2>/dev/null | grep -c 'Invalid window')"
     echo
+    # --- window validity, checked from loginwindow's own log ---
+    # Do NOT grep for ScreenSaverEngine/legacyScreenSaver: on macOS 27 no such
+    # process appears even when the screen saver IS running (verified 2026-08-19,
+    # 0 hits across a window in which it demonstrably ran). loginwindow's
+    # "starting screen saver due to user idle" is the reliable marker.
+    SS=$(/usr/bin/log show --start "$WSTART" --style syslog \
+      --predicate 'process == "loginwindow"' 2>/dev/null \
+      | grep -c 'starting screen saver due to user idle')
+    IDLEMIN=$(/usr/bin/log show --start "$WSTART" --style syslog \
+      --predicate 'process == "loginwindow"' 2>/dev/null \
+      | sed -n 's/.*actualUserIdle = \([0-9.]*\).*/\1/p' | sort -n | head -1)
+    echo "--- WINDOW VALIDITY ---"
+    if [ "$SS" -gt 0 ]; then
+      echo "  INVALID: screen saver started during the window ($SS activation(s))."
+      echo "           It is a full-screen animation WindowServer must composite,"
+      echo "           so the number above is inflated. Re-run."
+    else
+      echo "  screen saver: did not start (OK)"
+    fi
+    if [ -n "$IDLEMIN" ]; then
+      echo "  min actualUserIdle seen: ${IDLEMIN}s"
+      echo "    (a small value means the machine was touched mid-window -- input"
+      echo "     events are WindowServer work. Want this >= the window length.)"
+    fi
+    echo
     echo "VERDICT:"
     echo "  <15%  -> compositing workload, not a regression. Close the issue."
     echo "  >40%  -> real beta regression. Capture: sudo sysdiagnose -f ~/Desktop"
     echo "  else  -> subtract MenuBarAgent's share and re-judge."
     echo "done: $(date)"
   } >> "$OUT"
+
+  kill "$CAFF" 2>/dev/null
 }
 
 run &
 disown
 echo "Measuring in background. Quit your apps NOW and leave the machine alone."
+echo "A caffeinate assertion is held for the run, and the result reports whether"
+echo "the screen saver fired and whether the machine was actually left idle."
 echo "Results in ~$(( (LEAD+WINDOW)/60 + 1 )) min at: $OUT"

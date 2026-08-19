@@ -58,20 +58,40 @@ and has not been replicated. Not a verdict yet.
 since-boot average is **46.2 %** — both inside the 42–46 % floor that originally defined #3,
 against the ~4 % clean-idle figure that closed it 🟢 on beta5.
 
-**This is not usable yet.** The run happened 1.5–4.5 minutes after boot, and its own midpoint
+**Two runs, both invalid, for different reasons — neither settles #3:**
+
+| run | WindowServer | why it does not count |
+|---|---|---|
+| 13:14–13:16:56 | **45.6 %** | full post-upgrade Spotlight/media reindex (`mds_stores` 63 %→84 %, `corespotlightd` 42 %, `ANECompilerService` 36 %); **and** loginwindow logged `actualUserIdle = 8.2` then `27.2` — the machine was still being touched mid-window |
+| 13:28:28–13:31:17 | **47.5 %** | reindex had finished and the desktop was genuinely bare (midpoint: WindowServer 49.5 %, everything else < 11 %) — but the **screen saver started at 13:30:28, 75 s into the 122 s window**, covering ~39 % of it. A `caffeinate -du -t 420 &` launched beforehand was logged by powerd as `ClientDied` at age **00:00:12** |
+
+Both landing near 46 % under *different* contamination is suggestive, but two invalid
+runs do not make a valid one.
+
+**Screen-saver detection — the detector matters.** Do **not** grep for
+`ScreenSaverEngine` / `legacyScreenSaver`: on macOS 27 neither process appears even when the
+screen saver is demonstrably running (0 hits across the 13:28 window, in which it ran).
+loginwindow's `starting screen saver due to user idle` is the reliable marker, and
+`idleTimePreference | idleTime: 120` is the authoritative timeout — the `1200` in
+`getDefaultUserIdleTimePreference` is the built-in default, not the effective value.
+
+`tools/ws-idle-baseline.sh` now holds its own `caffeinate` assertion for the run and reports
+window validity (screen saver fired? minimum `actualUserIdle`?), so a contaminated run
+announces itself instead of being read as a result. The run happened 1.5–4.5 minutes after boot, and its own midpoint
 sample shows why: `mds_stores` 63 %, `corespotlightd` 42 %, `ANECompilerService` 36 %,
 `mediaanalysisd` 18 %, `photolibraryd`, `suggestd` — a full post-upgrade Spotlight/media
 reindex. `mds_stores` was still at 84 % at T+10m. Also live throughout: `Claude.app`
 (Electron, a known compositing driver) and three screen-capture agents
 (AweSun / RustDesk / ToDesk — all with 0 ESTABLISHED connections, so idle, but resident).
 
-**To settle it:** wait for `mds_stores` to fall below ~10 %, then re-run
+**To settle it:** the reindex is done as of ~13:25, so just re-run
 
 ```bash
 bash tools/ws-idle-baseline.sh
 ```
 
-quitting Claude and the remote-desktop agents as well this time. Landing near 4 % means #3's
+quitting Claude and Activity Monitor, and then **leaving the machine completely alone** —
+check the WINDOW VALIDITY block before reading the number. Landing near 4 % means #3's
 🟢 holds; landing at 45 % again means #3 regressed on beta6 and needs a spindump.
 
 ### #1 CoreMedia — emitter set did not match, retest needed
