@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | 🔴 Open · reproduced repeatedly on 2026-08-19 · **attributed to iOS 27 beta6 on the paired iPhone, not to macOS** — the reporter first saw it after upgrading the *phone*, while the Mac was still on macOS 27 beta5 `26A5406e` |
+| **Status** | 🔴 Open · **workaround found: case → close → open** (a Bluetooth-menu reconnect is *not* enough) · reproduced repeatedly on 2026-08-19 · **attributed to iOS 27 beta6 on the paired iPhone, not to macOS** — the reporter first saw it after upgrading the *phone*, while the Mac was still on macOS 27 beta5 `26A5406e` |
 | **macOS** | observed on 27.0 beta5 `26A5406e` and beta6 `26A5416b` — the Mac side is a bystander |
 | **iOS** | 27.0 beta6 on the paired iPhone (the device reporting `Remote 801`) |
 | **Component** | Apple `audioaccessoryd` / `BTSmartRoutingDaemon` (AirPods automatic device switching) |
@@ -145,6 +145,37 @@ Spotify **在 Mac 上正在播放**、AirPods 蓝牙已连接、`inEarStatus yes
 A2DP 已广告,但链路快照显示 `BtRt 0 Kbps`、`Codc SBC`、`Freq Unknown`:**A2DP 流从未真正建立**,
 没有流就没有可发布的音频设备。因此 `Score 301, Remote 801` 从"缺陷本身"降级为"关系未定的观察":
 关闭手机上的 app 确实治好了**连接抖动**,但**没有**让音频设备出现。两者是一个故障还是两个,未确定。
+
+## Recovery: forcing a fresh negotiation fixes it / 恢复:强制重新协商即可
+
+Putting the AirPods back in the case, closing it and taking them out again — which forces a fresh
+A2DP negotiation — resolved it immediately:
+
+```
+id=128  Bobby's AirPods
+id=122  Bobby's AirPods      <- selected as default output
+id=108  MacBook Pro Speakers
+id=60   OrayVirtualAudioDevice
+```
+
+Two AirPods entries now exist where there were none, one of them is the **default output device**,
+and the arbitration moved from `Route Speaker` to `Route Bluetooth`.
+
+**`Score 301, Remote 100` did not change across the recovery.** The arbitration said the Mac won
+both before and after, so the score has no bearing on whether a device exists — which is the final
+piece confirming the failure is in the **A2DP negotiation**, not in routing policy on either OS.
+
+**Workaround:** case → close → open. Reconnecting from the Bluetooth menu is *not* enough; that
+re-establishes the ACL link without renegotiating the stream, which is exactly the broken state.
+
+**Not captured:** a healthy `AuLQ` snapshot for numeric contrast against the failing
+`AoS 0, BtRt 0 Kbps, Codc SBC, Freq Unknown` — the line stopped appearing once the stream was
+working. Anyone reproducing this should grab `GetControllerInfo … AuLQ` in **both** states.
+
+把 AirPods 放回充电盒、合盖、再取出(强制重新协商 A2DP)后立即恢复:设备列表中出现两个 AirPods 条目,
+其一成为默认输出,路由从 `Route Speaker` 转为 `Route Bluetooth`。**`Score 301, Remote 100` 在恢复
+前后完全没变** —— 仲裁与"设备是否存在"无关,这是确认故障出在 **A2DP 协商**而非路由策略的最后一块拼图。
+**规避:放回盒子合盖再取出;从蓝牙菜单重连不够**,那只重建 ACL 链路而不重新协商流,正是坏掉的那个状态。
 
 ## Expected vs Actual / 预期与实际
 
