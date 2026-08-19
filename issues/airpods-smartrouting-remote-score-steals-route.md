@@ -49,6 +49,42 @@ after the *iPhone* was upgraded to iOS 27 beta6 — the Mac was still on macOS 2
 **Rate:** 773 routing-related lines in 15 minutes on an otherwise idle Mac, i.e. the arbitration
 never settles.
 
+## Confirmed: `Remote` tracks an app resident on the iPhone / 已确认:`Remote` 由手机上驻留的 app 决定
+
+Closing Spotify **on the iPhone** moved the remote score immediately and the Mac started winning:
+
+```
+16:55:07   Score 301, Remote 801     <- iOS Spotify still resident
+16:55:58   Score 301, Remote  -1
+16:56:34   Score 301, Remote 801     Route VirtualBluetooth  NumofApp 2
+16:57:04   Score 301, Remote 801
+17:00:58   Score 301, Remote 100     <- after closing it on the phone
+```
+
+Verified stable afterwards: **20 consecutive evaluations over 60 s, all `Score 301, Remote 100`**,
+the AirPods staying connected to the Mac throughout. (`Route Speaker` persists only because
+nothing was playing on the Mac at the time, so there was no reason to switch.)
+
+So the arbitration itself works — it is the **input** that is wrong. While a media app is resident
+on the phone it contributes **801**, which no Mac-side score of 301 can beat, and the headphones
+are pulled back every three seconds regardless of `inEarStatus yes` or a manual connection made
+seconds earlier.
+
+**Workaround:** fully close the media app on the iPhone (not just pause it). `Remote` drops to
+100 and the Mac holds the AirPods.
+
+**Open, and it decides how bad this is:** whether iOS Spotify was *playing* or merely
+*backgrounded/paused* when it was reporting 801. A playing app outscoring an idle Mac is arguably
+correct; **a paused one doing so is not**, and that is the version consistent with the reported
+symptom — audio was being handed *back* to the Mac, so the phone was not playing. This was not
+instrumented on the phone side and needs a check there.
+
+关闭 **iPhone 上的** Spotify 后,`Remote` 从 801 掉到 100,本机 301 立即胜出,AirPods 保持连接
+(60 秒内 20 次评估全部本机胜)。所以仲裁逻辑本身没问题,**错的是输入**:手机上只要驻留着媒体 app
+就贡献 801 分,Mac 的 301 永远打不过。**临时规避:在 iPhone 上彻底关闭该 app,而不是暂停。**
+**待确认**:报 801 时 iOS Spotify 是在播放还是仅后台驻留 —— 后者才构成缺陷,而症状(音频正被交还给 Mac)
+指向后者。
+
 ## Expected vs Actual / 预期与实际
 
 - **Expected:** with the AirPods in the ear and an app actively playing on the Mac, the Mac should
