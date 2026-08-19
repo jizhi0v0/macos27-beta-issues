@@ -1,5 +1,5 @@
-# AirPods refuse to stay on the Mac — SmartRouting arbitration loses to the iPhone every 3 s (`Score 301, Remote 801`)
-# AirPods 连上 Mac 后立刻被抢走 —— SmartRouting 仲裁每 3 秒判给 iPhone
+# AirPods connect to the Mac but never publish an audio device — A2DP stays at `0 Kbps`, `Codc SBC`, `Freq Unknown`
+# AirPods 能连上 Mac 但从不发布音频设备 —— A2DP 停在 `0 Kbps`、回退 SBC、采样率未协商
 
 > 🔗 **Track / 关注此问题:** issue not yet filed — see "Filing" below
 
@@ -62,8 +62,8 @@ Closing Spotify **on the iPhone** moved the remote score immediately and the Mac
 ```
 
 Verified stable afterwards: **20 consecutive evaluations over 60 s, all `Score 301, Remote 100`**,
-the AirPods staying connected to the Mac throughout. (`Route Speaker` persists only because
-nothing was playing on the Mac at the time, so there was no reason to switch.)
+the AirPods staying connected to the Mac throughout. (`Route Speaker` was **wrongly** explained here as "nothing was playing on the Mac" — see the
+correction below; Spotify **was** playing on the Mac.)
 
 So the arbitration itself works — it is the **input** that is wrong. While a media app is resident
 on the phone it contributes **801**, which no Mac-side score of 301 can beat, and the headphones
@@ -85,15 +85,75 @@ instrumented on the phone side and needs a check there.
 **待确认**:报 801 时 iOS Spotify 是在播放还是仅后台驻留 —— 后者才构成缺陷,而症状(音频正被交还给 Mac)
 指向后者。
 
+## Correction, and the actual failure / 更正:真正的故障
+
+With Spotify **playing on the Mac**, the AirPods Bluetooth-connected, `inEarStatus yes`, and the
+arbitration now won by the Mac 30/30 (`Score 301, Remote 100`), audio **still** goes to the
+speakers. The reason is not arbitration at all:
+
+**The AirPods are absent from CoreAudio's device list entirely.**
+
+```
+默认输出: id=107  MacBook Pro Speakers
+可用设备: id=119 Bobby's iPhone Microphone
+          id=114 MacBook Pro Microphone
+          id=107 MacBook Pro Speakers
+          id=59  OrayVirtualAudioDevice
+```
+
+No AirPods output device exists, so `Route Speaker` is the only option available — it is not a
+routing decision being lost. Meanwhile Bluetooth reports the headset as **Connected**, with A2DP
+advertised:
+
+```
+Services: 0x980019 < HFP AVRCP A2DP AACP GATT ACL >
+```
+
+and the link-quality snapshot shows why nothing is published:
+
+```
+17:05:00.132  GetControllerInfo: AuLQ [{ AoS 0, BtRt 0 Kbps,
+              Codc SBC, Freq Unknown, DvNm 'Bobby's AirPods' }]
+```
+
+- **`BtRt 0 Kbps`** — no audio is streaming;
+- **`Codc SBC`** — the codec fell back to SBC, where AirPods on Apple hardware normally use AAC;
+- **`Freq Unknown`** — no sample rate was negotiated.
+
+So the ACL link is up and A2DP is advertised, but **the A2DP stream never establishes**. Without
+a stream there is no audio device to publish, and therefore nothing for SmartRouting to route to.
+
+### What this does to the `Score 301, Remote 801` finding
+
+It is demoted from "the defect" to "an observation whose relationship to the defect is
+unresolved". Both states have now been seen:
+
+| phase | `Remote` | Bluetooth | CoreAudio device | audio |
+|---|---|---|---|---|
+| iOS Spotify resident | **801** | connects, then drops repeatedly | never seen | speakers |
+| iOS Spotify closed | **100** | **stays connected** | **still absent** | speakers |
+
+Closing the app on the phone genuinely fixed the *connection flapping* — that part reproduced and
+held for 20 consecutive evaluations. It did **not** produce a working audio device. Whether the
+score war and the dead A2DP stream are one failure or two is **not established**.
+
+**Everything above about the Mac being a bystander still holds**, and the SBC fallback plus
+`Freq Unknown` point at the negotiation itself rather than at either OS's routing policy.
+
+Spotify **在 Mac 上正在播放**、AirPods 蓝牙已连接、`inEarStatus yes`、仲裁本机 30/30 胜出的情况下,
+声音**仍然**走扬声器。原因不是仲裁 —— **AirPods 根本不在 CoreAudio 的设备列表里**。蓝牙报告已连接、
+A2DP 已广告,但链路快照显示 `BtRt 0 Kbps`、`Codc SBC`、`Freq Unknown`:**A2DP 流从未真正建立**,
+没有流就没有可发布的音频设备。因此 `Score 301, Remote 801` 从"缺陷本身"降级为"关系未定的观察":
+关闭手机上的 app 确实治好了**连接抖动**,但**没有**让音频设备出现。两者是一个故障还是两个,未确定。
+
 ## Expected vs Actual / 预期与实际
 
-- **Expected:** with the AirPods in the ear and an app actively playing on the Mac, the Mac should
-  win the arbitration, or at minimum a *manual* connection should be honoured until the user
-  changes it. Automatic switching exists to follow the user's attention, not to override an
-  explicit choice every three seconds.
-- **Actual:** the remote score is high enough that the Mac can never win, and manual connections
-  are undone by the next evaluation. Audio stays on `Route Speaker` while the user is wearing the
-  headphones.
+- **Expected:** AirPods that report as Connected with A2DP advertised should negotiate a stream
+  and appear as a CoreAudio output device, so that audio playing on the Mac can reach them.
+- **Actual:** the ACL link is up and Bluetooth calls them Connected, but A2DP stays at `0 Kbps`
+  with `Codc SBC` and `Freq Unknown`, no output device is ever published, and audio plays out of
+  the speakers while the user is wearing the headphones. Separately, while a media app is resident
+  on the paired iPhone the connection also flaps, driven by `Score 301` against `Remote 801`.
 
 ## Reproduction / 复现
 
