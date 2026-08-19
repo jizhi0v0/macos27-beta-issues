@@ -84,15 +84,58 @@ regression against beta5, far too large to be explained by the two things still 
 this is **not** [#22](https://github.com/jizhi0v0/macos27-beta-issues/issues/22)'s mechanism.
 `Invalid window` spam is 9/60 s, still decoupled from the CPU as always.
 
-**Caveat, stated:** this is **one** valid run. The two contaminated runs landed at 45.6 % and
-47.5 %, which corroborates but does not replicate — beta4's original verdict took 10 replicates.
-The 🔴 is called on the size of the gap (4 % → 46.5 %), not on n.
+**Replicated.** A fourth run (13:45:50–13:47:52), with Activity Monitor also quit, returned
+**48.4 %** — both validity checks passing (`screen saver: did not start`, `user input: none
+detected (idle never reset)`, single sample 56.3 s). Saved as `ws-idle-run4.txt`.
 
-**Next:** capture the stack while it reproduces —
+| run | WindowServer | valid |
+|---|---|---|
+| 1 | 45.6 % | ✗ reindex + input |
+| 2 | 47.5 % | ✗ screen saver 39 % of window |
+| **3** | **46.5 %** | ✅ |
+| **4** | **48.4 %** | ✅ |
 
-```bash
-sudo spindump WindowServer 8 -o ~/ws_spindump_beta6.txt
+## The stack — what is actually burning the CPU
+
+`sudo spindump WindowServer 8`, 2026-08-19 13:44:21, archived at
+`~/Developer/macos27-beta6-postboot/ws_spindump_beta6.txt.gz`. spindump's own accounting gives
+WindowServer **3.472 s / 8 s = 43.4 %**, independently corroborating the 46.5 / 48.4 % readings.
+
+**All of it is one thread.** `ws_main_thread` takes **3.184 s** of the 8 s (39.8 %); every other
+WindowServer thread combined is ~0.15 s. Of its 801 samples, 501 sit idle in `mach_msg` and
+**297 are in a single path**:
+
 ```
+CGXRunOneServicesPass -> post_port_data -> non_coalesced_timer_handler
+  -> run_timer_pass -> update_display_callback -> CGXUpdateDisplay      (297)
+    -> WS::Updater::UpdateDisplays                                      (158 + 60 + 58 + 10)
+      -> WS::Updater::prepare_coreanimation                             (158)
+        -> WS::Updater::defenestrator3::ca_prepare_begin_window_update   (155)
+          -> WSSessionConnectionPerformWithPluginOwner                   (155)
+            -> CARenderUpdateAddContext2                                 (144)
+              -> CA::Render::Update::add_context                         (76 + 63)
+                -> CA::Render::Updater::prepare_layer / prepare_layer0 /
+                   prepare_sublayer0   -- recursing 40+ levels deep
+                  -> CA::OGL::render_layers / LayerNode::apply /
+                     ImagingNode::render
+```
+
+Four separate `UpdateDisplays` passes appear inside one 8 s sample, on a desktop whose only
+on-screen windows are Finder (13), Surge (2), WindowServer (2–3), WindowManager and DuoTerminal.
+
+**The part that makes this a defect rather than workload:** *nothing was feeding it.* Across all
+801 samples, the only processes seen committing CoreAnimation transactions at all are
+**WindowManager (3 samples), MenuBarAgent (3) and DuoTerminal (2)**. No client is animating.
+WindowServer is running full display-update passes — walking and re-preparing a 40+-deep layer
+tree, down into actual `CA::OGL` rendering — against a **static** scene, on a timer that the
+symbol name says is explicitly *not* coalesced (`non_coalesced_timer_handler`).
+
+**Caveat, stated:** two valid runs, not ten.
+
+**Still open:** which window owns the 40+-deep layer tree. The spindump does not name the
+`CGXWindow*`, and `WSSessionConnectionPerformWithPluginOwner` only says a plugin owner is
+involved. A beta5↔beta6 diff of `WS::Updater::UpdateDisplays` / `prepare_coreanimation` is the
+obvious next step — the beta5 dyld shared cache is archived, so that diff is still possible.
 
 ### #1 CoreMedia — emitter set did not match, retest needed
 
