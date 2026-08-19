@@ -520,3 +520,26 @@ and the compositing code is byte-identical to beta5's across 156 functions plus 
 Neither has a macOS 26 comparison, and today's curve was run entirely inside a brightness burst,
 so it cannot separate the two. A clean re-run would need the burst state controlled — which
 nothing here yet knows how to do.
+
+---
+
+# Correction to the window-count curve above
+
+The sweep runs `killall Finder` before every step and starts measuring 18 s later. Its N=0 step
+read **24.0 %** where a hand-run control on an identical on-screen owner list read **4.5 %**, and
+the brightness-burst explanation offered above does **not** hold up: paired 20 s sampling puts the
+brightness burst at only **~5 points** (50.1 % burst vs 45.0 % quiet, n=3 each, window set held),
+not the ~20 attributed to it here.
+
+The more likely cause is the `killall Finder` itself — the measurement window is catching Finder
+relaunching and rebuilding the desktop. That contaminates **every** step of the curve, so the
+24.0 / 37.4 / 40.7 / 38.3 numbers cannot carry the "step, not a slope" conclusion either.
+
+What survives, because it came from hand-run measurements with no Finder restart involved:
+
+- bare desktop, 120 Hz: **4.5 %** — and beta5's clean idle was ~4 %, so **#3 did not regress**
+- bare desktop, 60 Hz: **3.0 %**
+- 13 Finder windows, 60 Hz: **34.2 %**
+
+A clean curve needs the windows opened and closed **without** restarting Finder, and a settle
+period long enough to be verified rather than assumed.

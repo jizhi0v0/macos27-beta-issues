@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | ⚪ **Resolved 2026-08-13 — not a defect.** `nan` is an unset-field sentinel; the one permanently-`nan` field (`indicator brightness`) needs the dedicated silicon of [MacBook Neo / A18 Pro](https://support.apple.com/guide/security/mac-on-screen-camera-indicator-light-sec75a2d237d/web), which this Mac does not have (`IOMFBSupportsSecureIndicator = No`). The title's "~116 Hz toggle" is a brightness ramp. See the two 2026-08-13 sections at the bottom. No Feedback filed |
+| **Status** | ⚪ **still not a defect on beta6 `26A5416b`** (2026-08-19) — the mechanism re-verified as a **ramp**, exactly as this file concluded: `headroom` climbs ~0.00077 per frame from 1 toward its `potential headroom` of 16, one step every ~8.3 ms at 120 Hz, a full traversal taking ~2.7 min, while `sdr` and `ambient lux` stay constant. **But two numbers changed and one was never measured** — see [the beta6 re-measurement](#re-measurement-2026-08-19--beta6-26a5416b--frequency-up-4-5x-cost-bounded). Prior: ⚪ **Resolved 2026-08-13 — not a defect.** `nan` is an unset-field sentinel; the one permanently-`nan` field (`indicator brightness`) needs the dedicated silicon of [MacBook Neo / A18 Pro](https://support.apple.com/guide/security/mac-on-screen-camera-indicator-light-sec75a2d237d/web), which this Mac does not have (`IOMFBSupportsSecureIndicator = No`). The title's "~116 Hz toggle" is a brightness ramp. See the two 2026-08-13 sections at the bottom. No Feedback filed |
 | **macOS** | 27.0 beta4 `26A5388g` |
 | **Component** | Apple **CoreBrightness** (`corebrightnessd`) → **QuartzCore** (`com.apple.coreanimation:Brightness`) |
 | **Hardware** | `Mac15,11`, M3 Max, built-in Liquid Retina XDR, 120 Hz, **Auto-Brightness ON** |
@@ -205,3 +205,67 @@ Static reverse engineering of the shipped binaries (log format string → cross-
 **Status: ⚪ not a defect — expected logging on hardware without the Secure Indicator capability.**
 
 **结论**：`nan` 是苹果代码显式赋的「本字段未设置」哨兵；唯一永远填不上的 `indicator brightness`，对应的是 [MacBook Neo(A18 Pro)专用硅](https://support.apple.com/guide/security/mac-on-screen-camera-indicator-light-sec75a2d237d/web) 才具备的屏内安全摄像头指示灯能力，本机 `IOMFBSupportsSecureIndicator = No`，整条通道关闭，故恒为 `nan`，与 macOS 版本无关。开麦克风实测不改变该字段（橙点是屏幕渲染，不走这条通道）。非缺陷，不报 Feedback。反汇编由 **DeepSeek v4 Pro** 完成，本机复核了其引用的全部字符串与 ioreg 门控，未复核指令级断言。
+
+## Re-measurement 2026-08-19 — beta6 `26A5416b` — frequency up 4–5×, cost bounded
+
+### The mechanism is unchanged, and this file's reading of it was right
+
+A contiguous sample, one line per frame at 120 Hz:
+
+```
+15:11:32.693  headroom=1.00023  potential=16  sdr=53.8807  lux=26.8143
+15:11:32.697  headroom=1.00099  potential=16  sdr=53.8807  lux=26.8143
+15:11:32.708  headroom=1.00138  ...
+15:11:32.929  headroom=1.02213  ...
+```
+
+`sdr` and `ambient lux` are constant throughout; only `headroom` moves, in ~0.00077 steps
+every ~8.3 ms. **A ramp, not an oscillation** — which is what the 2026-08-13 correction in this
+file already said. At that step size a full 1 → 16 traversal takes ~2.7 minutes.
+
+### What did change: frequency
+
+| | seconds containing brightness lines |
+|---|---|
+| beta5 `26A5406e` | 21 of 300 (**7 %**) |
+| beta6, spot sample | 46 of 300 (15 %) |
+| beta6, 30-minute window | **599 of 1800 (33 %)** — 124,737 lines |
+
+The "rare, not a permanent loop" framing that supported the ⚪ was measured at 7 % coverage.
+At 33 % it is no longer rare, though it is still bursty rather than continuous.
+
+### What was never measured: the cost
+
+Paired sampling, 20 s windows, app set and window set held constant across all six:
+
+| window | WindowServer | brightness lines/20 s |
+|---|---|---|
+| 1 | 49.4 % | 478 |
+| 2 | 45.8 % | 0 |
+| 3 | 46.5 % | 0 |
+| 4 | 49.1 % | 480 |
+| 5 | 51.7 % | 471 |
+| 6 | 42.8 % | 0 |
+
+Burst mean **50.1 %**, quiet mean **45.0 %** → **~5 points** at ~24 lines/s. The groups do not
+overlap (burst min 49.1 > quiet max 46.5) but n = 3 per group, in one session, with Claude.app
+open — so the absolute level is inflated by a constant, and only the difference is meaningful.
+
+**A ~20-point figure from earlier the same day is withdrawn.** It came from comparing two single
+runs (4.5 % against 24.0 %) that had identical window sets but differed 36× in brightness rate.
+The likely cause of that gap is not brightness at all: the 24.0 % run came from a sweep that ran
+`killall Finder` before every step and measured 18 s later, so it was catching Finder rebuilding
+the desktop. That also contaminates the window-count curve in
+`baselines/beta6-26A5416b/`, which used the same sweep.
+
+### Verdict
+
+⚪ stands. The `nan` sentinel analysis is untouched, and the ramp is by design. What is now
+documented that was not before: **coverage is 4–5× beta5's, and the ramp costs roughly 5 points
+of a core while it runs.** Neither makes it a defect on its own; both are worth carrying if it
+grows again.
+
+2026-08-19 在 beta6 复测:机制不变,确认是**斜坡**(每帧 +0.00077,`sdr` 与 `lux` 全程不变),本文 08-13
+的更正是对的。变的是**频率** —— 有亮度行的秒数占比从 beta5 的 7% 升到 **33%**(30 分钟窗口 124,737 行)。
+另外第一次量了**代价**:配对采样下爆发比安静高约 **5 个点**(不是当天早些时候那个 20 点的估计,该估计已撤回 ——
+那两次单跑之间真正的差异更可能是 `killall Finder` 后桌面重建)。⚪ 维持。
