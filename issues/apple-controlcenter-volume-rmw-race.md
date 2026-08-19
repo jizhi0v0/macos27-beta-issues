@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | 🔴 Not fixed · confirmed on `26A5378n` (beta3), `26A5388g` (beta4) **and `26A5406e` (beta5)** — **10+ runaways captured in one day**, both directions, both output devices; reproducible on demand (see [Reproduction](#reproduction--复现)). **Still firing 2026-08-04** ([incident 3](#incident-3--2026-08-04-bluetooth-reconnect-full-up-then-down-cycle-in-one-runaway--事故-3蓝牙重连触发单次事故内先冲顶再坠底): 4,849 writes / 170.7 s, up to full scale **and** down to zero in one runaway, `coreaudiod` dragged to 150–180% CPU) . **Again 2026-08-05 (incident 4): 107,675 writes over 63 min**, triggered by an iPhone→Mac hand-off, with the ratchet demonstrably starting **before** any key press. **Survives into beta5 ([incident 5](#incident-5--2026-08-11-beta5-26a5406e-device-switch-alone-pinned-at-full-scale-while-repeatedly-un-muting-itself--事故-5仅靠设备切换触发钉在满刻度并反复自行取消静音), 2026-08-11)**: 60 writes/s across **11 ControlCenter threads**, pinned at full scale on worn Bluetooth headphones, `coreaudiod` at **185.8%** |
+| **Status** | 🔴 **reproduced on beta6 `26A5416b`** (2026-08-19 16:11–16:14) — signature identical: `setLevel` at exactly **33.3 ms intervals = 30 Hz**, step size exactly **1/16**, both directions, railing at 1.0 and **continuing to write 1.0 at 30 Hz indefinitely** while railed. 3,395 `set system volume` lines in 6 min, sustained 30/s at peak; 4,265 `Setting main volume` lines in the 25-minute capture. Alcove 1.7.9 running, as the trigger requires. Machine became visibly stuck: `coreaudiod` **145%**, ControlCenter 27%. See [the beta6 capture](#reproduction-2026-08-19--beta6-26a5416b--signature-unchanged). Prior: 🔴 Not fixed · confirmed on `26A5378n` (beta3), `26A5388g` (beta4) **and `26A5406e` (beta5)** — **10+ runaways captured in one day**, both directions, both output devices; reproducible on demand (see [Reproduction](#reproduction--复现)). **Still firing 2026-08-04** ([incident 3](#incident-3--2026-08-04-bluetooth-reconnect-full-up-then-down-cycle-in-one-runaway--事故-3蓝牙重连触发单次事故内先冲顶再坠底): 4,849 writes / 170.7 s, up to full scale **and** down to zero in one runaway, `coreaudiod` dragged to 150–180% CPU) . **Again 2026-08-05 (incident 4): 107,675 writes over 63 min**, triggered by an iPhone→Mac hand-off, with the ratchet demonstrably starting **before** any key press. **Survives into beta5 ([incident 5](#incident-5--2026-08-11-beta5-26a5406e-device-switch-alone-pinned-at-full-scale-while-repeatedly-un-muting-itself--事故-5仅靠设备切换触发钉在满刻度并反复自行取消静音), 2026-08-11)**: 60 writes/s across **11 ControlCenter threads**, pinned at full scale on worn Bluetooth headphones, `coreaudiod` at **185.8%** |
 | **macOS** | 27.0 beta3 revision **`26A5378n`**, reconfirmed on **beta4 `26A5388g`** (2026-07-22) and **beta5 `26A5406e`** (2026-08-11) — **not 27-specific**, see [Scope](#scope-not-a-27-regression--并非-27-回归) |
 | **Component** | Apple **ControlCenter** (`com.apple.controlcenter`, `SoundSettings`) + CoreAudio HAL volume properties |
 | **Trigger** | **Alcove 1.7.9** (`com.henrikruscon.Alcove`, build 203) must be running — established by A/B, both directions. Fires on an **output-device change**: a Spotify Connect transfer (incident 1), the on-demand recipe's device switch + rapid manual adjustment, or — new in [incident 3](#incident-3--2026-08-04-bluetooth-reconnect-full-up-then-down-cycle-in-one-runaway--事故-3蓝牙重连触发单次事故内先冲顶再坠底) — a **Bluetooth headphone reconnect with no transfer involved**. **[Incident 5](#incident-5--2026-08-11-beta5-26a5406e-device-switch-alone-pinned-at-full-scale-while-repeatedly-un-muting-itself--事故-5仅靠设备切换触发钉在满刻度并反复自行取消静音) narrows this further: the device switch *alone* is enough** — no synthetic writer, no rapid key adjustment, ratchet within 0.3 s of the switch. Mechanism by which Alcove contributes is **unidentified**; see [Open question](#open-question--未解) |
@@ -595,3 +595,63 @@ Resolving this needs ControlCenter's internals (Apple) or Alcove's (closed sourc
 - Same defect *shape* as [#18](apple-contactsd-carddav-group-changehistory-loop.md) and [#19](apple-imagent-contactsaccounts-sandbox-retry-loop.md): a self-sustaining in-process loop with no third-party participant once running. Unlike those, this one has a user-visible and safety-relevant effect rather than log volume.
 - `log` is a **zsh builtin**: use `/usr/bin/log` for every command here, or they silently return nothing.
 - Device IDs are per-boot and get reused — resolve them via `AudioObjectGetPropertyData(kAudioHardwarePropertyDevices)` rather than assuming stability across reboots. The Bluetooth device is identified by its MAC-style UID, which is stable.
+
+## Reproduction 2026-08-19 — beta6 `26A5416b` — signature unchanged
+
+Caught live and captured before clearing it. Raw 25-minute log window archived outside the repo
+at `~/Developer/macos27-beta6-postboot/issue21/` (24 MB gz).
+
+### Machine state at capture
+
+```
+coreaudiod                              145.2 %
+Core Audio Driver (ToDeskOutputDriver)   49.8 %
+WindowServer                             45.8 %
+ControlCenter                            27.3 %
+MenuBarAgent                             20.4 %
+load average 52.08          Alcove 1.7.9 running
+```
+
+The machine was visibly stuck — this is the first time the runaway has been recorded alongside a
+user-perceived hang rather than only as a volume symptom.
+
+### The ratchet, from `SoundSettings … Setting main volume to`
+
+```
+16:11:57.651  0.6250
+16:11:57.662  0.6875   +1/16
+16:11:57.915  0.7500   +1/16
+16:11:57.948  0.8125   +1/16
+16:11:58.015  0.7500   -1/16   <- the two writers overwriting each other
+16:11:58.115  1.0000   railed
+16:11:58.182  0.9375   -1/16
+16:11:58.215  1.0000   +1/16   <- oscillating against the rail
+...
+16:12:00.482  0.4375           then walking back down
+```
+
+Every transition is an exact multiple of **1/16 (0.0625)**, matching the documented step size.
+
+### Rate
+
+| | |
+|---|---|
+| `setLevel` interval | 33.3 ms — **30 Hz**, exactly as recorded on beta4/beta5 |
+| `set system volume` | 3,395 lines / 6 min, **30/s sustained** at peak |
+| `Setting main volume` | 4,265 lines in the 25-minute capture |
+
+### The detail that satisfies the discriminator
+
+The known trap with this issue is that a railed 0.0 or 1.0 reading proves nothing, because Alcove
+and the synthetic race-trigger both write those values. What distinguishes the defect is that the
+loop **keeps writing** after railing: sampled at 0.5 s intervals for 7 s the volume read 100 the
+whole time, while the log shows `setLevel: 1.000000` being issued **30 times a second throughout**.
+A single writer setting the volume to maximum does not do that.
+
+### Workaround confirmed
+
+`killall ControlCenter` clears it; quitting Alcove prevents it. Both unchanged from beta5.
+
+2026-08-19 在 beta6 上完整复现,签名不变:`setLevel` 间隔精确 **33.3ms = 30Hz**,步长精确 **1/16**,双向,
+撞顶后**仍以 30Hz 持续写 1.0**。Alcove 1.7.9 运行中(触发条件)。本次机器出现可感知的卡顿(`coreaudiod` 145%),
+这是该问题第一次与用户可感的卡死一同记录,而非仅表现为音量异常。25 分钟原始日志已归档(仓库外)。
