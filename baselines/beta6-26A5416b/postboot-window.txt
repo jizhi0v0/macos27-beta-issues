@@ -1,0 +1,40 @@
+=== macOS 27 beta6 26A5416b — post-boot window (ONE-SHOT, captured) ===
+boot:     2026-08-19 13:12:23 +0800
+captured: 2026-08-19 13:20:10 (T+7m47s)   raw archived outside repo, 32 MB gz
+window:   /usr/bin/log show --start <boot>   (--last would have spanned the reboot)
+upgrade:  beta5 26A5406e -> beta6 26A5416b; Xcode left at 27A5237l (OS-only, so
+          SDK-tracked entries such as #11 are unaffected and not re-tested here)
+
+total log lines in window:  1569559
+
+--- #1 CoreMedia fpSupport_GetVideoRange (beta5 post-boot: 1,744 in 8 min) ---
+  hits: 56
+      31 Mail
+      22 WeType
+       3 UURemote
+  !! NOT COMPARABLE AS-IS: beta5's 1,744 was 77% DingTalk (1,338) + WeType 263
+     + Mail 136. DingTalk was NOT running in this window (quit for the WindowServer
+     idle test). The emitter set must be matched before this delta means anything.
+
+--- #2 Shortcuts / siriactionsd action-registration storm (beta5: peaks 181 lines/s) ---
+  siriactionsd lines: 16203
+  busiest second:
+     864 2026-08-19 13:13:19
+     725 2026-08-19 13:13:21
+     640 2026-08-19 13:13:55
+
+--- #3 WindowServer 'Invalid window' SkyLight spam ---
+  Invalid window lines: 296
+
+--- #19 imagent ContactsAccountsService retry loop ---
+  ContactsAccountsService lines: 2383
+  imagent lines total:           2589
+
+--- #18 contactsd ---
+  contactsd lines total:                27809
+  'Could not fetch group', all processes: 1054
+  AddressBookManager spawns:            1
+
+--- #23 ecosystemd / #24 mds ---
+  ecosystemd lines: 56808
+  mds/mds_stores:   8792
