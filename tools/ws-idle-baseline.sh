@@ -111,9 +111,17 @@ for (k,v) in c.sorted(by: {$0.value > $1.value}) { print(String(format: "  %3d  
     SS=$(/usr/bin/log show --start "$WSTART" --style syslog \
       --predicate 'process == "loginwindow"' 2>/dev/null \
       | grep -c 'starting screen saver due to user idle')
-    IDLEMIN=$(/usr/bin/log show --start "$WSTART" --style syslog \
+    # Detect INPUT, not low idle. Once the caffeinate assertion is held,
+    # loginwindow cancels its idle timer and stops sampling -- so there is often
+    # exactly ONE actualUserIdle value in the window and it can be far below the
+    # window length. An earlier version demanded `min >= window length`, which
+    # that behaviour makes unsatisfiable; it flagged a perfectly clean run.
+    # A reset (a later sample LOWER than an earlier one) is the real evidence of
+    # a keypress or mouse move.
+    IDLESEQ=$(/usr/bin/log show --start "$WSTART" --style syslog \
       --predicate 'process == "loginwindow"' 2>/dev/null \
-      | sed -n 's/.*actualUserIdle = \([0-9.]*\).*/\1/p' | sort -n | head -1)
+      | sed -n 's/.*actualUserIdle = \([0-9.]*\).*/\1/p')
+    RESETS=$(echo "$IDLESEQ" | awk 'NR>1 && $1 < prev {n++} {prev=$1} END {print n+0}')
     echo "--- WINDOW VALIDITY ---"
     if [ "$SS" -gt 0 ]; then
       echo "  INVALID: screen saver started during the window ($SS activation(s))."
@@ -122,10 +130,18 @@ for (k,v) in c.sorted(by: {$0.value > $1.value}) { print(String(format: "  %3d  
     else
       echo "  screen saver: did not start (OK)"
     fi
-    if [ -n "$IDLEMIN" ]; then
-      echo "  min actualUserIdle seen: ${IDLEMIN}s"
-      echo "    (a small value means the machine was touched mid-window -- input"
-      echo "     events are WindowServer work. Want this >= the window length.)"
+    if [ -n "$IDLESEQ" ]; then
+      if [ "$RESETS" -gt 0 ]; then
+        echo "  INVALID: user idle was reset $RESETS time(s) during the window --"
+        echo "           the machine was touched, and input events are WindowServer"
+        echo "           work. Re-run without touching it."
+      else
+        echo "  user input: none detected (idle never reset) (OK)"
+      fi
+      echo "  actualUserIdle samples: $(echo "$IDLESEQ" | tr '\n' ' ')"
+    else
+      echo "  user input: no loginwindow samples in window (assertion held early;"
+      echo "              treat as OK unless you know you touched the machine)"
     fi
     echo
     echo "VERDICT:"

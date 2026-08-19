@@ -52,47 +52,47 @@ and has not been replicated. Not a verdict yet.
 
 ## Not decidable yet
 
-### #3 WindowServer — **blocked on the post-upgrade reindex**
+### #3 WindowServer — 🔴 **regressed on beta6**
 
-`ws-idle-baseline.sh` returned **45.6 %** (122 s, quiesced desktop), and WindowServer's
-since-boot average is **46.2 %** — both inside the 42–46 % floor that originally defined #3,
-against the ~4 % clean-idle figure that closed it 🟢 on beta5.
+Third run is clean and the verdict is in.
 
-**Two runs, both invalid, for different reasons — neither settles #3:**
-
-| run | WindowServer | why it does not count |
+| run | WindowServer | window valid? |
 |---|---|---|
-| 13:14–13:16:56 | **45.6 %** | full post-upgrade Spotlight/media reindex (`mds_stores` 63 %→84 %, `corespotlightd` 42 %, `ANECompilerService` 36 %); **and** loginwindow logged `actualUserIdle = 8.2` then `27.2` — the machine was still being touched mid-window |
-| 13:28:28–13:31:17 | **47.5 %** | reindex had finished and the desktop was genuinely bare (midpoint: WindowServer 49.5 %, everything else < 11 %) — but the **screen saver started at 13:30:28, 75 s into the 122 s window**, covering ~39 % of it. A `caffeinate -du -t 420 &` launched beforehand was logged by powerd as `ClientDied` at age **00:00:12** |
+| 13:14–13:16:56 | 45.6 % | ✗ post-upgrade reindex (`mds_stores` 63→84 %, `corespotlightd` 42 %), and idle reset mid-window (`actualUserIdle` 8.2 → 27.2) — the machine was touched |
+| 13:28:28–13:31:17 | 47.5 % | ✗ screen saver started 13:30:28, 75 s into the 122 s window (~39 % of it). A hand-launched `caffeinate -du -t 420 &` had died at age 00:00:12 |
+| **13:36:38–13:39:29** | **46.5 %** | ✅ **valid** |
 
-Both landing near 46 % under *different* contamination is suggestive, but two invalid
-runs do not make a valid one.
+**Why run 3 counts:** the script held its own assertion for **2 m 04 s**, covering the whole
+122 s window (powerd: `Created` → `ClientDied age:00:02:04`, killed by the script afterwards).
+loginwindow logged `PMNoDisplaySleepEnabled so do not launch screen saver` — the screen saver
+was *suppressed by the assertion*, not merely late. `actualUserIdle` was sampled once at 82.6 s
+and **never reset**, so there was no input during the window. Reindex was finished, Claude was
+quit, and the only processes owning on-screen windows were Finder (13), Surge (2), WindowServer
+(2), WindowManager and DuoTerminal.
 
-**Screen-saver detection — the detector matters.** Do **not** grep for
-`ScreenSaverEngine` / `legacyScreenSaver`: on macOS 27 neither process appears even when the
-screen saver is demonstrably running (0 hits across the 13:28 window, in which it ran).
-loginwindow's `starting screen saver due to user idle` is the reliable marker, and
-`idleTimePreference | idleTime: 120` is the authoritative timeout — the `1200` in
-`getDefaultUserIdleTimePreference` is the built-in default, not the effective value.
+**The comparison:**
 
-`tools/ws-idle-baseline.sh` now holds its own `caffeinate` assertion for the run and reports
-window validity (screen saver fired? minimum `actualUserIdle`?), so a contaminated run
-announces itself instead of being read as a result. The run happened 1.5–4.5 minutes after boot, and its own midpoint
-sample shows why: `mds_stores` 63 %, `corespotlightd` 42 %, `ANECompilerService` 36 %,
-`mediaanalysisd` 18 %, `photolibraryd`, `suggestd` — a full post-upgrade Spotlight/media
-reindex. `mds_stores` was still at 84 % at T+10m. Also live throughout: `Claude.app`
-(Electron, a known compositing driver) and three screen-capture agents
-(AweSun / RustDesk / ToDesk — all with 0 ESTABLISHED connections, so idle, but resident).
+| | WindowServer, quiesced |
+|---|---|
+| beta4 `26A5388g` (the original regression) | 42–46 % floor, min 42.0 % across 10 replicates |
+| beta5 `26A5406e` → closed 🟢 | **~4 %** clean idle, 7.7 % with menu-bar apps |
+| **beta6 `26A5416b`** | **46.5 %** |
 
-**To settle it:** the reindex is done as of ~13:25, so just re-run
+Same machine, same script, same method. beta6 is back inside the beta4 band — a 10×
+regression against beta5, far too large to be explained by the two things still running
+(Activity Monitor at 5.5 %, `ecosystemd` at 18 % at midpoint). `MenuBarAgent` is 0.2 %, so
+this is **not** [#22](https://github.com/jizhi0v0/macos27-beta-issues/issues/22)'s mechanism.
+`Invalid window` spam is 9/60 s, still decoupled from the CPU as always.
+
+**Caveat, stated:** this is **one** valid run. The two contaminated runs landed at 45.6 % and
+47.5 %, which corroborates but does not replicate — beta4's original verdict took 10 replicates.
+The 🔴 is called on the size of the gap (4 % → 46.5 %), not on n.
+
+**Next:** capture the stack while it reproduces —
 
 ```bash
-bash tools/ws-idle-baseline.sh
+sudo spindump WindowServer 8 -o ~/ws_spindump_beta6.txt
 ```
-
-quitting Claude and Activity Monitor, and then **leaving the machine completely alone** —
-check the WINDOW VALIDITY block before reading the number. Landing near 4 % means #3's
-🟢 holds; landing at 45 % again means #3 regressed on beta6 and needs a spindump.
 
 ### #1 CoreMedia — emitter set did not match, retest needed
 
