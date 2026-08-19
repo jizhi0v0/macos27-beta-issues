@@ -6,10 +6,10 @@
 > 🧭 **Landed here from "clicking a notification does nothing"?** Classify the failure first — [notification-click-failure-taxonomy.md](notification-click-failure-taxonomy.md) tells the three shapes apart from `usernoted`'s log in one command. This file covers **A** (filed) and **C**; the freeze is [#27](notification-banner-inert-except-close.md).
 | | |
 |---|---|
-| **Status** | 🔴 **Root cause established and isolated to a system API, reproducible without Chrome** (2026-08-12). On macOS 27, `getDeliveredNotifications` returns an **empty array for ~7–24 ms after `add()` has already completed** (0 ms on macOS 26.6, 32 trials per OS) — and Chromium kills its Alerts helper on exactly that answer. Clicking a persistent/actionable Chrome web notification does nothing at all once `Google Chrome Helper (Alerts).app` has exited. `usernoted` **does** receive every click — it just has no live client left to forward it to, and neither relaunches one nor falls back, dropping the click with no error logged. Anything that respawns the helper (a new notification arriving, quitting/reopening Chrome) instantly un-sticks **every** backlogged notification at once. |
-| **macOS** | 🔴 27.0 beta5 `26A5406e` — hits roughly **4 of 7** real web-push notifications. Also seen on beta4 `26A5388g`. 🟢 **macOS 26.6 `25G72` control: 9/9 clean** on the same harness, same Chrome build, same account — and its Alerts helper stays alive while a notification is outstanding (7+ min observed), which is exactly what macOS 27 fails to do |
+| **Status** | 🔴 **Root cause established and isolated to a system API, reproducible without Chrome** (2026-08-12). On macOS 27, `getDeliveredNotifications` returns an **empty array for ~7–24 ms after `add()` has already completed** (0 ms on macOS 26.6, 32 trials per OS) — and Chromium kills its Alerts helper on exactly that answer. Clicking a persistent/actionable Chrome web notification does nothing at all once `Google Chrome Helper (Alerts).app` has exited. `usernoted` **does** receive every click — it just has no live client left to forward it to, and neither relaunches one nor falls back, dropping the click with no error logged. Anything that respawns the helper (a new notification arriving, **reopening** Chrome) instantly un-sticks **every** backlogged notification at once. **Retested on beta6 `26A5416b` 2026-08-19: shape A unchanged — 18 clicks, 0 forwarded**, and the same session produced shape C's first age-measurable failure (62.6 min). See *Beta6 retest* below. |
+| **macOS** | 🔴 27.0 beta5 `26A5406e` — hits roughly **4 of 7** real web-push notifications. Also seen on beta4 `26A5388g`. 🔴 27.0 beta6 `26A5416b` — **18 clicks, 0 forwarded** (2026-08-19). 🟢 **macOS 26.6 `25G72` control: 9/9 clean** on the same harness, same Chrome build, same account — and its Alerts helper stays alive while a notification is outstanding (7+ min observed), which is exactly what macOS 27 fails to do |
 | **Component** | Apple `usernoted` (notification response routing) ↔ `Google Chrome Helper (Alerts).app` |
-| **Chrome** | `151.0.7922.109` (Official Build) (arm64); the 2026-08-14 shape C measurements are on `151.0.7922.138` |
+| **Chrome** | `151.0.7922.109` (Official Build) (arm64); the 2026-08-14 shape C measurements are on `151.0.7922.138`; the 2026-08-19 beta6 retest on `151.0.7922.170` |
 | **Hardware** | MacBook Pro `Mac15,11`, M3 Max (27 beta5) vs. a second Mac on macOS 26 (control) |
 | **Report** | Chromium: **posted 2026-08-12 as [comment #26](https://issues.chromium.org/issues/370536109#c26) and follow-up [#27](https://issues.chromium.org/issues/370536109#c27) (the reliable repro) on issue 370536109** — that issue has been open since 2024-10-01 with the identical symptom, was reproduced by Google in #12, and had no root cause in 16 months. Apple: **filed 2026-08-12 as `FB24273686`** (macOS / Notification Center), with both reproducers attached — draft kept in [`feedback/un-getdeliverednotifications-race.md`](../feedback/un-getdeliverednotifications-race.md) |
 
@@ -237,6 +237,59 @@ This is the `OnNotificationAction()` self-inflicted path already flagged above, 
 
 **Caveat:** the mojo hop from helper to browser process is not instrumented, so "the helper exited before relaying it" is a plausible 36 ms window, not a proof. n=1.
 
+### Beta6 retest, 2026-08-19: shape A unchanged, and shape C's first age-measurable failure / beta6 复验：A 型原样存在，C 型首次拿到年龄可测的失败样本
+
+macOS 27.0 beta6 `26A5416b`, Chrome `151.0.7922.170`, `usernoted` pid 694 (uptime 6 h 35 m). One real YouTube subscription push (`Sarah Li — A Day in The Life of a Software Engineer`, id `A44A-0492`, `req: r|Default|p#https://www.youtube.com/#1growth-subscription-notification`), presented **19:14:09.525**. It was clicked in three separate episodes on the same record, and the only variable across them is whether the Alerts helper was alive:
+
+| episode | Alerts helper | clicks (`Received response`) | forwarded | shape |
+|---|---|---|---|---|
+| 19:49:56 → 19:50:08 | dead | **7** | **0** | A |
+| 20:15:01 → 20:15:12 | dead (Chrome fully quit) | **11** | **0** | A |
+| **20:16:47** | **alive, pid 13035** | **1** | **1** | **C** |
+
+**Shape A is unchanged.** All 18 clicks produced `Launching com.google.Chrome.framework.AlertNotificationService … for legacy response` and none produced `sent to NSUserNotification client`. The relaunched helper's lifetime was measured directly for one of them (pid 84651):
+
+```
+19:50:08.1159  launchd:         [gui/501/application.com.google.Chrome.framework.AlertNotificationService…]
+19:50:08.121   xpcproxy:        pid 84651
+19:50:08.2014  launchservicesd: DEATH: Removing app App:"Google Chrome Helper (Alerts)" … pid=84651
+```
+
+**~85 ms**, against ~100 ms measured on beta5 — the same relaunch-and-die cycle. LaunchServices allocated seven ASNs (`0x452…0x458`) and destroyed all seven.
+
+**The `appDeath` discriminator still holds on beta6 — but it is `loginwindow`'s line, not `usernoted`'s.** A claim that it had stopped firing was published here briefly on 2026-08-19 and is **retracted**: it came from grepping only `process == "usernoted"`. The line is emitted by `loginwindow` as `CAS notification for appDeath for com.google.Chrome.framework.AlertNotificationService with asn: … Google Chrome Helper (Alerts).app`, and counted over the two episodes it is **exactly one per click — 7/7 and 11/11**. The death is also visible in `launchservicesd` as `DEATH: Removing app App:"Google Chrome Helper (Alerts)"`. Query it as:
+
+```bash
+/usr/bin/log show --start "<t0>" --end "<t1>" --info --debug --predicate 'process == "loginwindow"' \
+  | grep -c "appDeath for com.google.Chrome.framework.AlertNotificationService"
+```
+
+(`Failed to source application bundle`: 0 occurrences, consistent with it having been falsified as noise.)
+
+**Shape C: a failure at 62.6 minutes, with its `Presenting` record intact.** With the helper alive, the 20:16:47 click went through the OS cleanly end to end:
+
+```
+20:16:47.029065  Received response <… AlertNotificationService … A44A-0492 …>
+                 <response action: contents actIdent:  foreground: true text: nil>
+                 → sent to NSUserNotification client <ClientConnect: … com.google.Chrome.framework.AlertNotification…>
+20:16:47.034629  _removeDelivered:  Removing [0EE56AA1-…]          (+5.6 ms)
+20:16:47.034812  _removeDisplayed:  Removing [0EE56AA1-…]
+```
+
+**User-observed outcome: Chrome came to the front, and no tab opened and no navigation happened.** So the `foreground: true` activation was honoured and only the `notificationclick` navigation was lost. Chrome had been running at click time, so "the app had to cold-launch and missed it" is not available as an explanation here.
+
+Why this data point matters: it **separates notification age from log-buffer absence**, which were confounded on 2026-08-14. There, the four failures had *no* `Presenting` record anywhere in the 8 h buffer, so "old" and "unlogged" could not be told apart. Here the record is **in the buffer, fully logged**, and the click still failed at an age of
+
+```
+Presenting 19:14:09.525  →  click 20:16:47.029  =  62 min 37.5 s  (3757.5 s)
+```
+
+against the one working click's 3.69 s. That is consistent with the unverified service-worker-reclaimed hypothesis and rules out the buffer artefact — it is **not** a confirmation of the mechanism, which still needs [`tools/webpush-repro/`](../tools/webpush-repro/) with age as the controlled variable.
+
+The helper exited again once it had handled the response (gone by 20:17:04), so any remaining backlog reverts to shape A.
+
+**Shape B ([#27](notification-banner-inert-except-close.md)) was not seen in this session**, consistent with the reporter's own impression that nothing felt frozen. That is **not** evidence it is fixed — B has never been producible on demand, so its absence from one session carries no weight.
+
 ### Independent corroboration of the filed mechanism / 对已提交机制的旁证
 
 Two notifications outstanding at once were observed to **both** stay clickable, while single outstanding notifications went dead. That is exactly what the filed mechanism predicts — a non-empty `getDeliveredNotifications` makes `OkayToTerminateService` return false, so the helper survives — and it independently reproduces what reporters in comments #22/#23 of crbug 370536109 noticed years earlier without an explanation ("when multiple notifications are present simultaneously, notificationclick becomes effective").
@@ -322,9 +375,22 @@ Recorded deliberately, because several of these looked convincing and cost real 
 Anything that gets the Alerts helper running again, which re-registers the client:
 
 - **wait for any other Chrome notification to arrive** (it spawns the helper), or
-- **quit and reopen Chrome**.
+- **reopen Chrome** — see the correction below.
 
-Both un-stick *all* pending notifications at once. Note that restarting the notification daemons does **not** help (see table above) — which is worth stating explicitly, because that is the usual folk remedy for stuck banners, and it was the remedy that worked for a superficially identical problem on 2026-08-04 (see below).
+Both un-stick *all* pending notifications at once.
+
+**Corrected on beta6, 2026-08-19: the quit half of "quit and reopen" does nothing, and has a side effect.** Measured directly: `osascript -e 'quit app "Google Chrome"'` left the helper dead and the notification stuck (11 further clicks, 0 forwarded, with Chrome not running at all). `open -a "Google Chrome"` then respawned the Alerts helper **on its own** within seconds (pid 13035) without any notification arriving. So the working step is the **reopen**. Worse, the quit **cleared 7 of the 8 outstanding Chrome notifications** — every banner-style one registered under `com.google.Chrome` — leaving only the alert-style record under `com.google.Chrome.framework.AlertNotificationService`. Quitting Chrome to un-stick one notification therefore destroys the others. If Chrome is already running, prefer waiting for the next notification, or open a page that pushes one.
+
+**And the reopen itself races against the notification, measured 2026-08-19 22:09.** A freshly spawned Alerts helper calls `removeDeliveredNotifications` on startup, which can delete the very notification you were trying to recover:
+
+```
+22:09:20.338  loginwindow appDeath  com.google.Chrome                       ← quit
+22:09:34.276  usernoted: Request from <LegacyConnection identifier: com.google.Chrome.framework.AlertNotificationService…>
+              … removeDeliveredNotifications → _removeDelivered: Removing [F038293F-…]   ← the notification is gone
+22:09:37.415  loginwindow appDeath  …AlertNotificationService               ← that helper exits
+```
+
+No click and no user action were involved — an outstanding alert-style record was destroyed ~14 s after the reopen. Contrast the 20:16 episode the same evening, where the click landed ~40 s after the helper appeared and **was** forwarded. So the reopen is a race, not a reliable recovery: **click immediately once the helper appears, or the notification may be deleted instead of delivered.** n=2, mechanism not established — "the helper clears stale alerts at startup because the browser has no matching state yet" is a plausible reading of the `removeDeliveredNotifications` call, not a measured one. Note that restarting the notification daemons does **not** help (see table above) — which is worth stating explicitly, because that is the usual folk remedy for stuck banners, and it was the remedy that worked for a superficially identical problem on 2026-08-04 (see below).
 
 ## Who can fix this / 谁能修
 

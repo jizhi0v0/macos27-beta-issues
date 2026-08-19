@@ -33,7 +33,14 @@ Do **not** classify from what the screen appeared to do. `usernoted`'s log separ
 
 ### A — the client is gone / 客户端已经不在了
 
-**Signature:** `Received response` counts up, `sent to NSUserNotification client` stays at 0, `ps aux | grep "Chrome Helper (Alerts)"` finds nothing, and one `appDeath` appears per click.
+**Signature:** `Received response` counts up, `sent to NSUserNotification client` stays at 0, and `pgrep -f "Chrome Helper (Alerts)"` finds nothing.
+
+⚠️ **`appDeath` is `loginwindow`'s line, not `usernoted`'s** — grepping `process == "usernoted"` for it returns 0 and looks like the signature has vanished. It has not: on beta6 `26A5416b` it is **exactly one per click, 7/7 and 11/11** across two episodes. Count it with:
+
+```bash
+/usr/bin/log show --start "<t0>" --end "<t1>" --info --debug --predicate 'process == "loginwindow"' \
+  | grep -c "appDeath for com.google.Chrome.framework.AlertNotificationService"
+```
 
 **Root cause, established:** on macOS 27 `getDeliveredNotifications` returns an **empty array for ~7–24 ms after `add()`'s completion handler has already fired** (0 ms on 26.6; 32 trials per OS). Chromium kills its Alerts helper on exactly that answer. `usernoted` then relaunches the helper via LaunchServices on every click, and a Chromium helper cannot run standalone, so it dies in ~100 ms and the click is discarded.
 
@@ -41,7 +48,9 @@ Do **not** classify from what the screen appeared to do. `usernoted`'s log separ
 
 **Filed:** Apple [FB24273686](https://feedbackassistant.apple.com/feedback/24273686) · Chromium [370536109 #26](https://issues.chromium.org/issues/370536109#c26). This is the only one of the three with a root cause.
 
-**Recovery:** anything that respawns the helper — a new Chrome notification arriving, or quitting and reopening Chrome — un-sticks **all** backlogged notifications at once. `killall usernoted` does **not** help.
+**Recovery:** anything that respawns the helper — a new Chrome notification arriving, or **reopening** Chrome — un-sticks **all** backlogged notifications at once. `killall usernoted` does **not** help.
+
+⚠️ **Corrected on beta6:** in "quit and reopen Chrome", only the *reopen* does anything. Quitting alone left the helper dead and the notification stuck (11 clicks, 0 forwarded), and it **cleared every banner-style Chrome notification** in the process, leaving only the alert-style one. Reopening respawned the helper by itself within seconds — but the reopen **races**: a freshly spawned helper calls `removeDeliveredNotifications` and was measured deleting the outstanding notification 14 s later, with no click involved. Click as soon as the helper appears.
 
 **Full write-up:** [chrome-notification-banner-frozen-unresponsive.md](chrome-notification-banner-frozen-unresponsive.md)
 
@@ -63,7 +72,9 @@ Do **not** classify from what the screen appeared to do. `usernoted`'s log separ
 
 **Discriminator measured 2026-08-14: the notification's age, not its content.** Five real YouTube web-push clicks, four dead and one working, all forwarded to the same helper (alive 12 h). Identical `staticCategory` and identical `<response action: contents>` across all five; the `req` tag comes in two shapes (video ID vs `UC…` channel ID) but the success shares its shape with a failure, so tag shape is falsified. The only survivor: the working one had been presented **3.69 s** earlier; the four failures have **no `Presenting` record in the 8 h the log buffer reaches back** — they were overnight backlog clicked out of the Notification Center stack.
 
-**Recipe:** let web-push notifications accumulate overnight, then click them the next morning.
+**Second measurement, beta6 `26A5416b` 2026-08-19 — 62.6 min, with the `Presenting` record intact.** A YouTube push presented 19:14:09.525 and clicked 20:16:47.029 (**62 min 37.5 s**) was received, forwarded to a live helper, and torn down in 5.6 ms; Chrome **came to the front but opened no tab and did not navigate**, with Chrome already running. This separates *age* from *log-buffer absence*, which were confounded above: here the record **is** in the buffer and it still failed. Supports the service-worker hypothesis; does not confirm it.
+
+**Recipe:** let web-push notifications accumulate overnight, then click them the next morning. An hour is already enough.
 
 **Candidate mechanism, unverified:** an overnight push's service worker has long been reclaimed, so `notificationclick` cannot be replayed against it. Confirming this needs [`tools/webpush-repro/`](../tools/webpush-repro/)'s server-side receipt with notification age as the controlled variable.
 
