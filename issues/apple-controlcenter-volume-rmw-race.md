@@ -663,19 +663,39 @@ did not reproduce. So neither removing the drivers nor restarting coreaudiod was
 **trigger condition itself had stopped occurring**. The section below is kept for the record with
 that correction; its "control pending" is now resolved, negatively.
 
-**What the trigger appears to be.** Reporter's observation: since upgrading to beta6, AirPods do
-not auto-reconnect when Spotify hands audio back to the Mac. Checked against the archived capture,
-per minute:
+**What the trigger appears to be.** Not "AirPods failed to reconnect" — that was tested and
+**does not hold**: the reporter reproduced the failed hand-back from Spotify, AirPods did not
+appear, and **no storm followed**. The refined version fits that negative result. Per minute
+across the capture:
 
-| minute | Alcove→bluetoothd XPC calls | `Setting main volume` writes |
-|---|---|---|
-| 16:05–16:09 | 0 | 0 |
-| **16:10** | **254** | 0 |
-| 16:11 | 68 | 65 |
-| 16:12 | 12 | **1,800** |
-| 16:13 | 4 | **1,799** |
+| minute | HAL property-read failures | `BTAudioHALPlugin` (A2DP) | `Setting main volume` |
+|---|---|---|---|
+| 16:07–16:09 | 0 | 0 | 0 |
+| **16:10** | **256** | **852** | 0 |
+| **16:11** | **381** | **2,139** | 65 |
+| 16:12 | 24 | 9 | **1,800** |
+| 16:13 | 0 | 147 | **1,799** |
 
-Seven seconds before the first volume write, Alcove is enumerating paired Bluetooth devices hard:
+The failures are
+
+```
+16:10:22.503  HALS_UCPlugIn.cpp:1177  HALS_UCPlugIn::ObjectGetPropertyData: failed:
+              [<private>/<private>/0], Error: 2003329396
+```
+
+and `2003329396` = `0x77686174` = **`'what'` = `kAudioHardwareUnspecifiedError`**.
+
+So the sequence is: **a Bluetooth audio (A2DP) negotiation happens; during it, HAL property reads
+fail with `kAudioHardwareUnspecifiedError`; volume writes start; then the Bluetooth activity and
+the failures both collapse while the volume storm runs on at full rate.** A read-modify-write
+whose *read* fails is exactly the fuel this race needs — a writer acting on a failed or stale read
+will write back a wrong value, and two such writers ratchet.
+
+That also explains the reporter's negative test cleanly: **AirPods that never appear at all
+produce no A2DP negotiation, hence no failing reads, hence no trigger.** The dangerous state is a
+device *negotiating*, not a device *absent*.
+
+Seven seconds before the first volume write, Alcove is enumerating paired Bluetooth devices:
 
 ```
 16:11:50.202  CBMsgIdRetrievePairedPeersWithOptions       com.henrikruscon.Alcove-classic
@@ -695,10 +715,15 @@ This is consistent with the trigger description already in this file ("generalis
 output-device change") and narrows it: **a Bluetooth audio device that fails to reconnect makes
 Alcove poll, which produces the device churn that starts the race.**
 
-**Not established:** that the device is specifically AirPods (the log shows `<private>` peers);
-that the enumeration burst *causes* rather than accompanies the churn; and anything about how
-beta6 changed AirPods reconnection. n = 1 episode. The falsifiable test is to reproduce the
-AirPods hand-back and see whether the storm follows.
+**Not established:** that the failing reads *cause* the writes rather than accompanying the same
+churn; which object and property the failures are on (both `<private>`); that the peer is AirPods;
+and anything about what beta6 changed in reconnection. n = 1 episode. The next falsifiable test is
+a hand-back where the AirPods **do** connect — if the storm follows a successful A2DP negotiation
+but not an absent one, the refined trigger holds.
+
+**Separately worth filing:** the reporter's own observation that **AirPods stopped auto-reconnecting
+when Spotify hands audio back to the Mac after the beta6 upgrade** is a candidate defect in its own
+right, independent of this race.
 
 2026-08-19:**虚拟音频驱动这条线索已排除** —— 驱动放回并重启 coreaudiod 后仍不复现,说明治好它的既不是
 移除驱动也不是重启,而是**触发条件本身没有再发生**。按分钟对齐后发现:Alcove 对 bluetoothd 的枚举爆发
