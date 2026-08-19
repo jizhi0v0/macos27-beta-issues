@@ -306,3 +306,51 @@ The 44 % that does *not* scale with refresh is the more interesting half: someth
 ~21 points regardless of how often frames are produced. The window-owner bisect is still the
 next probe, and it should now be run **at both refresh rates**, since a window that owns the
 per-frame half and one that owns the fixed half would look different.
+
+---
+
+# #3 — the floor is not a floor: it tracks on-screen windows
+
+Same build, same 60 Hz, same script, both validity checks passing, 4 minutes apart.
+
+| | 60 Hz quiesced, Finder 13 windows | 60 Hz quiesced, **everything closed** |
+|---|---|---|
+| WindowServer | **34.2 %** | **3.0 %** |
+| `Invalid window` / 60 s | 15 | **0** |
+| on-screen owners | Finder 13, WindowServer 2, DuoTerminal 1, WindowManager 1 | Finder **1**, WindowServer 2, Terminal 1, WindowManager 1 |
+
+Saved as `ws-idle-60hz.txt` and `ws-idle-60hz-allclosed.txt`.
+
+## This reframes everything above
+
+**beta6's clean-idle WindowServer is 3.0 %. beta5's was ~4 %.** They agree. There is no
+OS-wide idle floor on beta6 — what five measurements recorded as a "46 % floor" was the cost of
+the windows that happened to be open, and it disappears when they close.
+
+Consequences for what is written above, stated plainly:
+
+- The 🔴 "regressed on beta6" reading was **wrong**, and so was the fallback "it returned during
+  beta5". Both were measuring a desktop with ~13 Finder windows against a beta5 figure taken on
+  a clean one. The comparison was never like-for-like.
+- The 2026-08-18 beta5 lifetime average of 37.4 % now has an ordinary explanation — a working
+  desktop — rather than implying beta5 had silently regressed.
+- The binary diff's result (compositing code byte-identical beta5↔beta6) stops being a puzzle
+  and becomes the expected answer. Nothing regressed, so nothing needed to differ.
+- The refresh-rate contrast against beta4 (−27.9 % vs −8.5 %) is still a real difference in
+  shape, but it now describes **per-window compositing cost**, not a floor.
+
+## The open question, and the experiment that settles it
+
+Whether ~2.6 points of a core per on-screen Finder window is *a defect* is now the question, and
+it is untested. `(34.2 − 3.0) / 12 ≈ 2.6` points per window is arithmetic on two data points, not
+a measured curve, and **four variables moved between the two runs**: Finder 13 → 1, plus Surge,
+DuoShot and Tailscale quitting and DuoTerminal → Terminal.
+
+Falsifiable prediction: reopen Finder windows in steps — 1, 4, 8, 13 — measuring 60 s at each,
+everything else held constant. If the cost is per-window it should rise roughly linearly at
+~2.6 points/window at 60 Hz (~5 at 120 Hz). If it does not, the cause is one of the other three
+variables and the per-window story is dead.
+
+Only after that curve exists is there anything worth comparing to beta5, and the comparison has
+to be **window-count-matched** — which is the control that was missing from every reading in this
+file.
