@@ -656,7 +656,58 @@ A single writer setting the volume to maximum does not do that.
 撞顶后**仍以 30Hz 持续写 1.0**。Alcove 1.7.9 运行中(触发条件)。本次机器出现可感知的卡顿(`coreaudiod` 145%),
 这是该问题第一次与用户可感的卡死一同记录,而非仅表现为音量异常。25 分钟原始日志已归档(仓库外)。
 
-### Preliminary, 2026-08-19 — removing the virtual-audio HAL drivers stopped it (confounded)
+### 2026-08-19 — the virtual-audio HAL driver lead is DEAD, and the trigger is Bluetooth
+
+**Control run settled it.** The drivers were restored and `coreaudiod` restarted, and it *still*
+did not reproduce. So neither removing the drivers nor restarting coreaudiod was the cure — the
+**trigger condition itself had stopped occurring**. The section below is kept for the record with
+that correction; its "control pending" is now resolved, negatively.
+
+**What the trigger appears to be.** Reporter's observation: since upgrading to beta6, AirPods do
+not auto-reconnect when Spotify hands audio back to the Mac. Checked against the archived capture,
+per minute:
+
+| minute | Alcove→bluetoothd XPC calls | `Setting main volume` writes |
+|---|---|---|
+| 16:05–16:09 | 0 | 0 |
+| **16:10** | **254** | 0 |
+| 16:11 | 68 | 65 |
+| 16:12 | 12 | **1,800** |
+| 16:13 | 4 | **1,799** |
+
+Seven seconds before the first volume write, Alcove is enumerating paired Bluetooth devices hard:
+
+```
+16:11:50.202  CBMsgIdRetrievePairedPeersWithOptions       com.henrikruscon.Alcove-classic
+16:11:50.203  CBMsgIdPairingAgentRetrievePairedDevices    com.henrikruscon.Alcove-central
+16:11:50.203  CBMsgIdRetrieveAddressForPeripheral  ×4     com.henrikruscon.Alcove-central
+```
+
+`bluetoothd` emitted **35,944 lines** across the 25-minute window (~24/s), and `corespeechd`'s
+`CSDefaultAudioRouteChangeMonitorMac` fires repeatedly through it.
+
+**The shape is trigger-then-self-sustaining.** The Bluetooth burst *leads* the storm by 1–2
+minutes and has decayed to almost nothing (4 calls) by the time the storm is at full 30 Hz. So
+the race does **not** need its trigger to keep running — which is why every previous capture found
+a runaway with no obvious cause in the same window, and why `killall ControlCenter` clears it.
+
+This is consistent with the trigger description already in this file ("generalises to any
+output-device change") and narrows it: **a Bluetooth audio device that fails to reconnect makes
+Alcove poll, which produces the device churn that starts the race.**
+
+**Not established:** that the device is specifically AirPods (the log shows `<private>` peers);
+that the enumeration burst *causes* rather than accompanies the churn; and anything about how
+beta6 changed AirPods reconnection. n = 1 episode. The falsifiable test is to reproduce the
+AirPods hand-back and see whether the storm follows.
+
+2026-08-19:**虚拟音频驱动这条线索已排除** —— 驱动放回并重启 coreaudiod 后仍不复现,说明治好它的既不是
+移除驱动也不是重启,而是**触发条件本身没有再发生**。按分钟对齐后发现:Alcove 对 bluetoothd 的枚举爆发
+**领先音量风暴 1–2 分钟**,随后衰减到几乎为零而风暴升至满速 30Hz 并自持。形态是「触发→自持」:竞争一旦
+启动就不再需要触发源。这解释了以往每次抓到失控都找不到当时的诱因。报告者观察:升级 beta6 后,Spotify
+把音频交还 Mac 时 AirPods 不再自动重连 —— 与 Alcove 反复轮询配对设备吻合。**未证实**:设备确为 AirPods、
+枚举是因而非果、以及 beta6 具体改了什么。n=1。
+
+### Preliminary (superseded by the control run above), 2026-08-19 — removing the virtual-audio HAL drivers stopped it (confounded)
 
 All three third-party HAL plugins were moved out of `/Library/Audio/Plug-Ins/HAL/`
 (`ToDeskOutputDriver`, `OrayVirtualAudioDevice`, `ParrotAudioPlugin`) and `coreaudiod` was
