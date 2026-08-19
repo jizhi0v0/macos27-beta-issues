@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | 🔴 Open · confirmed on beta4 |
+| **Status** | 🔴 **still reproducing on beta5 `26A5406e`, at roughly half the beta4 rate on every axis** (2026-08-11, 5 replicates on a quiesced desktop via [`tools/eco-replicate.sh`](../tools/eco-replicate.sh)) — CPU **16.4%** (min 13.9, max 17.2, sd 1.3) against beta4's 26–57%; `SecTrustCopyAppleTrustAnchors` **~32.5/s** against ~68–85/s; **7,519** lines/60 s against 15,885; **468** `UNIX error exception: 5` against 1,227. The failing-and-retrying shape is unchanged, so this is **mitigation, not a fix**. **Not yet re-tested on beta6 `26A5416b`.** Prior: 🔴 Open · confirmed on beta4 |
 | **macOS** | 27.0 beta4 `26A5388g` |
 | **Component** | Apple **`ecosystemd`** (`Ecosystem.framework`) ↔ **Security / `trustd`** |
 | **Hardware** | `Mac15,11`, M3 Max, 36 GB |
