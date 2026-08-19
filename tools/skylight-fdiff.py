@@ -15,9 +15,11 @@ def syms(tag):
     out = subprocess.run(['nm','-n',BINS[tag]],capture_output=True,text=True).stdout
     rows=[]
     for l in out.splitlines():
-        p=l.split()
-        if len(p)==3 and re.fullmatch(r'[0-9a-f]{16}',p[0]):
-            rows.append((int(p[0],16),p[1],p[2]))
+        # ObjC method symbols contain spaces -- split only the address and type,
+        # keep the rest of the line as the name. An earlier version used a plain
+        # 3-field split and silently reported every ObjC method as NOT FOUND.
+        m=re.match(r'^([0-9a-f]{16}) (\S) (.+)$', l)
+        if m: rows.append((int(m.group(1),16), m.group(2), m.group(3)))
     return rows
 
 def span(rows,name):
