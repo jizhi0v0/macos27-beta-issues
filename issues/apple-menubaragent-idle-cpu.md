@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | 🟢 **Fix holds on beta5 `26A5406e`** (2026-08-11) — **0.57% cumulative average over 4 h 42 m**, and 1.3% even while the menu bar is being actively used. Holds across beta3 → beta4 → beta5. The high readings were always app-fed (Alcove). The external report [#20](https://github.com/jizhi0v0/macos27-beta-issues/issues/20) is **still not reproduced here** and is now partly explained: see [interaction condition](#the-interaction-condition--and-what-macos-26-says--交互条件与-macos-26-的对照) |
+| **Status** | 🟢 **fix holds on beta6 `26A5416b`** (2026-08-19) — **0.26% cumulative over 2 h 03 m**, and **0.0–0.2%** across five validated quiesced windows. ⚠️ **But the easy case:** Alcove — the app that fed every high reading historically — was **not running**, so this confirms no regression and must **not** be read as an improvement over beta5's 0.57%. The in-use figure (beta5: 1.3%) has **no beta6 counterpart**. See [the beta6 check](#re-check-2026-08-19--beta6-26a5416b--holds-but-in-the-easy-case). Prior: 🟢 **Fix holds on beta5 `26A5406e`** (2026-08-11) — **0.57% cumulative average over 4 h 42 m**, and 1.3% even while the menu bar is being actively used. Holds across beta3 → beta4 → beta5. The high readings were always app-fed (Alcove). The external report [#20](https://github.com/jizhi0v0/macos27-beta-issues/issues/20) is **still not reproduced here** and is now partly explained: see [interaction condition](#the-interaction-condition--and-what-macos-26-says--交互条件与-macos-26-的对照) |
 | **macOS** | seen on 27.0 beta2 `26A5368g`; fixed on beta3 `26A5378j`; **fix confirmed to hold on beta4 `26A5388g`** |
 | **Component** | Apple **MenuBarAgent** (`/System/Library/CoreServices/MenuBarAgent.app`, the macOS 27 menu-bar agent) |
 | **Hardware** | MacBook Pro `Mac15,11`, M3 Max, single internal display |
@@ -184,3 +184,28 @@ Caveat: this is a single session's readings on `26A5388g`, and `26A5378n` was ne
 ### Note on the external report / 关于外部报告
 
 #20 is **not** [#21](apple-controlcenter-volume-rmw-race.md) — that reporter's logs contain **zero** `systemBanners` lines. It is also not reproducible here: matching their conditions (5 real desktops = `bars=5`, Telegram running, 8× Control Center open/close) produced MenuBarAgent 4.71% / ControlCenter 2.65%, with **zero** `controlcenter-<UUID>` scene fan-out and **zero** `NSSceneFenceAction` — the two signatures that dominate their trace. And `26A5378j` alone cannot explain it: this machine ran `…j` for 7 days at 0.28% with no stutter. Whatever they are hitting is environmental.
+
+## Re-check 2026-08-19 — beta6 `26A5416b` — holds, but in the easy case
+
+| | beta5 `26A5406e` | **beta6 `26A5416b`** |
+|---|---|---|
+| cumulative idle average | 0.57 % over 4 h 42 m | **0.26 % over 2 h 03 m** (18.9 s CPU / 7,402 s) |
+| quiesced windows | — | **0.0 – 0.2 %** across five 122 s windows |
+| while the menu bar is in use | 1.3 % | **not measured** |
+
+The idle windows come free with [`tools/ws-idle-baseline.sh`](../tools/ws-idle-baseline.sh),
+which reports MenuBarAgent alongside WindowServer; all five runs of it today, at both 60 Hz and
+120 Hz and with window counts from 1 to 13, put MenuBarAgent at 0.0–0.2 %. A separate paired A/B
+that restarted the daemon read 0.0 % before and 0.1 % after.
+
+**The condition was easier than beta5's, and that limits the claim.** This file's own finding is
+that the high readings were always app-fed, with **Alcove** the identified driver (~22 % → 0.0–0.1 %
+when quit). Alcove was **not running** at any point today. So beta6 was measured without the one
+app known to drive this metric, which makes 0.26 % evidence of *no regression* and **not**
+evidence of improvement over beta5's 0.57 %. A like-for-like re-test needs Alcove launched — which
+is also the state [#21](apple-controlcenter-volume-rmw-race.md) requires, so both can be done in
+one sitting.
+
+2026-08-19 在 beta6 复核:空闲累计 **0.26%**(2 小时 03 分),五个静置窗口 **0.0–0.2%**。⚠️ 但**条件比 beta5 宽松** ——
+历史上把这个数推高的 **Alcove 今天全程没运行**,所以这只能说明"没有回归",**不能**当作相对 beta5(0.57%)的改善;
+"使用中"那个数(beta5 为 1.3%)在 beta6 上**没有测**。要做同条件复测需先启动 Alcove。
