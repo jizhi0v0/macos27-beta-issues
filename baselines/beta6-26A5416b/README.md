@@ -245,3 +245,64 @@ is not early-outing on a static scene.
 Next probe, and it needs no new tooling: **bisect the on-screen window owners.** Quit them one at
 a time — Finder (13 windows), Surge, WindowManager, DuoTerminal — measuring 60 s between each.
 If one of them owns the deep tree, the floor drops when it goes.
+
+---
+
+# #3 — refresh rate: beta6's floor is NOT beta4's floor
+
+ProMotion disabled, display confirmed at **60.0 Hz** via `CGDisplayCopyDisplayMode`.
+Quiesced run saved as `ws-idle-60hz.txt`, both validity checks passing.
+
+| | WindowServer |
+|---|---|
+| **120 Hz**, quiesced ×2 | 46.5 %, 48.4 % → mean **47.5 %** |
+| **60 Hz**, quiesced | **34.2 %** |
+| 60 Hz, loaded ×3 (Chrome/WeChat/DingTalk/Activity Monitor also up) | 34.1 / 36.9 / 38.2 → mean 36.4 % |
+
+The 60 Hz quiesced desktop was **cleaner** than the 120 Hz ones — Finder 13, WindowServer 2,
+DuoTerminal 1, WindowManager 1, with no Claude and no Surge windows, where the 46.5 % run had
+Claude 1 + Surge 2. So 34.2 % is if anything an under-statement of the gap.
+
+## What halving the refresh rate did
+
+**−27.9 %.** Pure per-frame work would have given −50 %. Treating it as one per-frame component
+`P` plus one refresh-independent component `F`:
+
+```
+F + P   = 47.5      (120 Hz)
+F + P/2 = 34.2      (60 Hz)
+    ->  P = 26.5 points (56 %)     F = 21.0 points (44 %)
+```
+
+So a little over half the floor scales with refresh and a little under half does not.
+
+## The finding: this does not have beta4's shape
+
+[#3](issues/apple-windowserver-invalid-window.md) recorded beta4 as **refresh-independent** —
+42.0 % at 60 Hz vs 45.9 % at 120 Hz, five replicates each, a **−8.5 %** reduction, and the
+write-up says in as many words: *"Halving the display refresh rate does not halve WindowServer's
+CPU. Do not bother."*
+
+beta6 drops **−27.9 %** under the same manipulation. The magnitude at 120 Hz coincides
+(46–48 % vs 42–46 %), which is what made this look like beta4's floor returning — but the two
+respond to refresh rate completely differently. **Same number, different mechanism.**
+
+That reframes the whole question. It is evidence that beta6's floor is a *new* defect that
+happens to land in the same range, not a re-appearance of the beta4 one — and it is consistent
+with the binary diff, which found beta5's and beta6's compositing code identical: if beta6 had
+regressed by reverting to beta4's code, the code would differ and the refresh response would
+match. Neither is true.
+
+**Caveats:** n=1 at 60 Hz quiesced, though the three loaded 60 Hz runs (34.1–38.2 %) bracket it
+consistently. beta4's figures come from a different build and a different app set, so the −8.5 %
+vs −27.9 % contrast is across-study, not a controlled experiment.
+
+**Practically:** 60 Hz buys back ~13 points of a core. Real, but not a fix — 34.2 % is still
+~8× beta5's ~4 %.
+
+## Next
+
+The 44 % that does *not* scale with refresh is the more interesting half: something is costing
+~21 points regardless of how often frames are produced. The window-owner bisect is still the
+next probe, and it should now be run **at both refresh rates**, since a window that owns the
+per-frame half and one that owns the fixed half would look different.

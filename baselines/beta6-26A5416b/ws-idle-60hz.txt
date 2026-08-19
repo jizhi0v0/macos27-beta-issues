@@ -1,0 +1,45 @@
+=== WindowServer idle baseline ===
+build: 27.0 26A5416b
+start: Wed Aug 19 14:15:53 CST 2026
+lead-in 45s (quit apps now), then 120s measurement
+
+--- processes owning on-screen windows at measurement start ---
+   13  Finder
+    2  Window Server
+    1  DuoTerminal
+    1  WindowManager
+--- all running /Applications bundles ---
+AweSun.app DuoShot.app DuoTerminal.app Keka.app Klack.app Macs Fan Control.app Pearcleaner.app RustDesk.app Surge.app Tailscale.app ToDesk.app UURemote.app Xcode-beta.app 
+
+--- midpoint top drivers ---
+2026/08/19 14:17:40
+COMMAND          %CPU
+WindowServer     32.5
+kernel_task      9.1 
+top              3.6 
+com.apple.Driver 3.1 
+ToDesk_Service   2.3 
+PerfPowerService 1.7 
+dasd             1.5 
+wifip2pd         1.3 
+DuoTerminal      1.3 
+notifyd          1.1 
+ControlCenter    0.9 
+Finder           0.6 
+
+--- RESULT (cumulative CPU over 123s) ---
+WindowServer: 34.2%
+MenuBarAgent: 0.0%
+
+Invalid window / 60s: 15
+
+--- WINDOW VALIDITY ---
+  screen saver: did not start (OK)
+  user input: none detected (idle never reset) (OK)
+  actualUserIdle samples: 79.3 
+
+VERDICT:
+  <15%  -> compositing workload, not a regression. Close the issue.
+  >40%  -> real beta regression. Capture: sudo sysdiagnose -f ~/Desktop
+  else  -> subtract MenuBarAgent's share and re-judge.
+done: Wed Aug 19 14:18:44 CST 2026
