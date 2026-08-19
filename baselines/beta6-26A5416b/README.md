@@ -52,9 +52,36 @@ and has not been replicated. Not a verdict yet.
 
 ## Not decidable yet
 
-### #3 WindowServer — 🔴 **regressed on beta6**
+### #3 WindowServer — 🔴 **46.5–48.4 % on beta6**, but *when* it broke is NOT established
 
-Third run is clean and the verdict is in.
+The measurement is solid and replicated. The attribution to beta6 is **not**, and an earlier
+version of this file overstated it.
+
+**What is established:** on beta6 `26A5416b`, WindowServer sits at 46.5 % / 48.4 % on a
+validated quiesced desktop, against the ~4 % that closed #3 🟢 on beta5.
+
+**What is not:** that beta6 is where it broke. The beta5 🟢 dates from **2026-08-11** and covers
+beta5's early days only. On **2026-08-18 — still beta5** — WindowServer's lifetime average was
+already **37.4 %** (112,796 s over 3 d 11 h) with a 79.7 % loaded sample. That reading was flagged
+at the time as not-quiesced and therefore not decision-grade, and a quiesced beta5 re-test was
+scheduled *before* the upgrade — it was never run, and the upgrade made it permanently
+unobtainable. See [`../beta5-final/README.md`](../beta5-final/README.md) §7.
+
+So two hypotheses remain live and the data on hand cannot separate them:
+
+- **(a)** beta6 regressed the compositor;
+- **(b)** it came back during beta5 already — some later condition — and beta6 merely inherits it.
+
+Weak evidence for (a): beta6 reaches 46.5 % at ~24 min uptime, whereas historically this defect
+showed at 13–21 min (beta1) and 39 min (beta2) uptime, so an uptime-accumulation model does not
+obviously fit a beta5-that-was-fine-at-08-11. Weak evidence for (b): the 08-18 lifetime figure.
+Neither settles it.
+
+**This is what makes the beta5↔beta6 binary diff the decisive next step**, not just a nice-to-have:
+if SkyLight's update path is byte-identical across the two builds, beta6 did not regress the code
+and the cause is environmental or state-based, which redirects the whole investigation.
+
+Third run is clean and the *measurement* is in.
 
 | run | WindowServer | window valid? |
 |---|---|---|
