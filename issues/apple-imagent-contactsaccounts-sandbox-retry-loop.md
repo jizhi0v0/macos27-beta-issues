@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | 🔴 Open · confirmed on `26A5378n` (live — still looping while this was written) |
+| **Status** | 🔴 **unchanged at the source level on beta6 `26A5416b`** (2026-08-19) — `com.apple.imagent.sb` is still **404 lines** and still the outlier against the **26** sibling profiles that name the service, both re-verified on beta6; the one-line fix was not applied. 2,383 `ContactsAccountsService` lines in the post-boot window. See [the beta6 section](#re-check-2026-08-19--beta6-26a5416b--the-profile-is-unchanged). Prior: 🔴 Open · confirmed on `26A5378n` (live — still looping while this was written) |
 | **macOS** | 27.0 beta3 revision **`26A5378n`** (measured 2026-07-16; not tested on earlier builds) |
 | **Component** | Apple **imagent** `10.0` (1000) (`/System/Library/PrivateFrameworks/IMCore.framework/imagent.app`) ↔ **ContactsAccountsService** / Contacts `PersistentStoreBuilder` |
 | **Hardware** | MacBook Pro `Mac15,11`, M3 Max, 36 GB |
@@ -148,3 +148,21 @@ Static analysis targets: `/System/Library/Sandbox/Profiles/com.apple.imagent.sb`
 - Same defect *shape* as [#15](apple-appstoreagent-bgtask-retry-loop.md) (appstoreagent/dasd: rejected background task, no backoff, floods log) — a rejected/denied operation treated as retryable. Different component and different denial, so tracked separately.
 - The failing PID changed across the session (815 early, 783 later) — imagent respawns, and the fresh instance re-enters the same loop.
 - `log` is a **zsh builtin**: use `/usr/bin/log` for every command here, or they silently return nothing.
+
+## Re-check 2026-08-19 — beta6 `26A5416b` — the profile is unchanged
+
+| | beta3 `26A5378n` | beta5 `26A5406e` | **beta6 `26A5416b`** |
+|---|---|---|---|
+| `com.apple.imagent.sb` | 403 lines | 404 lines | **404 lines** |
+| sibling profiles naming `com.apple.AddressBook.ContactsAccountsService` | — | 26 | **26** |
+
+Both re-verified directly on beta6. **The one-line fix — adding the global name to the
+`(allow mach-lookup …)` block, as all 26 siblings do — was not applied.** The loop therefore
+still has no reason to stop, and the post-boot window carries 2,383 `ContactsAccountsService`
+lines (2,589 imagent lines total in 7m47s).
+
+The beta5 dyld shared cache is archived at `~/Developer/macos27-beta5-binary-archive/`, so the
+disassembly above remains checkable against beta6 with `tools/skylight-fdiff.py`.
+
+2026-08-19 在 beta6 上复核:沙盒 profile 仍是 **404 行**,仍是那 26 个兄弟 profile 里唯一没列出该服务的,
+**那一行修复没有加**。首启窗口内 2,383 条 `ContactsAccountsService`。

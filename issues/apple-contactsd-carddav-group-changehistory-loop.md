@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | 🔴 Open · **filed with Apple as [FB24264605](https://feedbackassistant.apple.com/feedback/24264605)** (2026-08-11) · confirmed on `26A5378n`, `26A5388g` and **`26A5406e` (beta5)** — and **still accumulating**: 53,686 → **76,366** unconsumed rows between beta3 and beta5 (+42%). See [beta5 re-verification](#re-verification-2026-08-11--beta5-26a5406e--still-growing-and-two-findings-the-original-write-up-missed) |
+| **Status** | 🔴 **still reproducing on beta6 `26A5416b`** (2026-08-19) — the backlog **crossed the upgrade intact and kept growing**: 90,209 → **91,030** rows, all 12 sources carried over, every non-zero one up, **none reset**, which rules out the "the upgrade rebuilt the stores and cleared it" false positive. Worst source 27,202 → **27,388**. Log volume unchanged (~214k lines/h). See [the beta6 section](#re-verification-2026-08-19--beta6-26a5416b--the-backlog-crossed-the-upgrade). Prior: 🔴 Open · **filed with Apple as [FB24264605](https://feedbackassistant.apple.com/feedback/24264605)** (2026-08-11) · confirmed on `26A5378n`, `26A5388g` and **`26A5406e` (beta5)** — and **still accumulating**: 53,686 → **76,366** unconsumed rows between beta3 and beta5 (+42%). See [beta5 re-verification](#re-verification-2026-08-11--beta5-26a5406e--still-growing-and-two-findings-the-original-write-up-missed) |
 | **macOS** | 27.0 beta3 revision **`26A5378n`** (first measured 2026-07-16; not yet tested on earlier builds) |
 | **Component** | Apple **contactsd** `3837.100.1` (`/System/Library/Frameworks/Contacts.framework/Support/contactsd`) + **AddressBookManager** (`com.apple.AddressBook.abd`) + Contacts change-history (`_CNCDChangeHistoryResultIncrementalSyncQuery`) |
 | **Hardware** | MacBook Pro `Mac15,11`, M3 Max, 36 GB |
@@ -206,3 +206,25 @@ This corroborates the fan-out mechanism already described here (the rebroadcast 
 **Method note, recorded because it nearly went into the Feedback wrong:** an unfiltered `log show --predicate 'eventMessage CONTAINS "Could not fetch group…"'` returned **11,277** for the window and was about to be reported as contactsd's rate. It was not — it was the sum across all 35 clients, and the true contactsd figure is ~45. Always pin `process ==` when attributing a framework-emitted message. A separate query was also polluted by the `log` binary's own entries matching the predicate text.
 
 2026-08-11 提交 FB24264605 前于 beta5 复验:**积压仍在增长** —— 全部 source 的未消费变更行 53,686 → **76,366**(+42%),最严重的单个 source 17,918 → 23,849;contactsd CPU **20.2%**,日志 **~218k 行/小时**。**新发现一**:受影响的 7 个账户**横跨四家 CardDAV 服务商**(iCloud ×1、Google ×4、Yahoo ×1、其他 ×1),而唯一的 Exchange 账户完好 —— 四家互不相关的服务端产生同一种畸形状态,**排除服务端问题,指向 Apple 的 CardDAV plugin**。**新发现二**:`Could not fetch group for change type` 出自 **Contacts.framework**,30 分钟内由 **35 个不同进程**发出共 7,569 次(corespotlightd 750、AddressBookSourceSync 528、Mail 424…,contactsd 自己仅 45),原文将其归因于 contactsd 是不准确的。**方法论教训**:未按 `process ==` 过滤的查询给出 11,277,差点被当作 contactsd 的速率写进 Feedback —— 那是 35 个客户端的总和。
+
+## Re-verification 2026-08-19 — beta6 `26A5416b` — the backlog crossed the upgrade
+
+Taken at T+9m after the first boot on beta6, with the same query
+(`select count(*) from ACHANGE where ZENTITY=19;` per `Sources/<uuid>/AddressBook-v22.abcddb`).
+
+| | beta3 | beta5 08-11 | beta5 08-18 | **beta6 08-19** |
+|---|---|---|---|---|
+| unconsumed group-change rows | 53,686 | 76,366 | 90,209 | **91,030** |
+| worst single source | 17,918 | 23,849 | 27,202 | **27,388** |
+
+**All 12 sources carried over, every non-zero one increased, none reset.** That is the point of
+taking the reading immediately after the upgrade: an OS upgrade that migrated or rebuilt the
+Contacts stores would have zeroed the backlog and looked exactly like a fix. It did not.
+contactsd's log volume is unchanged too — 27,809 lines in the 8-minute post-boot window ≈ 214k/h,
+against beta5's ~218k/h.
+
+Per-source detail: `baselines/beta6-26A5416b/contactsd-backlog.txt`.
+
+2026-08-19 升级到 beta6 后第 9 分钟复验:积压**完好跨过升级并继续增长**(90,209 → 91,030),
+12 个 source 全部沿用、非零的每一个都在涨、**没有任何一个被清零**。这正是要在升级后立刻取数的原因 ——
+若升级重建了 Contacts store,计数会归零、看起来像修好了。日志量也没变(~214k 行/小时)。

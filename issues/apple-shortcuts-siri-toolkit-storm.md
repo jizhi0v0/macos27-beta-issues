@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | 🟡 Mitigated — self-settles post-boot; ⚪ not reproduced in a beta3 `26A5378j` window (post-boot transient) |
+| **Status** | 🟡 **still present on beta6 `26A5416b`, and measured worse** (2026-08-19): peak **864 lines/s** against beta5's 181, 16,203 lines in the 7m47s post-boot window, all three peak seconds within ~60 s of boot. Same window shape as the beta5 figure, so comparable — but **one window, not replicated, and not a verdict**. See [the beta6 section](#re-test-2026-08-19--beta6-26a5416b--peak-rate-4.8x-beta5s-one-window). Prior: 🟡 Mitigated — self-settles post-boot; ⚪ not reproduced in a beta3 `26A5378j` window (post-boot transient) |
 | **macOS** | 27.0 beta2 `26A5368g` |
 | **Component** | Apple **Shortcuts / App Intents** (`com.apple.shortcuts`), `siriactionsd`, `BackgroundShortcutRunner` |
 | **Report** | Apple Feedback: `FB________` *(to be filed)* |
@@ -64,3 +64,24 @@ Captured in a **deliberate post-boot window**. Per-minute `siriactionsd` volume 
 The self-settling behaviour is exactly as documented — and it is also why this entry sat at ⚪ for three builds: **the storm is over within ~3 minutes of boot**, so any retest that does not start at boot will report "not reproduced". That is a missed window, not a fix.
 
 2026-08-11 于 beta5 专门重启后取样:**仍复现**。开机后第一个整分钟 **10,863 行(181/秒)**,随后 14/秒 → 1.4/秒,**三分钟内收敛**。窗口内共 12,421 行,其中 `ToolKit` 6,994 条;`siriactionsd` 累计仅 1.77% CPU。自行平息的行为与原记录一致 —— 这也正是本条在三个 build 里停留于 ⚪ 的原因:**风暴只存在于开机后约 3 分钟内**,任何不从开机起算的复测都会报"未复现",那是**错过窗口**,不是修复。
+
+## Re-test 2026-08-19 — beta6 `26A5416b` — peak rate 4.8× beta5's (one window)
+
+Captured from the one-shot post-boot window after the beta5→beta6 upgrade (boot 13:12:23,
+`log show --start <boot>`; `--last Nm` would have spanned the reboot and mixed the beta5 session in).
+
+| | beta5 `26A5406e` (post-boot capture) | **beta6 `26A5416b`** |
+|---|---|---|
+| peak rate | 181 lines/s | **864 lines/s** |
+| lines in window | 12,421 | 16,203 (in 7m47s) |
+
+Busiest seconds: 864 @ 13:13:19, 725 @ 13:13:21, 640 @ 13:13:55 — all within ~60 s of boot, so the
+"lives entirely in the first ~3 minutes" shape is unchanged; only the peak moved.
+
+**Not a verdict.** This is a single window and has not been replicated, and replication needs
+another reboot — the post-boot window is one-shot. Raw log archived outside the repo at
+`~/Developer/macos27-beta6-postboot/`.
+
+2026-08-19 在 beta5→beta6 升级后的首启窗口复测:峰值 **864 行/秒**(beta5 为 181),7分47秒内
+16,203 行,三个峰值秒都在开机 60 秒内 —— 形状不变,只是峰值高了 4.8 倍。**单窗口未复现,不作结论**;
+复现需要再次重启,首启窗口是一次性的。

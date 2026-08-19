@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | 🔴 Open · confirmed on beta4 |
+| **Status** | 🟡 **bursty; peak rate was badly underestimated, but it does still settle** (twice-corrected 2026-08-12, beta5 `26A5406e`). A 9 h 12 m watcher tripped its 300/s threshold **10 times, all inside one 2 h 23 m burst** (min 302, median 585, **max 5,976 lines/s**), then **0 times in the following 6 h 49 m** — so the original single-window reading (279/s) understated the peak by ~20×, while its "decays and settles" shape held. ⚠️ **Confound, stated plainly:** that burst coincided with heavy local repo/build/download activity, itself a normal Spotlight-indexing trigger, so this may be induced load rather than a defect. **Not re-tested on beta6.** Prior: 🔴 Open · confirmed on beta4 |
 | **macOS** | 27.0 beta4 `26A5388g` |
 | **Component** | Apple **Spotlight / `mds`** (`com.apple.metadata`) ↔ **CoreDuet** (`CoreDuetContext`, `contextstored`) |
 | **Hardware** | `Mac15,11`, M3 Max, 36 GB, single internal display |
