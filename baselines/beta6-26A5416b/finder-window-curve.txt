@@ -1,0 +1,18 @@
+=== WindowServer cost per on-screen Finder window ===
+build:   27.0 26A5416b
+model:   Mac15,11
+refresh: 120.0 Hz
+start:   2026-08-19 14:43:08 +0800   window=60s per step
+
+N     WS%       on-screen owners
+0     24.0%     Window Server:2 Finder:1 Terminal:1 WindowManager:1
+4     37.4%     Finder:5 Window Server:3 Terminal:1 WindowManager:1
+8     40.7%     Finder:9 Window Server:3 WindowManager:1 Terminal:1
+12    38.3%     Finder:13 Window Server:3 Terminal:1 WindowManager:1
+
+--- WINDOW VALIDITY (same checks as ws-idle-baseline.sh) ---
+  screen saver: did not start (OK)
+  user input: none detected (OK)
+
+Claude.app running during the sweep? -> no (good)
+done: 2026-08-19 14:48:35 +0800

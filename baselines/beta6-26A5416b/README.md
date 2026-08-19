@@ -404,3 +404,70 @@ Claude, an actively-rendering Electron app, so treat it as an upper bound).
 Whether that per-window cost is a defect is **untested and unclaimed**. It needs the
 window-count curve (1 / 4 / 8 / 13, everything else held), and then a **window-count-matched**
 beta5 comparison — which cannot be run any more on this machine. It is a question, not a finding.
+
+---
+
+# #3 — the window-count curve: not per-window, and two separate contributors
+
+`finder-window-curve.txt`, 120 Hz, Claude quit, validity checks passing.
+
+| N Finder windows | WindowServer | `Unsupported image function XRGB` /60 s | brightness lines /60 s |
+|---|---|---|---|
+| 0 | 24.0 % | 0 | 11,792 |
+| 4 | 37.4 % | 6,170 | 12,167 |
+| 8 | 40.7 % | 6,410 | 11,955 |
+| 12 | 38.3 % | 6,918 | 11,402 |
+
+**The "~2.6 points per window" figure is withdrawn.** It was arithmetic across two runs that
+differed in more than window count. The curve is a **step, not a slope**: opening the first few
+Finder windows costs ~13 points, and 4 → 12 windows is flat within noise.
+
+## Why the sweep's N=0 (24.0 %) contradicts the control run (4.5 %)
+
+Identical on-screen owners — `Window Server:2 Finder:1 Terminal:1 WindowManager:1` — five times
+apart in CPU. The log says why:
+
+| | brightness lines/s | XRGB |
+|---|---|---|
+| control run, 4.5 % | **1.7/s** | 0 |
+| sweep N=0, 24.0 % | **197/s** | 0 |
+
+The sweep ran entirely inside a **brightness burst**; the control run happened to land in a quiet
+stretch. That is worth ~20 points on its own, with the window set held constant.
+
+## Two independent contributors, neither of them per-window
+
+1. **Brightness/EDR burst state — ~+20 points while active.** This is
+   [#25](issues/apple-corebrightness-nan-oscillation.md)'s mechanism, which #25 dismissed as
+   unable to "account for a sustained floor" because it covered only ~12 s per 30 min. Earlier
+   today it covered 46 s of 300; during this sweep it ran **continuously for 5+ minutes** at
+   ~190/s. The dismissal was about *duration*, and the duration has changed. **#25 deserves a
+   re-open on frequency**, and its cost — ~20 points — was never measured before.
+2. **Finder windows present — ~+13 points, step function.** Accompanied by
+   `(QuartzCore) [com.apple.coreanimation:OGL] Unsupported image function XRGB` firing at
+   ~103–115/s, i.e. **once per frame**, present whenever any Finder window is open and **flat in
+   window count**. An unsupported image format forcing a per-frame slow path is a plausible
+   mechanism for a per-frame cost that does not scale with window count. Not yet confirmed.
+
+## The context that explains the whole confusion
+
+The 12 Finder windows were **auto-restored by macOS at the first boot after the upgrade**, none in
+the foreground. The desktop looked idle and was not. Every "idle floor" reading today was taken on
+a desktop silently carrying a dozen restored windows.
+
+## What still stands
+
+- **beta6 has no idle regression.** 4.5 % at 120 Hz bare vs beta5's ~4 %. Both measurements were
+  taken by hand with Claude quit, and neither is affected by anything above.
+- The beta5↔beta6 binary diff (compositing code byte-identical) stands.
+
+## What is now unknown again
+
+Whether the ~13-point Finder cost and the ~20-point brightness cost are defects or normal. Neither
+has a macOS 26 comparison. The XRGB line is the most concrete lead in the whole investigation —
+it is a named, per-frame, unsupported-format fallback, and it did not exist in any measurement
+taken with no Finder window open.
+
+**Log-eviction note:** the 14:15 run's window returns 0 lines for everything now; the info-level
+QuartzCore lines had already been evicted from the ring buffer, as recorded before. Any log
+comparison has to be pulled within minutes.
