@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | 🔴 **still reproducing on beta5 `26A5406e`, at roughly half the beta4 rate on every axis** (2026-08-11, 5 replicates on a quiesced desktop via [`tools/eco-replicate.sh`](../tools/eco-replicate.sh)) — CPU **16.4%** (min 13.9, max 17.2, sd 1.3) against beta4's 26–57%; `SecTrustCopyAppleTrustAnchors` **~32.5/s** against ~68–85/s; **7,519** lines/60 s against 15,885; **468** `UNIX error exception: 5` against 1,227. The failing-and-retrying shape is unchanged, so this is **mitigation, not a fix**. **Not yet re-tested on beta6 `26A5416b`.** Prior: 🔴 Open · confirmed on beta4 |
+| **Status** | 🔴 **still reproducing on beta6 `26A5416b`** (2026-08-19) — the loop's rate signature is **unchanged from beta5**: `SecTrustCopyAppleTrustAnchors` **33.1/s** mean (beta5 ~32.5), **476** `UNIX error exception: 5` per 60 s (beta5 468), **6,504** lines/60 s (beta5 7,519), CPU **12.7%** mean over 8 windows (beta5 16.4%). Not fixed and not further mitigated. See [the beta6 re-measurement](#re-measurement-2026-08-19--beta6-26a5416b--rate-signature-unchanged). Prior: 🔴 **still reproducing on beta5 `26A5406e`, at roughly half the beta4 rate on every axis** (2026-08-11, 5 replicates on a quiesced desktop via [`tools/eco-replicate.sh`](../tools/eco-replicate.sh)) — CPU **16.4%** (min 13.9, max 17.2, sd 1.3) against beta4's 26–57%; `SecTrustCopyAppleTrustAnchors` **~32.5/s** against ~68–85/s; **7,519** lines/60 s against 15,885; **468** `UNIX error exception: 5` against 1,227. The failing-and-retrying shape is unchanged, so this is **mitigation, not a fix**. **Not yet re-tested on beta6 `26A5416b`.** Prior: 🔴 Open · confirmed on beta4 |
 | **macOS** | 27.0 beta4 `26A5388g` |
 | **Component** | Apple **`ecosystemd`** (`Ecosystem.framework`) ↔ **Security / `trustd`** |
 | **Hardware** | `Mac15,11`, M3 Max, 36 GB |
@@ -87,3 +87,43 @@ The [`mds` storm](apple-mds-coreduet-activity-storm.md) captured alongside this 
 ## Related / 相关
 
 - [`mds` CoreDuet activity storm](apple-mds-coreduet-activity-storm.md) — the #1 emitter in the same capture; the two together dominate the machine's log and daemon CPU
+
+## Re-measurement 2026-08-19 — beta6 `26A5416b` — rate signature unchanged
+
+8 windows across two runs of [`tools/eco-replicate.sh`](../tools/eco-replicate.sh) (5×60 s, then
+3×45 s after the tool fix below).
+
+| | beta4 `26A5388g` | beta5 `26A5406e` | **beta6 `26A5416b`** |
+|---|---|---|---|
+| `SecTrustCopyAppleTrustAnchors` | ~68–85/s | ~32.5/s | **33.1/s** (range 26.7–37.0) |
+| `UNIX error exception: 5` /60 s | 1,227 | 468 | **476** |
+| lines /60 s | 15,885 | 7,519 | **6,504** |
+| ecosystemd CPU | 26–57 % | 16.4 % (sd 1.3) | **12.7 %** (range 10.0–14.2, n=8) |
+
+**The loop is unchanged.** Anchors/s and the EIO count — the two columns that describe the loop
+itself rather than the machine's load — land on beta5's figures within sampling variance. The
+beta4→beta5 halving did not continue into beta6.
+
+**The CPU difference is not claimed as an improvement.** beta5's 16.4 % was measured on a
+quiesced desktop; beta6's 12.7 % was measured with 15 applications running. Lower CPU under
+*more* load is more consistent with contention than with a fix, and the two distributions are
+about 2.5 sd apart, which is not enough to carry a claim either way.
+
+### A defect in the measuring tool, found and fixed
+
+`eco-replicate.sh` carried a note from 2026-08-11 recording that its three log columns came back
+byte-identical in 4 of 5 reps, with an unverified guess that `log show --last Ns` resolves
+against the log buffer's flush boundary rather than wall-clock now. **That guess was correct.**
+Pinning each window with explicit `--start`/`--end` makes the columns vary as independent samples
+should — 2050 / 1950 / 2087 anchors and 492 / 468 / 501 EIO across three windows, against the
+frozen 32.5 / 468 the old form reported five times running.
+
+**Consequence for the beta5 row above:** it was produced by the unfixed tool, so its
+`7,519 lines / 468 EIO` is **one** sample, not five. The beta6 figures are means of six. The
+comparison is sound in direction but the beta5 side has no spread attached to it.
+
+2026-08-19 在 beta6 复测:循环的速率签名**与 beta5 一致** —— anchors 33.1/s(beta5 ~32.5)、EIO 476
+(beta5 468),beta4→beta5 的减半没有延续。CPU 12.7% 低于 beta5 的 16.4%,但 beta5 是静置桌面、本次开着
+15 个应用,**不作为改善主张**。另修复了测量脚本自身的缺陷:`log show --last Ns` 会落在日志缓冲的刷新边界上,
+连续调用返回相同区段;改用 `--start/--end` 后各窗口正常独立变动。这也意味着 beta5 那一行的日志列是**一次**
+采样而非五次。

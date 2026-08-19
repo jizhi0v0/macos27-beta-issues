@@ -62,25 +62,24 @@ sleep "$LEAD"
 
 vals=()
 for i in $(seq 1 "$REPS"); do
-  b=$(cpu_of "$PID"); t0=$(date +%s)
+  b=$(cpu_of "$PID"); t0=$(date +%s); WSTART=$(date '+%Y-%m-%d %H:%M:%S')
   sleep "$WIN"
-  a=$(cpu_of "$PID"); t1=$(date +%s); el=$((t1-t0))
+  a=$(cpu_of "$PID"); t1=$(date +%s); el=$((t1-t0)); WEND=$(date '+%Y-%m-%d %H:%M:%S')
   pct=$(delta_pct "$b" "$a" "$el")
 
   # Look back over the window we just measured. Not `log stream` — macOS has
   # no timeout(1), so a bounded stream is not possible without hanging.
   #
-  # KNOWN DEFECT (2026-08-11): across a 5-rep run these three columns came back
-  # byte-identical in 4 of 5 reps (7519 lines / 468 EIO), which is impossible
-  # for independent 60 s windows on a process emitting ~125 lines/s. A direct
-  # test — three `log show --last 60s` calls 22 s apart — returned 7269 / 7520 /
-  # 9662, so the query itself does vary and this is a defect here, not system
-  # behaviour. Unverified guess: `--last` may resolve against the log buffer's
-  # flush boundary rather than wall-clock now, so back-to-back queries can land
-  # on the same flushed extent. Until this is fixed, treat the three log columns
-  # as ONE measurement for the run, not N independent samples. The eco% column
-  # is unaffected — it comes from ps utime+stime deltas.
-  L=$(/usr/bin/log show --last "${WIN}s" --info --debug --predicate 'process == "ecosystemd"' 2>/dev/null)
+  # FIXED 2026-08-19. The defect recorded here on 2026-08-11 was real: across a
+  # 5-rep run these three columns came back byte-identical in 4 of 5 reps
+  # (7519 lines / 468 EIO), impossible for independent 60 s windows on a process
+  # emitting ~125 lines/s. The guess in that note was right -- `--last Ns`
+  # resolves against the log buffer's flush boundary, so back-to-back queries
+  # land on the same flushed extent. Pinning the window with explicit --start
+  # and --end fixes it: three such windows measured 2050 / 1950 / 2087 anchors
+  # and 492 / 468 / 501 EIO, i.e. they vary as independent samples should.
+  # The eco% column was never affected -- it comes from ps utime+stime deltas.
+  L=$(/usr/bin/log show --start "$WSTART" --end "$WEND" --info --debug --predicate 'process == "ecosystemd"' 2>/dev/null)
   lines=$(printf '%s' "$L" | grep -c '')
   anch=$(printf '%s' "$L" | grep -c 'SecTrustCopyAppleTrustAnchors')
   eio=$(printf '%s' "$L" | grep -c 'UNIX error exception: 5')
