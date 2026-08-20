@@ -31,10 +31,10 @@ codesign --force --deep -s - "$APP"
 
 mkdir -p ~/Applications && cp -R "$APP" ~/Applications/
 open ~/Applications/UNDVerify.app      # must launch via `open`, see pitfalls
-sleep 30 && cat ~/undverify.log
+sleep 30 && cat ~/undverify_run.log
 ```
 
-Click **Allow** on the notification prompt the first time. Results land in `~/undverify.log`.
+Click **Allow** on the notification prompt the first time. Results land in `~/undverify_run.log`.
 
 ## Reading the output
 

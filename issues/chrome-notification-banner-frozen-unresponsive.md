@@ -6,7 +6,7 @@
 > 🧭 **Landed here from "clicking a notification does nothing"?** Classify the failure first — [notification-click-failure-taxonomy.md](notification-click-failure-taxonomy.md) tells the three shapes apart from `usernoted`'s log in one command. This file covers **A** (filed) and **C**; the freeze is [#27](notification-banner-inert-except-close.md).
 | | |
 |---|---|
-| **Status** | 🔴 **Root cause established and isolated to a system API, reproducible without Chrome** (2026-08-12). On macOS 27, `getDeliveredNotifications` returns an **empty array for ~7–24 ms after `add()` has already completed** (0 ms on macOS 26.6, 32 trials per OS) — and Chromium kills its Alerts helper on exactly that answer. Clicking a persistent/actionable Chrome web notification does nothing at all once `Google Chrome Helper (Alerts).app` has exited. `usernoted` **does** receive every click — it just has no live client left to forward it to, and neither relaunches one nor falls back, dropping the click with no error logged. Anything that respawns the helper (a new notification arriving, **reopening** Chrome) instantly un-sticks **every** backlogged notification at once. **Retested on beta6 `26A5416b` 2026-08-19: shape A unchanged — 18 clicks, 0 forwarded**, and the same session produced shape C's first age-measurable failure (62.6 min). See *Beta6 retest* below. |
+| **Status** | 🔴 **still present on beta6 `26A5416b`, window roughly halved** (2026-08-20) — the probe measures first-visible latency at **7.5–9.8 ms, median ~8.1** against beta5's 7.1–23.7 / median 15.4 and macOS 26.6's 0.01–0.03 ms. Still **~270× 26.6**, so the defect is **not fixed**; the narrower window just makes Chrome's check less likely to land inside it, which is why clicks now succeed more often. See [the beta6 re-measurement](#re-measurement-2026-08-20--beta6-26a5416b--window-halved-not-closed). Prior: 🔴 **Root cause established and isolated to a system API, reproducible without Chrome** (2026-08-12). On macOS 27, `getDeliveredNotifications` returns an **empty array for ~7–24 ms after `add()` has already completed** (0 ms on macOS 26.6, 32 trials per OS) — and Chromium kills its Alerts helper on exactly that answer. Clicking a persistent/actionable Chrome web notification does nothing at all once `Google Chrome Helper (Alerts).app` has exited. `usernoted` **does** receive every click — it just has no live client left to forward it to, and neither relaunches one nor falls back, dropping the click with no error logged. Anything that respawns the helper (a new notification arriving, **reopening** Chrome) instantly un-sticks **every** backlogged notification at once. **Retested on beta6 `26A5416b` 2026-08-19: shape A unchanged — 18 clicks, 0 forwarded**, and the same session produced shape C's first age-measurable failure (62.6 min). See *Beta6 retest* below. |
 | **macOS** | 🔴 27.0 beta5 `26A5406e` — hits roughly **4 of 7** real web-push notifications. Also seen on beta4 `26A5388g`. 🔴 27.0 beta6 `26A5416b` — **18 clicks, 0 forwarded** (2026-08-19). 🟢 **macOS 26.6 `25G72` control: 9/9 clean** on the same harness, same Chrome build, same account — and its Alerts helper stays alive while a notification is outstanding (7+ min observed), which is exactly what macOS 27 fails to do |
 | **Component** | Apple `usernoted` (notification response routing) ↔ `Google Chrome Helper (Alerts).app` |
 | **Chrome** | `151.0.7922.109` (Official Build) (arm64); the 2026-08-14 shape C measurements are on `151.0.7922.138`; the 2026-08-19 beta6 retest on `151.0.7922.170` |
@@ -442,3 +442,46 @@ Superficially the same complaint as the long-running macOS 15 issue ([MacRumors 
 7. Was the equivalent path broken in earlier 27 betas (beta1–3)? Only beta4 and beta5 were tested.
 8. **Is shape C caused by the notification's age, and if so via the service worker being reclaimed?** The 2026-08-14 set (4 dead ≥8 h old, 1 live at 3.7 s, OS side identical in all five) makes age the only surviving discriminator, but the SW-reclamation mechanism is untested. Controlled A/B with `tools/webpush-repro/`'s server-side receipt would settle it — and would also answer whether this is a macOS 27 issue at all, since nothing in the evidence points at the OS.
 9. Does the 09:51:44 pattern — the click's own `_removeDelivered` emptying the store and terminating the helper mid-flight — reproduce? If it does, it is a Chromium bug needing no OS race, and Chromium can fix it by not running the termination check on the same notification it is currently dispatching.
+
+## Re-measurement 2026-08-20 — beta6 `26A5416b` — window halved, not closed
+
+Prompted by the reporter noticing that clicking a YouTube (Chrome) notification **worked**, twice
+in a row — the first positive clicks since this was opened. `usernoted` confirms Chrome's Alerts
+helper was alive and healthy at the time:
+
+```
+10:25:21.465  [delete, [id=C7A3-CBD7,
+              bundle=com.google.Chrome.framework.AlertNotificationService],
+              Time elapsed=0.001 sec]: NotificationRequest: Completed
+```
+
+Two working clicks prove little about a ~15 ms race, so the probe in
+[`tools/un-delivered-race-probe/`](../tools/un-delivered-race-probe/) was rebuilt and run — it
+measures the API directly, with no Chrome involved.
+
+| | macOS 26.6 `25G72` | beta5 `26A5406e` | **beta6 `26A5416b`** |
+|---|---|---|---|
+| first-visible (serial poll) | 0.01–0.03 ms | 7.1 / **median 15.4** / 23.7 ms | **7.5 / median 8.1 / 9.8 ms** |
+| visible at 0 ms | 16/16 | 0/16 | **0/8** |
+| visible at 5 ms | 16/16 | 0/16 | **1/8** |
+| visible at 10 ms | 16/16 | 5/16 | **8/8** |
+| visible at 25 ms | — | 16/16 | 8/8 |
+
+**The defect is not fixed.** `getDeliveredNotifications` still returns an empty array for ~8 ms
+after `add()` has already called back — about **270×** macOS 26.6 — and `N(n=0)` is precisely
+Chromium's condition for killing the Alerts helper. What changed is the *size* of the window:
+roughly halved, and now fully clear by 10 ms where beta5 needed 25 ms. A narrower window means
+Chrome's check lands inside it less often, which explains the reporter's two successful clicks
+without implying a fix.
+
+**Caveats:** 8 trials per phase on beta6 against 16 on beta5, one pass, same machine. The
+macOS 26.6 column is the earlier cross-machine comparison and carries its original hardware
+confound.
+
+**Tool fix:** the probe's README said results land in `~/undverify.log`; the binary actually
+writes `~/undverify_run.log`. Corrected — the wrong path reads exactly like a run that produced
+nothing.
+
+2026-08-20 复测:竞态**仍在**,但窗口约减半 —— `add()` 回调后 `getDeliveredNotifications` 仍返回空数组
+约 **8 毫秒**(beta5 中位 15.4ms,macOS 26.6 为 0.01–0.03ms),仍是 26.6 的约 **270 倍**,**未修复**。
+窗口变窄使 Chrome 的检查落入其中的概率下降,这解释了报告者连续两次点击成功,但不构成修复。
