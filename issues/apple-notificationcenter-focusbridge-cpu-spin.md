@@ -1,6 +1,8 @@
 # `NotificationCenter.app`'s main thread spins at ~100% CPU inside SwiftUI's focus-chain walk when a banner presents — a true beachball, self-heals in neither 15 nor 33 minutes
 # `NotificationCenter.app` 主线程在 SwiftUI 的 focus-chain 遍历里空转到 ~100% CPU——真正的彩虹转圈，15 分钟乃至 33 分钟都不会自愈
 
+> 🔗 **Track / 关注此问题:** [#29 — watch & discuss on GitHub](https://github.com/jizhi0v0/macos27-beta-issues/issues/29)
+>
 > 🧭 **Landed here from "clicking a notification does nothing"?** This is **not** one of the three shapes in [notification-click-failure-taxonomy.md](notification-click-failure-taxonomy.md) — those are all about a click being silently dropped somewhere in the `usernoted` pipeline while the UI stays responsive. This is the opposite failure: `NotificationCenter.app` itself is pegged at 100% CPU and visibly spinning. See [Why this is not #26 or #27](#why-this-is-not-26-or-27--为什么不是-26-或-27) below.
 
 | | |

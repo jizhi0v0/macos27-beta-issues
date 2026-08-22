@@ -1,7 +1,7 @@
 # AirPods connect to the Mac but never publish an audio device — A2DP stays at `0 Kbps`, `Codc SBC`, `Freq Unknown`
 # AirPods 能连上 Mac 但从不发布音频设备 —— A2DP 停在 `0 Kbps`、回退 SBC、采样率未协商
 
-> 🔗 **Track / 关注此问题:** issue not yet filed — see "Filing" below
+> 🔗 **Track / 关注此问题:** [#28 — watch & discuss on GitHub](https://github.com/jizhi0v0/macos27-beta-issues/issues/28)
 
 | | |
 |---|---|
