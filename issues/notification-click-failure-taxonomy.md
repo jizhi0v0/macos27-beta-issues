@@ -84,7 +84,9 @@ Do **not** classify from what the screen appeared to do. `usernoted`'s log separ
 
 ## Not yet classified / 尚未归类
 
-Two observations that fit none of the three. Recorded so they are not silently absorbed into a shape they do not belong to.
+Three observations that fit none of the three. Recorded so they are not silently absorbed into a shape they do not belong to.
+
+- **2026-08-22, `NotificationCenter.app` itself pegged at ~100% CPU, a real beachball.** Not a dropped click at all — `usernoted` is not involved. Two samples 90 s apart show an identical stuck stack in SwiftUI's `FocusBridge`/`KeyViewProxyCache` focus-chain walk, and it did not self-recover in 33 minutes (killed manually). Explicitly **not** B: B's own write-up records `NotificationCenter.app` sampled *clean* during its episodes; here it's the opposite. See [apple-notificationcenter-focusbridge-cpu-spin.md](apple-notificationcenter-focusbridge-cpu-spin.md).
 
 - **2026-08-04, non-Chrome freeze that `killall usernoted` fixed.** A Samsung T7 disk-eject prompt and a "DuoTranslator.app was prevented from modifying apps" prompt, both "无法点击也无法右键关闭". Looks like B, but B is **immune** to `killall usernoted` (14 further clicks received, 0 forwarded, after the daemon restarted with a new PID). Same symptom, opposite remedy → either a milder severity of B or a fourth defect.
 - **The instance where right-click and swipe also died *and* a Chrome restart did not fix it**, self-healing ~9.6 min after delivery. Its helper (pid 87903) was alive for **165 s**, which contradicts shape A's mechanism outright. Unexplained; tracked as open question 6 in #26.
