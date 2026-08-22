@@ -483,6 +483,17 @@ race; neither is evidence about the other.
 macOS 26.6 column is the earlier cross-machine comparison and carries its original hardware
 confound.
 
+### Reporter's ongoing use, 2026-08-19 → 08-22: no dead clicks noticed / 日常使用未再撞见
+
+Reporter's own words, unprompted: normal YouTube-notification clicks have been navigating
+correctly, with no click-did-nothing case noticed, across the ~3 days since beta6 was installed.
+Explicitly **not** a controlled test — this is casual daily use, not the overnight/idle-queue
+recipe that reliably produces shape C (see above), and it says nothing about shape A odds either:
+the race measurement above still puts the window at ~8 ms on this exact build, unchanged in kind
+from beta5. A subjective non-observation over a few days of ordinary use is weak evidence by
+itself; recorded here as a data point, not as a resolution — absence of a noticed failure is not
+absence of the defect.
+
 **Tool fix:** the probe's README said results land in `~/undverify.log`; the binary actually
 writes `~/undverify_run.log`. Corrected — the wrong path reads exactly like a run that produced
 nothing.

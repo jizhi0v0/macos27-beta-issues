@@ -98,3 +98,15 @@ The single most valuable open experiment: on **one** inert notification, click i
 3. Is it the same root cause as #26 seen through a different presentation, or genuinely separate? See the experiment above.
 4. Does the `✕`-still-works asymmetry point at where the drop happens — i.e. is close handled by a different code path than activate/swipe? Not investigated.
 5. Was it present in beta1–beta3? Only beta4 and beta5 observed.
+
+## Reporter's ongoing use, 2026-08-19 → 08-22: not noticed since beta6 / 日常使用未再撞见
+
+Reporter's own words, unprompted, 2026-08-22: has not run into this specific freeze — the kind
+that self-recovers on its own — since beta6 (`26A5416b`) was installed 2026-08-19, about 3 days of
+ordinary use. Explicitly distinguished by the reporter from the *same-day* [FocusBridge CPU-spin
+beachball](apple-notificationcenter-focusbridge-cpu-spin.md), which does **not** self-recover and
+is a different failure. A ~3-day subjective non-observation is weak evidence — this issue was
+already known to be intermittent and non-reproducible on demand, so a quiet stretch is consistent
+with either "less frequent on beta6" or plain chance. Not treated as a fix; no mechanism was found
+that would explain a change, and status stays 🔴 pending either a recurrence or a longer quiet
+window.
