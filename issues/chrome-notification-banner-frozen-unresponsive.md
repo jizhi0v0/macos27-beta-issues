@@ -6,10 +6,10 @@
 > 🧭 **Landed here from "clicking a notification does nothing"?** Classify the failure first — [notification-click-failure-taxonomy.md](notification-click-failure-taxonomy.md) tells the three shapes apart from `usernoted`'s log in one command. This file covers **A** (filed) and **C**; the freeze is [#27](notification-banner-inert-except-close.md).
 | | |
 |---|---|
-| **Status** | 🔴 **still present on beta6 `26A5416b`, window roughly halved** (2026-08-20) — the probe measures first-visible latency at **7.5–9.8 ms, median ~8.1** against beta5's 7.1–23.7 / median 15.4 and macOS 26.6's 0.01–0.03 ms. Still **~270× 26.6**, so the defect is **not fixed**. ⚠️ The narrower window does **not** translate into reliably working clicks: on this same build **2026-08-19 recorded 18 clicks, 0 forwarded** (shape A) while **2026-08-20 had two clicks work**. Shape A depends on whether Chrome's check lands inside the window *for that notification*, so the outcome varies per notification, not per build. See [the beta6 re-measurement](#re-measurement-2026-08-20--beta6-26a5416b--window-halved-not-closed). Prior: 🔴 **Root cause established and isolated to a system API, reproducible without Chrome** (2026-08-12). On macOS 27, `getDeliveredNotifications` returns an **empty array for ~7–24 ms after `add()` has already completed** (0 ms on macOS 26.6, 32 trials per OS) — and Chromium kills its Alerts helper on exactly that answer. Clicking a persistent/actionable Chrome web notification does nothing at all once `Google Chrome Helper (Alerts).app` has exited. `usernoted` **does** receive every click — it just has no live client left to forward it to, and neither relaunches one nor falls back, dropping the click with no error logged. Anything that respawns the helper (a new notification arriving, **reopening** Chrome) instantly un-sticks **every** backlogged notification at once. **Retested on beta6 `26A5416b` 2026-08-19: shape A unchanged — 18 clicks, 0 forwarded**, and the same session produced shape C's first age-measurable failure (62.6 min). See *Beta6 retest* below. |
-| **macOS** | 🔴 27.0 beta5 `26A5406e` — hits roughly **4 of 7** real web-push notifications. Also seen on beta4 `26A5388g`. 🔴 27.0 beta6 `26A5416b` — **18 clicks, 0 forwarded** (2026-08-19). 🟢 **macOS 26.6 `25G72` control: 9/9 clean** on the same harness, same Chrome build, same account — and its Alerts helper stays alive while a notification is outstanding (7+ min observed), which is exactly what macOS 27 fails to do |
+| **Status** | 🔴 **not fixed on beta7 `26A5421a` + Chrome `152.0.7977.65` — but this file has been overstating the user-visible severity** (2026-08-27). Two things it had treated as one, measured three hours apart on the same machine and disagreeing: **(a) the race is untouched** — first-visible latency median **8.36 ms** against beta6's 8.07, the non-Chrome demo **7/7**, and Chromium's `OkayToTerminateService` plus its six `CheckIfServiceCanBeTerminated()` call sites are unmodified upstream; the controlled recipe still fails cleanly (**4 clicks → 4 `Received response`, 0 forwarded, 0 errors logged, and the service worker's `notificationclick` never fired**). **(b) real YouTube notifications do not hit it** — pairing every Alerts-helper `CHECKIN` with its next `appDeath` across the entire retained archive gives **6 real YouTube notifications on beta7, 0 user-visible failures**, including one (08-27 13:42:48) where the helper *did* self-kill in 157 ms and **relaunch recovery took**: a second instance came up 4.4 s later, presented the notification, and lived 1 h 43 m. The discriminator is therefore not whether the helper self-kills but **whether recovery takes** — and why it takes for real Chrome and never for the harness is open. See *Re-test 2026-08-27* below. Prior: 🔴 **still present as of 2026-08-23, verified under controlled conditions on Chrome `151.0.7922.174`** — after several days of casual use produced no dead clicks (2026-08-19→08-22) and the reporter suspected Chrome had fixed it, a same-day re-test settled it the other way: the non-Chrome demo hit the race 7/7, and #27's controlled recipe on real Chrome reproduced shape A exactly (2 clicks received by `usernoted`, 0 forwarded, and — new this round — the service worker's own server-side click log stayed empty, proving `notificationclick` never fired). The Chromium tracker shows no developer response and no code change since the reporter's own #26/#27. See [the 2026-08-23 re-verification](#controlled-re-verification-2026-08-23-shape-a-still-reproduces-cleanly--ruling-out-chrome-fixed-it--2026-08-23-受控复测shape-a-依然干净复现排除chrome-修复的猜测). Prior: 🔴 **still present on beta6 `26A5416b`, window roughly halved** (2026-08-20) — the probe measures first-visible latency at **7.5–9.8 ms, median ~8.1** against beta5's 7.1–23.7 / median 15.4 and macOS 26.6's 0.01–0.03 ms. Still **~270× 26.6**, so the defect is **not fixed**. ⚠️ The narrower window does **not** translate into reliably working clicks: on this same build **2026-08-19 recorded 18 clicks, 0 forwarded** (shape A) while **2026-08-20 had two clicks work**. Shape A depends on whether Chrome's check lands inside the window *for that notification*, so the outcome varies per notification, not per build. See [the beta6 re-measurement](#re-measurement-2026-08-20--beta6-26a5416b--window-halved-not-closed). Prior: 🔴 **Root cause established and isolated to a system API, reproducible without Chrome** (2026-08-12). On macOS 27, `getDeliveredNotifications` returns an **empty array for ~7–24 ms after `add()` has already completed** (0 ms on macOS 26.6, 32 trials per OS) — and Chromium kills its Alerts helper on exactly that answer. Clicking a persistent/actionable Chrome web notification does nothing at all once `Google Chrome Helper (Alerts).app` has exited. `usernoted` **does** receive every click — it just has no live client left to forward it to, and neither relaunches one nor falls back, dropping the click with no error logged. Anything that respawns the helper (a new notification arriving, **reopening** Chrome) instantly un-sticks **every** backlogged notification at once. **Retested on beta6 `26A5416b` 2026-08-19: shape A unchanged — 18 clicks, 0 forwarded**, and the same session produced shape C's first age-measurable failure (62.6 min). See *Beta6 retest* below. |
+| **macOS** | 🔴 27.0 beta5 `26A5406e` — hits roughly **4 of 7** real web-push notifications. Also seen on beta4 `26A5388g`. 🔴 27.0 beta6 `26A5416b` — **18 clicks, 0 forwarded** (2026-08-19). 🟢 **macOS 26.6 `25G72` control: 9/9 clean** on the same harness, same Chrome build, same account — and its Alerts helper stays alive while a notification is outstanding (7+ min observed), which is exactly what macOS 27 fails to do. 🔴 27.0 beta7 `26A5421a` — controlled recipe **4 clicks, 0 forwarded** (2026-08-27), but **6 real YouTube notifications, 0 user-visible failures** on the same build |
 | **Component** | Apple `usernoted` (notification response routing) ↔ `Google Chrome Helper (Alerts).app` |
-| **Chrome** | `151.0.7922.109` (Official Build) (arm64); the 2026-08-14 shape C measurements are on `151.0.7922.138`; the 2026-08-19 beta6 retest on `151.0.7922.170` |
+| **Chrome** | `151.0.7922.109` (Official Build) (arm64); the 2026-08-14 shape C measurements are on `151.0.7922.138`; the 2026-08-19 beta6 retest on `151.0.7922.170`; the 2026-08-23 controlled re-verification on `151.0.7922.174`; the **2026-08-27 beta7 re-test on `152.0.7977.65`** |
 | **Hardware** | MacBook Pro `Mac15,11`, M3 Max (27 beta5) vs. a second Mac on macOS 26 (control) |
 | **Report** | Chromium: **posted 2026-08-12 as [comment #26](https://issues.chromium.org/issues/370536109#c26) and follow-up [#27](https://issues.chromium.org/issues/370536109#c27) (the reliable repro) on issue 370536109** — that issue has been open since 2024-10-01 with the identical symptom, was reproduced by Google in #12, and had no root cause in 16 months. Apple: **filed 2026-08-12 as `FB24273686`** (macOS / Notification Center), with both reproducers attached — draft kept in [`feedback/un-getdeliverednotifications-race.md`](../feedback/un-getdeliverednotifications-race.md) |
 
@@ -501,3 +501,237 @@ nothing.
 2026-08-20 复测:竞态**仍在**,但窗口约减半 —— `add()` 回调后 `getDeliveredNotifications` 仍返回空数组
 约 **8 毫秒**(beta5 中位 15.4ms,macOS 26.6 为 0.01–0.03ms),仍是 26.6 的约 **270 倍**,**未修复**。
 窗口变窄使 Chrome 的检查落入其中的概率下降,这解释了报告者连续两次点击成功,但不构成修复。
+
+### Controlled re-verification, 2026-08-23: shape A still reproduces cleanly — ruling out "Chrome fixed it" / 2026-08-23 受控复测:shape A 依然干净复现,排除"Chrome 修复"的猜测
+
+After several more days of casual use (2026-08-19 → 08-22, recorded above) with no dead click
+noticed, the reporter's working hypothesis shifted to **Chrome having fixed it**, reasoned from
+timing: the bug was hit right after the beta6 upgrade, then stopped appearing over the following
+days on the same OS build — so, absent a macOS-side control, a Chrome update looked like the only
+variable left. `Google Chrome.app`'s installed version had in fact moved from `151.0.7922.170`
+(the build used for the 2026-08-20 probe measurement above) to `151.0.7922.174` in that window,
+which is consistent with an update having happened, though not with any specific fix — checking
+[crbug 370536109](https://issues.chromium.org/issues/370536109) the same day found **no developer
+response since the reporter's own #26/#27** (posted 2026-08-12): status is still `New`, no
+assignee, no `Fixed By Code Changes`, and the only Google comment since (#25, 2026-02-04) says the
+Notifications team is in "maintenance mode only, considering only P0s and P1s" for this P2/S2 bug.
+
+Three same-day checks, run to test the hypothesis directly rather than extend the anecdote:
+
+1. **Non-Chrome demo re-run** ([`tools/notifdemo-nonchrome/`](../tools/notifdemo-nonchrome/)),
+   macOS 27.0 beta6 `26A5416b`, 20:29–20:31: **7 / 7** trials still landed on `count=0` (the race
+   condition itself, no Chrome code involved), replied 0.27–7.41 ms after `add()`'s completion
+   fired — same shape as the original 14/14 on beta5 and the 08-20 probe's ~8 ms window. The OS
+   defect is unchanged today, independent of whatever Chrome shipped.
+
+2. **Controlled Chrome recipe re-run**, following #27's procedure exactly (subscribe → close the
+   tab → wait for `chrome://serviceworker-internals` to show that origin's SW `STOPPED` → send one
+   real push with `requireInteraction: true` + an `actions` entry → click), on the actually
+   installed `Google Chrome.app` **151.0.7922.174**, real macOS notification, real human click:
+
+   | | result |
+   |---|---|
+   | notification delivered via | `AlertNotificationService` (the Alerts path, matching Chrome exactly) |
+   | Alerts helper running at click time | no |
+   | `usernoted` "Received response" | **2** |
+   | "sent to NSUserNotification client" | **0** |
+   | `loginwindow` `appDeath` for `AlertNotificationService` | **3** |
+
+   Shape A, unchanged.
+
+3. **A stronger corroboration than earlier sessions had**: the harness's service worker logs every
+   `notificationclick` server-side to a KV store, independent of anything visible on screen. After
+   the click, the store held only `seq:retest0823` and `sub:retest0823` — **no `click:*` key was
+   ever written**, proving the page's `notificationclick` handler never fired at all, not merely
+   that nothing appeared to happen.
+
+> ⚠️ **Superseded in part, 2026-08-27.** The conclusion below — that the defect was intact — still holds. Its *explanation*, that casual clicking keeps the service worker warm, does **not**: four of six real YouTube notifications on beta7 spawned the Alerts helper fresh, so the discriminator is not SW warmth but whether relaunch recovery takes. See *Re-test 2026-08-27* below.
+
+**Conclusion: the several days of non-reproduction were not evidence of a fix.** Casual clicking
+never controlled for the one variable this bug depends on — an isolated notification with a
+long-idle service worker (the state casual YouTube-notification clicking rarely produces on its
+own, since the tab or a recent visit tends to keep the SW warm, exactly per the *reliable recipe*
+recorded earlier in this file) — so days of ordinary use landing outside the failure window says
+nothing about whether the window still exists. Put under the known trigger conditions today, on
+the current Chrome build, it reproduced exactly as before. **Status unchanged: not fixed.** The
+reporter's own assessment after seeing this: "确实很奇怪，我再观察一下" (genuinely puzzling, will
+keep watching) — logged here as an open observation, not a resolution.
+
+### Re-test 2026-08-27 — beta7 `26A5421a` + Chrome `152.0.7977.65`: the race is untouched, the controlled recipe still fails 4/4, and **real YouTube notifications do not hit it** / beta7 复测：竞态原样，受控配方 4/4 依旧失败,但**真实 YouTube 通知打不中**
+
+This is the round that separates two things this file had been treating as one: **the race still
+existing** and **the user still losing clicks**. Both were measured today, on the same machine,
+three hours apart, and they disagree.
+
+**Both variables moved since the 2026-08-23 re-verification above, and both were re-pinned:**
+macOS 27.0 **beta7 `26A5421a`** (kernel `xnu-13432.1.9~3`, unchanged from beta6) and Chrome
+**`152.0.7977.65`** — a major-version bump from the `151.0.7922.174` that 08-23 tested. A retest
+that pins only the OS build is not a retest for this issue.
+
+#### 1. The OS side did not change / OS 侧没变
+
+[`tools/un-delivered-race-probe`](../tools/un-delivered-race-probe/), phase B (chained serial
+polling, first-visible latency after `add()`'s completion), n=8 per build:
+
+| build | min | **median** | max |
+|---|---|---|---|
+| beta5 `26A5406e` | 7.12 ms | **18.62** | 23.72 ms |
+| beta6 `26A5416b` | 7.52 ms | **8.07** | 9.77 ms |
+| **beta7 `26A5421a`** | 4.30 ms | **8.36** | 11.01 ms |
+
+The beta5→beta6 halving was real; **beta6→beta7 did not move.** The non-Chrome demo
+([`tools/notifdemo-nonchrome/`](../tools/notifdemo-nonchrome/)) agrees: **7 / 7** trials returned
+`count=0` with the query issued 0.38–0.83 ms after `add()`'s completion had already fired.
+
+#### 2. Chromium's side did not change either / Chromium 侧也没变
+
+Checked against the upstream mirror rather than inferred from behaviour:
+
+- `chrome/services/mac_notifications/mac_notification_service_un.mm` — last **functional** change
+  `6c6b0ab49` (2026-06-09); the only later commit, `f977df972` (2026-07-01), adds rollout metrics.
+  `OkayToTerminateService` still returns `notifications.empty()`.
+- `chrome/browser/notifications/mac/notification_dispatcher_mojo.cc` — **untouched since
+  `55696fc18` (2024-10-30)**; the six `CheckIfServiceCanBeTerminated()` call sites tabulated
+  earlier in this file are all still there.
+
+So Chrome 152 changed neither the predicate nor when it is asked.
+
+#### 3. The controlled recipe still fails, cleanly / 受控配方依然干净失败
+
+Recipe exactly as recorded above — subscribe, close the tab, leave the service worker idle 3 min,
+send one real push with `requireInteraction: true` + an `actions` entry, then click. Harness served
+from `http://localhost:8799` (8787 was occupied), push sent from Node because workerd's `fetch`
+does not honour the system proxy.
+
+```
+15:55:01.005  launchservicesd  CHECKIN:0x0-0x150150 80345 com.google.Chrome.framework.AlertNotificationService
+15:55:01.050  usernoted        create  [id=0D7B-4D85, bundle=…AlertNotificationService]
+                               req:"r|Default|p#http://localhost:8799/#1repro-beta7-1-1787817299880"
+15:55:01.054  loginwindow      appDeath for com.google.Chrome.framework.AlertNotificationService
+                               .../Versions/152.0.7977.65/Helpers/Google Chrome Helper (Alerts).app
+15:55:01.152  usernoted        Delivering / Presenting  ident:"0D7B-4D85"
+```
+
+The helper died **49 ms after the notification was created and 98 ms before it was presented** —
+the notification reached the screen with no process left to receive its click. A 0.1 s `ps` poll
+saw it appear at +1.09 s and vanish by +1.24 s. Then four clicks:
+
+| | result |
+|---|---|
+| clicks (15:58:09.868 / 11.035 / 11.615 / 12.702, all `ident:"0D7B-4D85"`) | **4** |
+| `usernoted` "Received response" | **4** |
+| "sent to NSUserNotification client" | **0** |
+| `Failed to notify application` | **0** — silent, no error logged |
+| `appDeath` after each click | **4** (+125 / +90 / +90 / +96 ms) |
+| service worker's server-side `click:*` key | **never written**; no `/api/click-log` request reached the worker |
+
+Shape A, unchanged, and better corroborated than any earlier session: every click respawned the
+helper and it self-killed again within ~100 ms, so **macOS's relaunch recovery fired four times and
+never took**.
+
+#### 4. But the machine's own logs say real YouTube notifications are fine / 但日志说真实 YouTube 通知没事
+
+The reporter's standing objection — "YouTube 的通知确实没问题" — turns out to be checkable against
+`loginwindow`/`launchservicesd`/`runningboardd`, by pairing every Alerts-helper `CHECKIN` with its
+next `appDeath` across the retained archive. beta7 was installed **2026-08-24 23:33** (`InstallHistory.plist`), so every row below is beta7:
+
+| real YouTube notification | helper `CHECKIN` | next `appDeath` | helper lived | click would work |
+|---|---|---|---|---|
+| 08-25 09:58:33.259 | 09:58:33.195 | 10:01:13.618 | 2 m 40 s | ✅ |
+| 08-25 11:45:48.281 | 11:45:48.219 | 12:06:28.736 | 20 m 40 s | ✅ |
+| 08-25 14:25:15.730 | 14:25:15.687 | 08-26 13:35:50 | ~23 h | ✅ |
+| 08-26 18:27:12.884 | 18:27:12.829 | none, until the 08-27 13:39 reboot | ~19 h | ✅ |
+| 08-27 09:27:47.300 | **none** — reused the 19 h-old process | — | — | ✅ |
+| 08-27 13:42:48 | 13:42:48.731 (pid 5037) | 13:42:48.888 | **157 ms — self-killed** | ✅ see below |
+
+**Six real YouTube notifications on beta7, zero user-visible failures.** The last row is the
+interesting one: the race *did* fire on a real YouTube notification, and recovery worked —
+
+```
+13:42:48.731  CHECKIN   pid=5037
+13:42:48.888  appDeath                       ← first helper self-kills, before the notification is presented
+13:42:53.115  CHECKIN   pid=5140             ← the system relaunches one 4.4 s later
+13:42:53.264  usernoted Delivering/Presenting  ident:"A44A-0492"  p#https://www.youtube.com/#1growth-subscription-notification
+              …next appDeath not until 15:26:13 — the second instance lived 1 h 43 m
+```
+
+That is **condition B** from the non-Chrome demo table above, occurring in the wild: identical
+race, identical self-kill, and the click still lands because the relaunched instance stayed alive.
+
+#### 5. What this falsifies, including in this file / 这一轮推翻了什么(包括本文自己的说法)
+
+- **"YouTube's notifications are banner-style, so shape A never applied"** — no. They are delivered
+  by `com.google.Chrome.framework.AlertNotificationService`, and the `NotificationRecord` is
+  identical in shape to the harness's, down to
+  `staticCategory:"<LEGACY options=(legacyBehavior, hiddenPreviewShowsTitle) actions=[…]"` and
+  `source:"FF14E171"`. Same path, same category.
+- **"Another Chrome notification was outstanding, so the query returned non-empty"** — no. Between
+  08:00 and 09:30 on 08-27 there was **exactly one** Chrome notification, the YouTube one. It was
+  as isolated as the harness's.
+- **The 2026-08-23 entry's explanation above — "the tab or a recent visit tends to keep the SW
+  warm" — is wrong and is superseded by this section.** Four of the six YouTube notifications
+  spawned the helper *fresh*, which is not what a warm, helper-retaining session looks like. The
+  discriminator is not whether the helper gets spawned; it is **whether relaunch recovery takes**.
+- Consequently the framing this file has used since 2026-08-12 — treating the recipe's hit rate as
+  the real-world failure model — **overstates the user-visible severity on beta7**. The recipe hits
+  100 %; real use on this machine hit the race 1 in 6 and lost 0 clicks.
+
+#### 6. Open, and honestly unresolved / 仍然未解
+
+**Why does relaunch recovery take for real Chrome and never for the harness?** Same Chrome build,
+same OS build, same machine, under three hours apart, same notification path and category. Already
+excluded: the delivery path, the category/actions payload, and whether another notification was
+outstanding. **Not** excluded: the harness's origin is `http://localhost:8799` rather than
+`https://www.youtube.com` (plaintext, loopback, non-default port), and whether Chrome had a live
+window for that origin at push time. The obvious next experiment is to re-run the recipe from an
+HTTPS origin on a real domain and see whether the second helper survives.
+
+**The beta6 control, recovered — and it does not support "beta7 improved things."** An earlier
+draft of this section claimed the archive began after the beta7 upgrade and that no beta6 organic
+data survived. That was wrong on both counts: the archive reaches back to **2026-08-23**, and beta7
+was installed **2026-08-24 23:33**, so 08-23 → 08-24 23:33 is beta6. Pairing `CHECKIN`/`appDeath`
+against the YouTube notification timestamps in that window:
+
+| beta6 real YouTube notification | helper `CHECKIN` | next `appDeath` | helper lived |
+|---|---|---|---|
+| 08-23 22:05:22.794 | 22:05:22.740 | 08-24 10:17:06.074 | ~12 h |
+| 08-24 10:17:26.950 | 10:17:26.906 | 08-25 07:20:46.769 (i.e. through the upgrade reboot) | ~21 h |
+
+Same shape as beta7: freshly spawned, and it survived. The only sub-second self-kills in the beta6
+window are 08-23 20:42–20:44 — which is the *controlled re-verification session* recorded in the
+previous section, not organic use. So **organic YouTube behaviour looks the same on beta6 and
+beta7**, and this data gives no support to "beta7 fixed the real-world case." It also does not
+reach back to 2026-08-19, when the reporter's beta6 failures actually occurred, so those remain
+unclassified.
+
+⚠️ **Retention caveat:** in the beta6 window the archive retains only `donotdisturb:BehaviorResolution`
+records for those notifications — the `unc:application` `Delivering`/`Presenting` lines that the
+beta7 rows rely on have aged out. The beta6 rows are therefore reconstructed from helper-lifecycle
+plus DND timestamps, one step weaker than the beta7 rows.
+
+#### Method notes / 方法记录
+
+- `/usr/bin/log show --start X --end Y` **silently ignored `--end` when no `--predicate` was
+  given** on beta7 — an 8-minute window request returned 1 h 50 m of records. With a predicate it
+  honours both bounds (verified against a 1-minute window). Slice by timestamp afterwards, or
+  always pass a predicate.
+- [`tools/eco-replicate.sh`](../tools/eco-replicate.sh)'s flush-boundary artefact **recurred**
+  despite the pinned `--start`/`--end` fix noted in its header: reps 2 and 3 returned byte-identical
+  triples (6739 lines / 468 EIO / 32.5 anchors/s). Treat that run as n=2.
+- [`tools/webpush-repro`](../tools/webpush-repro/) gained `send-push.mjs`: workerd's `fetch` does
+  not use the system proxy, so `/api/push` hangs ~20 s against FCM behind one. The script sends the
+  identical payload from Node via `web-push`'s `proxy` option. VAPID keys now live in
+  `.dev.vars` (git-ignored).
+
+2026-08-27 在 beta7 `26A5421a` + Chrome `152.0.7977.65` 上复测,把本文一直混为一谈的两件事拆开了:
+**竞态是否还在**(还在:窗口中位 8.36 ms,与 beta6 的 8.07 无差别;非 Chrome demo 7/7;Chromium 的
+判定式与六个调用点均未改动),与**用户是否还会丢点击**(受控配方下 4 次点击 4 收 0 转发、SW 的
+`notificationclick` 完全没触发 —— 但**真实 YouTube 通知 6 条、用户可见失败 0 条**)。
+关键差别不是 helper 会不会被拉起来自杀 —— 今天 13:42:48 一条真 YouTube 通知的 helper 就在 157 ms 内
+自杀了 —— 而是**系统的重启兜底能不能生效**:真 Chrome 上 4.4 秒后第二个实例被拉起、呈现了通知、
+活了 1 小时 43 分;harness 里连续四次点击各拉起一次、各自杀一次,兜底一次都没成。
+据此,本文自 2026-08-12 起「按配方命中率描述现实严重性」的写法**高估了 beta7 上的用户可见严重性**;
+上面 08-23 那节「tab 开着让 SW 保持热」的解释**是错的,以本节为准**。仍未解:为什么兜底对真 Chrome 生效、
+对 harness 一次都不生效(未排除变量:harness 的 origin 是 `http://localhost:8799` 而非真 HTTPS 域名)。
+另:日志 archive 只回溯到 08-24,彼时已是 beta7,**beta6 的现实对照数据已不存在**,故不对
+「beta7 是否改善了现实表现」作任何断言。
