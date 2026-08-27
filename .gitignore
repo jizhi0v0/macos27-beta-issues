@@ -1,2 +1,5 @@
 tools/volwatch/volwatch
 tools/volwatch/racetrigger
+tools/webpush-repro/.dev.vars
+tools/webpush-repro/.wrangler/
+tools/webpush-repro/node_modules/
