@@ -1,0 +1,67 @@
+=== beta7 26A5421a — one-shot post-boot window ===
+boot:   2026-08-27 13:39:10 (kern.boottime)
+window: 13:39:10 -> 13:47:10, exactly 8m00s
+records in window: 1877207
+
+CAPTURE METHOD, and a trap it walked into:
+  log show --start 13:39:10 --end 13:47:10 (no --predicate) IGNORED --end and
+  returned everything to the present (1h50m). The window below was cut out
+  afterwards with awk on the record-start timestamp. With a --predicate both
+  bounds are honoured. Verify the last timestamp against the --end you asked for.
+  Default log show on this machine already returns Df records: the same query
+  with and without --info --debug returned 6060 = 6060 for one minute of
+  ecosystemd, so these counts are comparable to the beta5/beta6 ones.
+
+--- #1 CoreMedia fpSupport_GetVideoRange ---
+in-window records: 219   (beta5: 1,744 in 8 min)
+emitters across the whole 1h50m session (not just the window):
+  1095 WeType
+   978 DingTalk
+   358 Raycast
+    78 DuoUpdater
+    15 textunderstandingd
+    11 Mail
+     1 loginwindow
+
+--- #2 Shortcuts/Siri ToolKit storm ---
+BackgroundShortcutRunner + siriactionsd records in window: 30,699
+  by level:  Df 20,265 | A 7,334 | E 2,521 | F 577 | Sd 2
+  (beta6: 16,203 in 7m47s; beta5 peak 181 lines/s; beta6 peak 864 lines/s)
+peak per second, ALL levels:
+  1795  13:40:30
+  1627  13:46:30
+  1618  13:46:58
+  1590  13:39:55
+  1542  13:40:22
+peak per second, Df only:
+  1306  13:40:30
+  1172  13:46:58
+  1094  13:40:22
+
+COUNTING NOTE: an anchored regex '^\S+ \S+ \S+ (name)\[' silently returns only the
+  Df records, because compact style pads a single-character type field ("A ", "E ",
+  "F ") to two columns, so a DOUBLE space follows it and the single-space pattern
+  misses those rows. It gave 20,267 here against the true 30,699 -- a 34% undercount
+  that looks like a plausible number. Split the process field with awk instead:
+  awk '{p=$4; sub(/\[.*/,"",p); if(p=="NAME") ...}'
+  Which total is comparable to beta6's 16,203 is not known -- that figure's level
+  scope was never recorded. Both are given here so the next comparison can pick.
+
+--- #19 imagent x ContactsAccountsService ---
+imagent records naming the service, in window: 3096   (beta6: 2,383)
+profile: /System/Library/Sandbox/Profiles/com.apple.imagent.sb
+  lines:      404   (beta6: 404)
+  mentions of ContactsAccountsService: 0   (beta6: 0)
+  sibling profiles that DO name it: 26   (beta6: 26)
+
+--- #23 ecosystemd, in the post-boot window (boot-elevated, NOT the steady state) ---
+SecTrustCopyAppleTrustAnchors in window: 72829  = 152/s
+  steady state measured separately at 15:33-15:36: 33.1 / 32.5 / 32.5 anchors/s
+  so the post-boot figure is a boot burst, not the loop's rate. Use eco-replicate.sh.
+
+--- #18 contactsd log volume ---
+contactsd records in window: 45697  ~343k/h
+  (beta6: 27,809 in the same 8-minute post-boot window, ~214k/h)
+
+--- #15 appstoreagent BGSystemTaskSchedulerErrorDomain Code=8 ---
+in window: 0   (still not triggered; conditional, last seen beta2)
