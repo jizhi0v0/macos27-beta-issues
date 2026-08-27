@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | 🟡 Mitigated (workaround) — present in beta1 **and** beta2; ⚪ not reproduced in a beta3 `26A5378j` window (conditional trigger) |
+| **Status** | 🟡 **much quieter on beta7 `26A5421a` — but not creditable as a fix** (2026-08-27). **219** `fpSupport_GetVideoRange` records in the 8-minute post-boot window against beta5's **1,744** in its own 8-minute window, a ~8× drop. The emitter set changed too, though: WeType 1,095 / DingTalk 978 / Raycast 358 / DuoUpdater 78 across the session, against beta5's DingTalk 1,338 / WeType 263 / Mail 136 — Raycast and DuoUpdater are new emitters absent from the beta5 tally. The trigger is app-dependent and the app mix was **not controlled**, so this measures the app mix, not the OS. See *Retest 2026-08-27* below. Prior: 🟡 Mitigated (workaround) — present in beta1 **and** beta2; ⚪ not reproduced in a beta3 `26A5378j` window (conditional trigger) |
 | **macOS** | 27.0 beta2 `26A5368g` (also beta1 `26A5353q`) |
 | **Component** | Apple **MediaToolbox / CoreMedia** (`com.apple.coremedia`) |
 | **Hardware** | MacBook Pro `Mac15,11`, M3 Max, single built-in Liquid Retina XDR display |
@@ -88,3 +88,33 @@ Per-minute rate: `0.7 → 4.2 → 4.1 → 2.5 → 4.6 → 6.3 → 4.2 → 2.1 /s
 **Retest 2026-06-26 beta2 26A5368g:** CONFIRMED — uptime 39 min; `log show --last 60s` = 1192 lines of `fpSupport_GetVideoRangeForCoreDisplayWithPreference`, all `externalPanel=YES` (wrong param, machine has only internal panel). Per-app rate: WeType[910] 480/60s (~8/s), DingTalk[2782] 472/60s (~8/s), Bob[1000] 240/60s (~4/s); Mail not emitting this run. logd 0.8% / 3:30 cum at sample. Still active well past boot, not self-settled.
 
 **Retest 2026-07-07 beta3 26A5378j:** ⚪ not reproduced this window — **0** `fpSupport_GetVideoRange…` lines since boot (07:53, ~2.5 h). Conditional signature (needs a WebKit/WebProcess client doing display/HDR capability detection); none of the emitting apps hit the path in this window. "Not reproduced," not "confirmed fixed" — recheck with the WebKit apps active.
+
+## Retest 2026-08-27 — beta7 `26A5421a` — much quieter, but the emitter mix changed too
+
+Measured on the 2026-08-27 13:39:10 boot, three days into the build (beta7 was installed
+**2026-08-24 23:33** per `InstallHistory.plist` — the Aug 21 mtime on the system files is the
+image build date, not the install date). Raw counts and the capture caveats are in
+[`baselines/beta7-26A5421a/`](../baselines/beta7-26A5421a/README.md).
+
+**219** `fpSupport_GetVideoRange` records in the 8-minute post-boot window, against beta5's
+**1,744** in its own 8-minute window — a ~8× drop on the same measurement.
+
+That looks like an improvement and is **not claimed as one**, because the emitters are not the
+same set:
+
+| | beta5 `26A5406e` (8 min) | **beta7 `26A5421a`** (whole 1 h 50 m session) |
+|---|---|---|
+| | DingTalk 1,338 | WeType 1,095 |
+| | WeType 263 | DingTalk 978 |
+| | Mail 136 | Raycast 358 |
+| | | DuoUpdater 78, textunderstandingd 15, Mail 11 |
+
+The trigger is app-dependent — this issue's own root-cause section attributes it to WebKit-hosting
+apps — so a lower count under a different app mix measures the app mix, not the OS. WeType and
+DingTalk swapped ranks, and Raycast and DuoUpdater are new emitters that were not in the beta5
+tally at all. Settling this needs the same apps running, which was not controlled here.
+
+2026-08-27 beta7 复测:开机后 8 分钟窗口 **219** 条,对比 beta5 同样窗口的 **1,744** 条,降了约 8 倍。
+**但不据此判定改善** —— 发射方构成变了:beta5 是 DingTalk 1,338 / WeType 263 / Mail 136,
+本次(整段 1 小时 50 分)是 WeType 1,095 / DingTalk 978 / Raycast 358 / DuoUpdater 78 …
+Raycast 和 DuoUpdater 在 beta5 的统计里根本不存在。触发与 app 相关,app 组合没控住,这个数就只测到了 app 组合。
