@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | 🔴 **still reproducing on beta6 `26A5416b`** (2026-08-19) — the loop's rate signature is **unchanged from beta5**: `SecTrustCopyAppleTrustAnchors` **33.1/s** mean (beta5 ~32.5), **476** `UNIX error exception: 5` per 60 s (beta5 468), **6,504** lines/60 s (beta5 7,519), CPU **12.7%** mean over 8 windows (beta5 16.4%). Not fixed and not further mitigated. See [the beta6 re-measurement](#re-measurement-2026-08-19--beta6-26a5416b--rate-signature-unchanged). Prior: 🔴 **still reproducing on beta5 `26A5406e`, at roughly half the beta4 rate on every axis** (2026-08-11, 5 replicates on a quiesced desktop via [`tools/eco-replicate.sh`](../tools/eco-replicate.sh)) — CPU **16.4%** (min 13.9, max 17.2, sd 1.3) against beta4's 26–57%; `SecTrustCopyAppleTrustAnchors` **~32.5/s** against ~68–85/s; **7,519** lines/60 s against 15,885; **468** `UNIX error exception: 5` against 1,227. The failing-and-retrying shape is unchanged, so this is **mitigation, not a fix**. **Not yet re-tested on beta6 `26A5416b`.** Prior: 🔴 Open · confirmed on beta4 |
+| **Status** | 🔴 **still reproducing on beta7 `26A5421a`, rate signature unchanged from beta6** (2026-08-27) — **33.1 / 32.5 / 32.5** anchors/s, **468–477** `UNIX error exception: 5` per 60 s, CPU **13.1%** mean (beta6: 33.1/s, 476 EIO, 12.7%). ⚠️ Effectively **n=2** — the flush-boundary artefact the script's header claims was fixed recurred, reps 2 and 3 byte-identical — and the machine was **not quiesced**, so the CPU column is not a matched comparison; the anchors/s and EIO columns are load-insensitive and carry the verdict. See *Re-measurement 2026-08-27* below. Prior: 🔴 **still reproducing on beta6 `26A5416b`** (2026-08-19) — the loop's rate signature is **unchanged from beta5**: `SecTrustCopyAppleTrustAnchors` **33.1/s** mean (beta5 ~32.5), **476** `UNIX error exception: 5` per 60 s (beta5 468), **6,504** lines/60 s (beta5 7,519), CPU **12.7%** mean over 8 windows (beta5 16.4%). Not fixed and not further mitigated. See [the beta6 re-measurement](#re-measurement-2026-08-19--beta6-26a5416b--rate-signature-unchanged). Prior: 🔴 **still reproducing on beta5 `26A5406e`, at roughly half the beta4 rate on every axis** (2026-08-11, 5 replicates on a quiesced desktop via [`tools/eco-replicate.sh`](../tools/eco-replicate.sh)) — CPU **16.4%** (min 13.9, max 17.2, sd 1.3) against beta4's 26–57%; `SecTrustCopyAppleTrustAnchors` **~32.5/s** against ~68–85/s; **7,519** lines/60 s against 15,885; **468** `UNIX error exception: 5` against 1,227. The failing-and-retrying shape is unchanged, so this is **mitigation, not a fix**. **Not yet re-tested on beta6 `26A5416b`.** Prior: 🔴 Open · confirmed on beta4 |
 | **macOS** | 27.0 beta4 `26A5388g` |
 | **Component** | Apple **`ecosystemd`** (`Ecosystem.framework`) ↔ **Security / `trustd`** |
 | **Hardware** | `Mac15,11`, M3 Max, 36 GB |
@@ -127,3 +127,41 @@ comparison is sound in direction but the beta5 side has no spread attached to it
 15 个应用,**不作为改善主张**。另修复了测量脚本自身的缺陷:`log show --last Ns` 会落在日志缓冲的刷新边界上,
 连续调用返回相同区段;改用 `--start/--end` 后各窗口正常独立变动。这也意味着 beta5 那一行的日志列是**一次**
 采样而非五次。
+
+## Re-measurement 2026-08-27 — beta7 `26A5421a` — unchanged from beta6 to three significant figures
+
+Measured on the 2026-08-27 13:39:10 boot, three days into the build (beta7 was installed
+**2026-08-24 23:33** per `InstallHistory.plist` — the Aug 21 mtime on the system files is the
+image build date, not the install date). Raw counts and the capture caveats are in
+[`baselines/beta7-26A5421a/`](../baselines/beta7-26A5421a/README.md).
+
+[`tools/eco-replicate.sh`](../tools/eco-replicate.sh), `REPS=3 WIN=60`, 15:33–15:36:
+
+| rep | eco % | anchors/s | lines/60s | EIO |
+|---|---|---|---|---|
+| 1 | 13.5 | 33.1 | 6,859 | 477 |
+| 2 | 12.9 | 32.5 | 6,739 | 468 |
+| 3 | 12.8 | 32.5 | 6,739 | 468 |
+
+Mean CPU **13.1%** (min 12.8, max 13.5, sd 0.3). Against beta6's **33.1/s, 476 EIO, 6,504
+lines/60 s, 12.7% mean over 8 windows** this is the same loop at the same rate. Not fixed, not
+further mitigated.
+
+⚠️ **Two caveats that make this weaker than the beta6 run, both stated because they cut the
+other way from the conclusion.** (1) **Effectively n=2**: reps 2 and 3 returned byte-identical
+triples (6,739 / 468 / 32.5), which is the flush-boundary artefact this script's own header
+claims was fixed by pinning `--start`/`--end`. It recurred, so that fix is not sufficient and the
+header is now optimistic. (2) The machine was **not quiesced** — 25 `/Applications` bundles
+running, load average ~6–8, against beta6's deliberately idle desktop. Per the script's own
+reading guide the anchors/s and EIO columns are not load-sensitive and carry the verdict; the CPU
+column is, so 13.1% is not a matched comparison with 12.7%.
+
+Separately, the post-boot window shows **72,829 anchors in 8 minutes (152/s)** — that is a boot
+burst, roughly 4.6× the steady state, and is *not* the loop's rate. Anyone re-checking this
+issue from a post-boot capture will overstate it by that factor.
+
+2026-08-27 beta7 复测:**速率签名与 beta6 逐项相同**(33.1/32.5 anchors/s、468–477 EIO、
+CPU 均值 13.1% vs beta6 的 12.7%),未修复也未进一步缓解。两个削弱本次结论的前提如实记录:
+rep2/rep3 三个数字**逐字相同**,是脚本头部声称已修好的 flush-boundary 假象**复发**,故实际 n=2;
+且本次机器**未静默**(25 个 app 在跑,load ~6–8),CPU 列不可与 beta6 直接对比,anchors/s 与 EIO 可以。
+另:开机后 8 分钟窗口测得 152/s,是开机爆发而非稳态,约为稳态的 4.6 倍 —— 用 post-boot 窗口复查本条会高估。
