@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | 🟡 **still present on beta6 `26A5416b`, and measured worse** (2026-08-19): peak **864 lines/s** against beta5's 181, 16,203 lines in the 7m47s post-boot window, all three peak seconds within ~60 s of boot. Same window shape as the beta5 figure, so comparable — but **one window, not replicated, and not a verdict**. See [the beta6 section](#re-test-2026-08-19--beta6-26a5416b--peak-rate-4.8x-beta5s-one-window). Prior: 🟡 Mitigated — self-settles post-boot; ⚪ not reproduced in a beta3 `26A5378j` window (post-boot transient) |
+| **Status** | 🟡 **still present on beta7 `26A5421a` and higher again** (2026-08-27) — **30,699** records in the 8-minute post-boot window against beta6's 16,203 in 7m47s; peak **1,795 lines/s** counting all levels, **1,306** counting `Df` only, against beta6's 864 and beta5's 181. ⚠️ Beta6's figure was recorded without its log-level scope and the two scopes differ by **34%**, so which pair is like-for-like is undecided; and this is still **one window, not replicated, not a verdict** — a caveat now carried unaddressed for two builds. See *Re-test 2026-08-27* below. Prior: 🟡 **still present on beta6 `26A5416b`, and measured worse** (2026-08-19): peak **864 lines/s** against beta5's 181, 16,203 lines in the 7m47s post-boot window, all three peak seconds within ~60 s of boot. Same window shape as the beta5 figure, so comparable — but **one window, not replicated, and not a verdict**. See [the beta6 section](#re-test-2026-08-19--beta6-26a5416b--peak-rate-4.8x-beta5s-one-window). Prior: 🟡 Mitigated — self-settles post-boot; ⚪ not reproduced in a beta3 `26A5378j` window (post-boot transient) |
 | **macOS** | 27.0 beta2 `26A5368g` |
 | **Component** | Apple **Shortcuts / App Intents** (`com.apple.shortcuts`), `siriactionsd`, `BackgroundShortcutRunner` |
 | **Report** | Apple Feedback: `FB________` *(to be filed)* |
@@ -85,3 +85,39 @@ another reboot — the post-boot window is one-shot. Raw log archived outside th
 2026-08-19 在 beta5→beta6 升级后的首启窗口复测:峰值 **864 行/秒**(beta5 为 181),7分47秒内
 16,203 行,三个峰值秒都在开机 60 秒内 —— 形状不变,只是峰值高了 4.8 倍。**单窗口未复现,不作结论**;
 复现需要再次重启,首启窗口是一次性的。
+
+## Re-test 2026-08-27 — beta7 `26A5421a` — higher again, and still one unreplicated window
+
+Measured on the 2026-08-27 13:39:10 boot, three days into the build (beta7 was installed
+**2026-08-24 23:33** per `InstallHistory.plist` — the Aug 21 mtime on the system files is the
+image build date, not the install date). Raw counts and the capture caveats are in
+[`baselines/beta7-26A5421a/`](../baselines/beta7-26A5421a/README.md).
+
+`BackgroundShortcutRunner` + `siriactionsd` in the 8-minute post-boot window:
+
+| | beta5 `26A5406e` | beta6 `26A5416b` | **beta7 `26A5421a`** |
+|---|---|---|---|
+| records in the post-boot window | — | 16,203 (7m47s) | **30,699** (8m00s) |
+| peak lines/s | 181 | 864 | **1,795** (all levels) / **1,306** (`Df` only) |
+
+Peak seconds cluster the same way as before — 13:40:30 (+80 s from boot), 13:39:55, 13:40:22–24
+— plus a second smaller bump at 13:46:30–58.
+
+⚠️ **Which pair is the like-for-like comparison is not currently decidable.** Beta6's 16,203 and
+864 were recorded without noting their log-level scope, and this build's number differs by 34%
+depending on that choice (`Df` only 20,265 vs all levels 30,699). Both are given here and in
+[`baselines/beta7-26A5421a/postboot-window.txt`](../baselines/beta7-26A5421a/postboot-window.txt)
+so the next comparison can pick a scope and stick to it. ⚠️ Still **one window, not replicated,
+not a verdict** — the same caveat the beta6 entry carries, and it has now gone un-addressed for
+two builds running.
+
+**A counting trap worth recording**, because the wrong number was entirely plausible: an anchored
+`grep -E '^\S+ \S+ \S+ (BackgroundShortcutRunner|siriactionsd)\['` returns **only the `Df`
+rows**, because compact style pads a one-character type field (`A `, `E `, `F `) to two columns
+and a double space follows it. That undercounted this window by 34%. Split the process field with
+awk instead.
+
+2026-08-27 beta7 复测:**又升高了** —— 开机后 8 分钟窗口 30,699 条(beta6 为 7m47s 内 16,203),
+峰值 **1,795 行/秒**(全等级)或 1,306(仅 `Df`),对应 beta6 的 864、beta5 的 181。
+⚠️ 但**哪一对才是同口径比较,目前判不了**:beta6 那两个数当时没记录日志等级范围,而本次两种口径相差 34%。
+两个数都留在这里,下次比较时先定口径。⚠️ 仍是**单窗口、未复现、不构成结论** —— 这条 caveat 已经连续两个 build 没被处理。
