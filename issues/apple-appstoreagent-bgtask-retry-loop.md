@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | ⚪ Not reproduced in beta3 `26A5378j` window (conditional trigger); confirmed beta2 |
+| **Status** | ⚪ **still not triggered on beta7 `26A5421a`** (2026-08-27) — **0** `BGSystemTaskSchedulerErrorDomain Code=8` in the 8-minute post-boot window, making beta3, beta5, beta6 and beta7 all clean. The trigger is conditional and was last actually seen on **beta2**. Four clean windows across four builds are grounds to consider closing this as *cannot reproduce* — they are **not** a positive signal and must not be written up as 🟢. See *Retest on beta7* below. Prior: ⚪ Not reproduced in beta3 `26A5378j` window (conditional trigger); confirmed beta2 |
 | **macOS** | confirmed 27.0 beta2 `26A5368g`; not observed in a beta3 `26A5378j` window |
 | **Component** | Apple **appstoreagent** + **dasd** (DuetActivityScheduler) / BGTaskScheduler, around **App Store / Apple Arcade AppUsage** reporting |
 | **Report** | Apple Feedback: **`FB23413997`** (filed 2026-06-26, App Store → Incorrect/Unexpected Behavior; sysdiagnose + log capture attached) |
@@ -48,3 +48,24 @@ Checked explicitly: `appstoreagent`'s log has **no** `nw_`/CFNetwork/timeout/TLS
 ## Retest on beta3 `26A5378j` (2026-07-07) — not reproduced this window / 本窗口未复现
 
 Since the beta3 boot (07:53, ~2.5 h): **0** `appstoreagent` log lines, **0** `BGSystemTaskSchedulerErrorDomain Code=8`, **0** `usage-summary` mentions. So the retry-loop is **not currently running**. Caveat: this bug is **conditional** — it fires when `appstoreagent` actually tries to schedule the Arcade usage-summary BG task and gets rejected. That trigger simply didn't occur in this window, so this is **"not reproduced," not "confirmed fixed."** To settle it, force the Arcade summary path (or watch across a longer span that includes one of its scheduling attempts) and recheck for `Code=8`.
+
+## Retest on beta7 `26A5421a` (2026-08-27) — still not triggered
+
+Measured on the 2026-08-27 13:39:10 boot, three days into the build (beta7 was installed
+**2026-08-24 23:33** per `InstallHistory.plist` — the Aug 21 mtime on the system files is the
+image build date, not the install date). Raw counts and the capture caveats are in
+[`baselines/beta7-26A5421a/`](../baselines/beta7-26A5421a/README.md).
+
+**0** `BGSystemTaskSchedulerErrorDomain Code=8`, **0** `appstoreagent` scheduling failures in the
+8-minute post-boot window. That now makes beta3, beta5, beta6 and beta7 all clean.
+
+This remains **"not reproduced," not "fixed"** — the trigger is conditional (appstoreagent has to
+actually attempt the Arcade usage-summary background task and be rejected), and it has simply not
+attempted one in any observed window since beta2. Four clean windows across four builds is worth
+recording as a reason to consider closing this as *cannot reproduce*, but it is not a positive
+signal and must not be written up as 🟢.
+
+2026-08-27 beta7 复测:开机后 8 分钟窗口 `BGSystemTaskSchedulerErrorDomain Code=8` **0 条**。
+beta3、beta5、beta6、beta7 四个 build 全部干净 —— 但触发条件是**条件性**的(要 appstoreagent 真的去调度
+Arcade 用量汇总任务并被拒),自 beta2 后就没再触发过。这是 **"未复现" 而非 "已修复"**,
+可以据此考虑按 *cannot reproduce* 关闭,但**不能标 🟢**。
