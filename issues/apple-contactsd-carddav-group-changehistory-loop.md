@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | 🔴 **still reproducing on beta6 `26A5416b`** (2026-08-19) — the backlog **crossed the upgrade intact and kept growing**: 90,209 → **91,030** rows, all 12 sources carried over, every non-zero one up, **none reset**, which rules out the "the upgrade rebuilt the stores and cleared it" false positive. Worst source 27,202 → **27,388**. Log volume unchanged (~214k lines/h). See [the beta6 section](#re-verification-2026-08-19--beta6-26a5416b--the-backlog-crossed-the-upgrade). Prior: 🔴 Open · **filed with Apple as [FB24264605](https://feedbackassistant.apple.com/feedback/24264605)** (2026-08-11) · confirmed on `26A5378n`, `26A5388g` and **`26A5406e` (beta5)** — and **still accumulating**: 53,686 → **76,366** unconsumed rows between beta3 and beta5 (+42%). See [beta5 re-verification](#re-verification-2026-08-11--beta5-26a5406e--still-growing-and-two-findings-the-original-write-up-missed) |
+| **Status** | 🔴 **the backlog crossed a second upgrade on beta7 `26A5421a`** (2026-08-27) — 91,030 → **98,489** unconsumed rows, worst source 27,388 → **29,289**, **all 12 sources carried over and none reset**, which rules out the "the upgrade rebuilt the stores" false positive for a second time. Log volume ~214k → **~343k lines/h** in the matched 8-minute post-boot window. ⚠️ The backlog readings themselves are **not** a matched pair (beta6 at T+9m, beta7 at T+1h56m), so the +7,459 delta is not a rate. See *Re-verification 2026-08-27* below. Prior: 🔴 **still reproducing on beta6 `26A5416b`** (2026-08-19) — the backlog **crossed the upgrade intact and kept growing**: 90,209 → **91,030** rows, all 12 sources carried over, every non-zero one up, **none reset**, which rules out the "the upgrade rebuilt the stores and cleared it" false positive. Worst source 27,202 → **27,388**. Log volume unchanged (~214k lines/h). See [the beta6 section](#re-verification-2026-08-19--beta6-26a5416b--the-backlog-crossed-the-upgrade). Prior: 🔴 Open · **filed with Apple as [FB24264605](https://feedbackassistant.apple.com/feedback/24264605)** (2026-08-11) · confirmed on `26A5378n`, `26A5388g` and **`26A5406e` (beta5)** — and **still accumulating**: 53,686 → **76,366** unconsumed rows between beta3 and beta5 (+42%). See [beta5 re-verification](#re-verification-2026-08-11--beta5-26a5406e--still-growing-and-two-findings-the-original-write-up-missed) |
 | **macOS** | 27.0 beta3 revision **`26A5378n`** (first measured 2026-07-16; not yet tested on earlier builds) |
 | **Component** | Apple **contactsd** `3837.100.1` (`/System/Library/Frameworks/Contacts.framework/Support/contactsd`) + **AddressBookManager** (`com.apple.AddressBook.abd`) + Contacts change-history (`_CNCDChangeHistoryResultIncrementalSyncQuery`) |
 | **Hardware** | MacBook Pro `Mac15,11`, M3 Max, 36 GB |
@@ -228,3 +228,33 @@ Per-source detail: `baselines/beta6-26A5416b/contactsd-backlog.txt`.
 2026-08-19 升级到 beta6 后第 9 分钟复验:积压**完好跨过升级并继续增长**(90,209 → 91,030),
 12 个 source 全部沿用、非零的每一个都在涨、**没有任何一个被清零**。这正是要在升级后立刻取数的原因 ——
 若升级重建了 Contacts store,计数会归零、看起来像修好了。日志量也没变(~214k 行/小时)。
+
+## Re-verification 2026-08-27 — beta7 `26A5421a` — the backlog crossed a second upgrade
+
+Measured on the 2026-08-27 13:39:10 boot, three days into the build (beta7 was installed
+**2026-08-24 23:33** per `InstallHistory.plist` — the Aug 21 mtime on the system files is the
+image build date, not the install date). Raw counts and the capture caveats are in
+[`baselines/beta7-26A5421a/`](../baselines/beta7-26A5421a/README.md).
+
+| | beta3 | beta5 08-11 | beta5 08-18 | beta6 08-19 | **beta7 08-27** |
+|---|---|---|---|---|---|
+| unconsumed group-change rows | 53,686 | 76,366 | 90,209 | 91,030 | **98,489** |
+| worst single source | 17,918 | 23,849 | 27,202 | 27,388 | **29,289** |
+
+**All 12 sources carried over, every non-zero one increased, none reset** — the same check that
+ruled out "the upgrade rebuilt the stores" on beta6, now passed a second time across a second
+upgrade. Log volume is up as well: **45,697 contactsd records in the 8-minute post-boot window
+(~343k/h)** against beta6's 27,809 (~214k/h).
+
+⚠️ **Not a matched pair.** The beta6 reading was taken at T+9m after that build's first boot; this
+one is T+1h56m, three days into the build. The backlog is monotonic between resets so the growth
+direction is safe, but the two numbers are not the same clock position and the ~+7,459 delta
+should not be read as a rate. The log-volume comparison *is* matched — both are the 8-minute
+post-boot window.
+
+Per-source detail: [`baselines/beta7-26A5421a/contactsd-backlog.txt`](../baselines/beta7-26A5421a/contactsd-backlog.txt).
+
+2026-08-27 beta7 复验:积压**再次完好跨过一次升级**(91,030 → **98,489**),12 个 source 全部沿用、
+非零的每一个都在涨、**没有任何一个被清零**;日志量也从 ~214k 行/小时升到 ~343k 行/小时(同为开机后
+8 分钟窗口,可比)。⚠️ 但积压数本身**不是配对读数**:beta6 取于该 build 首次开机后 9 分钟,本次取于
+开机后 1 小时 56 分、且已是该 build 的第三天,所以 +7,459 这个差值**不能当作增长速率**读。
