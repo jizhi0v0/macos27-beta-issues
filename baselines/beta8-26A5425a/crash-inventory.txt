@@ -1,0 +1,26 @@
+=== beta8 26A5425a — crash/spin/hang reports since the build was installed ===
+taken:   2026-09-03 10:30 +0800
+scope:   ~/Library/Logs/DiagnosticReports + /Library/Logs/DiagnosticReports,
+         AND ~/Library/Logs/DiagnosticReports/Retired (reports move there and a
+         count that skips Retired reads low -- see the counting note in README)
+filter:  -newermt 2026-09-02  (build installed 2026-09-02 04:57)
+
+  5  ExcUserFault_textunderstandingd
+  3  ExcUserFault_nsattributedstringagent
+  1  watch...
+  0  in Retired
+
+NOT PRESENT, i.e. no recurrence of any logged crash issue:
+  #5  OrbStack / AttributeGraph
+  #6  Chrome / MediaRemote Now-Playing
+  #8  Codex Dock-tile recursion
+  #10 WeChat (MAS) launch crash
+  #16 modelmanagerd EXC_BREAKPOINT
+  #17 ViewBridge NSRemoteView uncaught ObjC exception
+
+⚠️ ONE DAY OF EXPOSURE. Several of these are launch- or interaction-triggered and
+   nothing in this period exercised their triggers deliberately. This is "no
+   regression observed", not "the fixes are re-verified on beta8".
+
+Neither textunderstandingd nor nsattributedstringagent has an entry in this log.
+Both are new on this build. Not investigated.

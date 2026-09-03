@@ -1,0 +1,26 @@
+=== #18 contactsd backlog on beta8 26A5425a ===
+taken: 2026-09-03 10:24 +0800  (T+21h29m after the 2026-09-02 12:55:26 boot;
+       the build itself was installed 2026-09-02 04:57 per InstallHistory.plist)
+NOTE: not a post-boot reading, and not matched to beta6's T+9m or beta7's T+1h56m.
+      The backlog is monotonic between resets, so the growth comparison holds,
+      but the delta is NOT a rate and must not be read as one.
+beta3 53,686 -> beta5 08-11 76,366 -> beta5 08-18 90,209 -> beta6 91,030
+      -> beta7 98,489 -> now:
+
+  14028166-A347-4393-A26E-34060814D045        12791
+  16EF8EE6-B4EF-4539-BB56-E822E1ED8444            0
+  387349B6-8964-466B-936B-7C2B6987F6FE        12626
+  40AC609A-77C9-4543-93C2-8A788B9679ED        30471
+  50E9CB89-9D54-4BF5-9C72-3620AB23A2F1        12579
+  74CA3725-47AC-4550-9D84-B78F0DA5C174            0
+  7DCF9FE2-62D6-43AE-A309-C3C65E3BD0A7            0
+  93C7BA0C-984A-464E-889A-6E750BF27199        12551
+  A4BF394D-F41F-440E-88B7-B5AF35779108            0
+  A78AD44D-26D2-4CE3-A945-41D4E0E7A12B        12597
+  B5146F88-A00F-4882-823C-56A47886E8A4            0
+  C22F8DA4-D902-4EDF-BB4B-CA69994F566B         9063
+
+  TOTAL: 102678      12 sources, 7 non-zero, every non-zero one up, NONE reset.
+
+query: select count(*) from ACHANGE where ZENTITY=19;  per Sources/<uuid>/AddressBook-v22.abcddb
+       opened as file:<db>?immutable=1 so the live WAL is not touched.

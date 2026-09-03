@@ -1,0 +1,109 @@
+=== beta8 26A5425a — 10-minute STEADY-STATE window (NOT a post-boot window) ===
+build installed: 2026-09-02 04:57:15  (/Library/Receipts/InstallHistory.plist)
+boot:            2026-09-02 12:55:26  (kern.boottime)
+window:          2026-09-03 10:15:25 -> 10:25:25, exactly 10m00s  = T+21h20m
+records in window: 863,851   (~5.2M lines/h machine-wide)
+
+⚠️ NOT COMPARABLE TO beta6/beta7 ON THE POST-BOOT AXIS. Those were 8-minute
+   windows taken at T+9m and T+0 respectively. Every count here is steady state
+   at T+21h. Where a beta7 number is quoted below it is quoted as context, not
+   as a matched pair. The one thing this window IS good for: it shows the
+   loops still running long after any boot burst could explain them.
+
+CAPTURE METHOD: /usr/bin/log show --last 10m --style compact
+  ( `log` is a zsh builtin; a bare `log show` through a pipe returns nothing,
+    which reads exactly like "the loop stopped". Always /usr/bin/log. )
+  Process attribution uses awk field-split, NOT an anchored regex:
+    awk '{p=$4; sub(/\[.*/,"",p); if(p=="NAME") ...}'
+  because compact style pads one-character type fields ("A ", "E ", "F ") to two
+  columns -- the beta7 capture lost 34% of #2 to that.
+
+--- #18 contactsd log volume ---
+contactsd records in window: 45,728  (process-pinned)  ~274k/h
+  cross-check with --predicate 'process == "contactsd"': 46,094 -- agrees.
+  (beta7: 45,697 in its 8-min post-boot window ~343k/h; beta6 ~214k/h)
+subsystem mix, which is where the composition finally became visible:
+  33,971 com.apple.xpc:connection
+   5,216 com.apple.contacts.contactsd:connections
+     158 com.apple.contacts:api-triage
+     132 com.apple.contacts:PersistentStoreBuilder
+      18 com.apple.contacts.carddav:plugin
+"Could not fetch group for change type" in window: 1,537 across ALL processes,
+  top emitters AddressBookSourceSync 120 / SafariPlatformSupport.Helper 117 /
+  photoanalysisd 107 / studentd 106 / postersyncd 102 / gamed 93 / Mail 84.
+  Same fan-out shape documented on beta5; contactsd itself is not the emitter.
+
+--- #19 imagent x ContactsAccountsService ---
+imagent records naming the service, in window: 1,586
+profile: /System/Library/Sandbox/Profiles/com.apple.imagent.sb
+  lines:      404   (beta6: 404, beta7: 404)
+  mentions of ContactsAccountsService: 0   (beta6: 0, beta7: 0)
+  sibling profiles that DO name it: 26   (beta6: 26, beta7: 26)
+
+--- #23 ecosystemd ---
+SecTrustCopyAppleTrustAnchors, process-pinned to ecosystemd: 19,998 = 33.3/s
+  -- which matches the eco-replicate.sh steady-state reps (32.9 / 38.2 / 32.7),
+  so at T+21h this is the loop's own rate, not a boot burst (beta7's post-boot
+  window showed 152/s purely from the burst).
+
+⚠️ NEW, AND NOT YET A CONCLUSION: the same message unpinned returns 47,887, and
+   the emitter breakdown is
+       20,721 ecosystemanalyticsd
+       19,998 ecosystemd
+        2,734 amfid
+        2,060 tccd
+          568 syspolicyd
+   ecosystemanalyticsd emits MORE anchor calls than ecosystemd does. It has never
+   been counted in this issue. Whether it is a second participant in the same
+   retry loop or an independent caller is UNTESTED -- it needs its own pinned
+   measurement before anything is claimed. Recorded here so it is not lost.
+
+--- #2 Shortcuts/Siri ToolKit storm ---
+BackgroundShortcutRunner + siriactionsd records in window: 15,672
+  by level:  Df 10,652 | A 3,391 | E 1,328 | F 300 | Sd 1
+peak per second, all levels: 1,644 @ 10:21:34 | 1,001 @ 10:21:53 | 1,000 @ 10:21:54
+  (beta7 post-boot: 30,699 in 8 min, peak 1,795/s; beta6: 16,203 in 7m47s, peak 864/s)
+The point of this reading is NOT the total -- it is that the storm is running at
+T+21h with a peak second within 9% of beta7's post-boot peak. The write-up's
+"fires post-boot then self-settles" reading does not hold on this build.
+
+--- #1 CoreMedia fpSupport_GetVideoRange ---
+in-window records: 54  (~324/h)
+emitters: Mail 20 / DingTalk 16 / DuoUpdater 12 / textunderstandingd 6
+  (beta7 post-boot window: 219. beta5: 1,744 in 8 min.)
+The app mix changed AGAIN -- WeType and Raycast, beta7's two biggest emitters,
+are absent. The trigger is app-dependent, so this measures the app mix, not the
+OS, exactly as on beta7. NOT creditable as a fix.
+
+--- #24 mds CoreDuet ---
+mds records in window: 2,659; of those naming CoreDuet: 2,205 = 3.7/s
+  idle band is ~2/s, storm is ~2420/s. Not storming during this window.
+  The issue is bursty by construction; one window decides nothing.
+
+--- #25 corebrightnessd ---
+separate query, --info --debug, --predicate 'process == "corebrightnessd"', last 5m:
+  23 lines, 0 containing `nan`   (beta5 comparable window: 2,357 lines / 1,031 nan)
+Already classified as a ramp, not a defect. Recorded for completeness only.
+
+--- #15 appstoreagent BGSystemTaskSchedulerErrorDomain Code=8 ---
+in window: 0   (beta3/5/6/7/8 all clean; conditional trigger, last seen beta2)
+
+--- CPU, 120s cumulative utime+stime deltas ---
+⚠️ MACHINE NOT QUIESCED: load average 27 / 14 / 9, ~34 /Applications bundles up.
+   Read these as upper bounds, not as matched comparisons.
+  WindowServer          46.3%   (uncontrolled window count -- see the ws-* tools;
+                                 this is NOT decision-grade for #3 and no verdict
+                                 on #3 is recorded this round)
+  ecosystemd            12.4%
+  trustd                 4.3%
+  ecosystemanalyticsd    2.6%
+  contactsd              0.0%   <-- 0.0% while emitting 45,728 lines/10m. The log
+                                 volume and the CPU cost have decoupled since the
+                                 20.2% recorded on beta5. Unexplained; flagged.
+  NotificationCenter     0.0%   (#29 -- see below)
+  MenuBarAgent           1.1%   (#12 fix appears to hold, but not a quiesced read)
+  ControlCenter          1.9%
+
+--- #29 NotificationCenter ---
+0.0% over both a 30s and a 120s sample. The spin is intermittent and has to be
+caught live; absence here is NOT evidence of a fix.
