@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | 🔴 **the backlog crossed a second upgrade on beta7 `26A5421a`** (2026-08-27) — 91,030 → **98,489** unconsumed rows, worst source 27,388 → **29,289**, **all 12 sources carried over and none reset**, which rules out the "the upgrade rebuilt the stores" false positive for a second time. Log volume ~214k → **~343k lines/h** in the matched 8-minute post-boot window. ⚠️ The backlog readings themselves are **not** a matched pair (beta6 at T+9m, beta7 at T+1h56m), so the +7,459 delta is not a rate. See *Re-verification 2026-08-27* below. Prior: 🔴 **still reproducing on beta6 `26A5416b`** (2026-08-19) — the backlog **crossed the upgrade intact and kept growing**: 90,209 → **91,030** rows, all 12 sources carried over, every non-zero one up, **none reset**, which rules out the "the upgrade rebuilt the stores and cleared it" false positive. Worst source 27,202 → **27,388**. Log volume unchanged (~214k lines/h). See [the beta6 section](#re-verification-2026-08-19--beta6-26a5416b--the-backlog-crossed-the-upgrade). Prior: 🔴 Open · **filed with Apple as [FB24264605](https://feedbackassistant.apple.com/feedback/24264605)** (2026-08-11) · confirmed on `26A5378n`, `26A5388g` and **`26A5406e` (beta5)** — and **still accumulating**: 53,686 → **76,366** unconsumed rows between beta3 and beta5 (+42%). See [beta5 re-verification](#re-verification-2026-08-11--beta5-26a5406e--still-growing-and-two-findings-the-original-write-up-missed) |
+| **Status** | 🔴 **the backlog crossed a *third* upgrade on beta8 `26A5425a`** (2026-09-03) — 98,489 → **102,678** unconsumed rows, worst source 29,289 → **30,471**, all 12 sources carried over, all 7 non-zero ones up, **none reset**, ruling out "the upgrade rebuilt the stores" for a third time. The store has never drained across five OS builds and seven weeks. ⚠️ The three readings sit at T+9m / T+1h56m / T+21h29m, so the +4,189 delta is **not** a rate. New: **33,971 of contactsd's 45,728 records in a 10-minute window are `com.apple.xpc:connection`**, not Contacts traffic — the fan-out is visible as XPC churn. See [`baselines/beta8-26A5425a/`](../baselines/beta8-26A5425a/README.md). Prior: 🔴 **the backlog crossed a second upgrade on beta7 `26A5421a`** (2026-08-27) — 91,030 → **98,489** unconsumed rows, worst source 27,388 → **29,289**, **all 12 sources carried over and none reset**, which rules out the "the upgrade rebuilt the stores" false positive for a second time. Log volume ~214k → **~343k lines/h** in the matched 8-minute post-boot window. ⚠️ The backlog readings themselves are **not** a matched pair (beta6 at T+9m, beta7 at T+1h56m), so the +7,459 delta is not a rate. See *Re-verification 2026-08-27* below. Prior: 🔴 **still reproducing on beta6 `26A5416b`** (2026-08-19) — the backlog **crossed the upgrade intact and kept growing**: 90,209 → **91,030** rows, all 12 sources carried over, every non-zero one up, **none reset**, which rules out the "the upgrade rebuilt the stores and cleared it" false positive. Worst source 27,202 → **27,388**. Log volume unchanged (~214k lines/h). See [the beta6 section](#re-verification-2026-08-19--beta6-26a5416b--the-backlog-crossed-the-upgrade). Prior: 🔴 Open · **filed with Apple as [FB24264605](https://feedbackassistant.apple.com/feedback/24264605)** (2026-08-11) · confirmed on `26A5378n`, `26A5388g` and **`26A5406e` (beta5)** — and **still accumulating**: 53,686 → **76,366** unconsumed rows between beta3 and beta5 (+42%). See [beta5 re-verification](#re-verification-2026-08-11--beta5-26a5406e--still-growing-and-two-findings-the-original-write-up-missed) |
 | **macOS** | 27.0 beta3 revision **`26A5378n`** (first measured 2026-07-16; not yet tested on earlier builds) |
 | **Component** | Apple **contactsd** `3837.100.1` (`/System/Library/Frameworks/Contacts.framework/Support/contactsd`) + **AddressBookManager** (`com.apple.AddressBook.abd`) + Contacts change-history (`_CNCDChangeHistoryResultIncrementalSyncQuery`) |
 | **Hardware** | MacBook Pro `Mac15,11`, M3 Max, 36 GB |
@@ -258,3 +258,60 @@ Per-source detail: [`baselines/beta7-26A5421a/contactsd-backlog.txt`](../baselin
 非零的每一个都在涨、**没有任何一个被清零**;日志量也从 ~214k 行/小时升到 ~343k 行/小时(同为开机后
 8 分钟窗口,可比)。⚠️ 但积压数本身**不是配对读数**:beta6 取于该 build 首次开机后 9 分钟,本次取于
 开机后 1 小时 56 分、且已是该 build 的第三天,所以 +7,459 这个差值**不能当作增长速率**读。
+
+## Re-verification 2026-09-03 — beta8 `26A5425a` — the backlog crossed a third upgrade
+
+> **Clock position, because it decides what these numbers can be compared to.** beta8
+> `26A5425a` was installed **2026-09-02 04:57:15** (`InstallHistory.plist`). Every figure below
+> was taken at **T+21h20m** on the 2026-09-02 12:55:26 boot — a **steady-state** window, not the
+> post-boot window beta6 (T+9m) and beta7 (T+0→8m) used. Log *volumes* are therefore **not**
+> matched pairs with those builds and are not presented as such. Kernel unchanged for a third
+> beta: `xnu-13432.1.9~3`. Raw capture: [`baselines/beta8-26A5425a/`](../baselines/beta8-26A5425a/README.md).
+
+| | beta3 | beta5 08-11 | beta5 08-18 | beta6 08-19 | beta7 08-27 | **beta8 09-03** |
+|---|---|---|---|---|---|---|
+| unconsumed group-change rows | 53,686 | 76,366 | 90,209 | 91,030 | 98,489 | **102,678** |
+| worst single source | 17,918 | 23,849 | 27,202 | 27,388 | 29,289 | **30,471** |
+
+**All 12 sources carried over, all 7 non-zero ones up, none reset** — the check that ruled out
+"the upgrade rebuilt the stores and cleared it" on beta6 and again on beta7, now passed a third
+time. The store has never once drained, across five OS builds and seven weeks.
+
+⚠️ **Not a rate.** The three readings sit at T+9m, T+1h56m and T+21h29m. The +4,189 delta is a
+difference between two clock positions, nothing more.
+
+### New: the log volume is mostly XPC, not Contacts traffic
+
+45,728 `contactsd` records in the 10-minute window (~274k/h; a `--predicate 'process ==
+"contactsd"'` cross-check agrees at 46,094). Broken out by subsystem, which had never been done:
+
+| subsystem | records / 10 min |
+|---|---|
+| `com.apple.xpc:connection` | **33,971** |
+| `com.apple.contacts.contactsd:connections` | 5,216 |
+| `com.apple.contacts:api-triage` | 158 |
+| `com.apple.contacts:PersistentStoreBuilder` | 132 |
+| `com.apple.contacts.carddav:plugin` | 18 |
+
+Three quarters of the volume is XPC connection churn. That is consistent with — and a better
+handle on — the 109-client rebroadcast fan-out already described here than the raw line count
+was. The fan-out itself reproduces unchanged: `Could not fetch group for change type` appears
+1,537 times in the window across ~30 client processes (AddressBookSourceSync 120,
+`SafariPlatformSupport.Helper` 117, photoanalysisd 107, studentd 106, postersyncd 102, gamed 93,
+Mail 84), with `contactsd` itself far down the list — exactly the attribution correction recorded
+in the beta5 method note.
+
+⚠️ **Flagged, unexplained:** `contactsd` measured **0.0%** CPU over a 120-second cumulative
+utime+stime sample while emitting those 45,728 records, against the **20.2%** recorded on beta5.
+Both sides were cross-checked (the predicate-pinned line count agrees; the CPU figure is a
+cumulative delta, not `ps %cpu`, which is the trap `tools/eco-replicate.sh` documents). Either
+the loop became cheap or one of the two measurements no longer means what it did on beta5. No
+explanation is offered here.
+
+2026-09-03 beta8 复测:积压**完好跨过第三次升级**(98,489 → **102,678**,最严重 source 29,289 →
+**30,471**),12 个 source 全部沿用、7 个非零的全在涨、**没有一个被清零** —— 第三次排除"升级重建了
+store"这一伪阳性。⚠️ 三次读数分别在 T+9m / T+1h56m / T+21h29m,+4,189 **不是速率**。
+**新发现**:10 分钟内 45,728 条 contactsd 记录里,**33,971 条是 `com.apple.xpc:connection`**,
+不是 Contacts 流量 —— 扇出是以 XPC 连接抖动的形式体现的,这比原先的行数是更好的抓手。
+⚠️ **存疑并记录**:contactsd 在发出这 45,728 行的同时,120 秒累计 CPU 增量测得 **0.0%**,
+而 beta5 上是 20.2%。两侧都做了交叉验证,暂无解释。
