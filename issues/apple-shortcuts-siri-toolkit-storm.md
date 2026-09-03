@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | 🟡 **still present on beta7 `26A5421a` and higher again** (2026-08-27) — **30,699** records in the 8-minute post-boot window against beta6's 16,203 in 7m47s; peak **1,795 lines/s** counting all levels, **1,306** counting `Df` only, against beta6's 864 and beta5's 181. ⚠️ Beta6's figure was recorded without its log-level scope and the two scopes differ by **34%**, so which pair is like-for-like is undecided; and this is still **one window, not replicated, not a verdict** — a caveat now carried unaddressed for two builds. See *Re-test 2026-08-27* below. Prior: 🟡 **still present on beta6 `26A5416b`, and measured worse** (2026-08-19): peak **864 lines/s** against beta5's 181, 16,203 lines in the 7m47s post-boot window, all three peak seconds within ~60 s of boot. Same window shape as the beta5 figure, so comparable — but **one window, not replicated, and not a verdict**. See [the beta6 section](#re-test-2026-08-19--beta6-26a5416b--peak-rate-4.8x-beta5s-one-window). Prior: 🟡 Mitigated — self-settles post-boot; ⚪ not reproduced in a beta3 `26A5378j` window (post-boot transient) |
+| **Status** | 🟡 **still storming at T+21h on beta8 `26A5425a`, so it does not self-settle** (2026-09-03) — 15,672 records in a 10-minute steady-state window, peak **1,644 lines/s**. The totals are not comparable to beta7's (different window length and clock position) but the peak second is, and it lands within **9%** of beta7's 1,795/s — which was measured *inside* the boot burst. The standing reading carried since beta2, *"fires post-boot then self-settles"*, **does not hold on this build**. Prior: 🟡 **still present on beta7 `26A5421a` and higher again** (2026-08-27) — **30,699** records in the 8-minute post-boot window against beta6's 16,203 in 7m47s; peak **1,795 lines/s** counting all levels, **1,306** counting `Df` only, against beta6's 864 and beta5's 181. ⚠️ Beta6's figure was recorded without its log-level scope and the two scopes differ by **34%**, so which pair is like-for-like is undecided; and this is still **one window, not replicated, not a verdict** — a caveat now carried unaddressed for two builds. See *Re-test 2026-08-27* below. Prior: 🟡 **still present on beta6 `26A5416b`, and measured worse** (2026-08-19): peak **864 lines/s** against beta5's 181, 16,203 lines in the 7m47s post-boot window, all three peak seconds within ~60 s of boot. Same window shape as the beta5 figure, so comparable — but **one window, not replicated, and not a verdict**. See [the beta6 section](#re-test-2026-08-19--beta6-26a5416b--peak-rate-4.8x-beta5s-one-window). Prior: 🟡 Mitigated — self-settles post-boot; ⚪ not reproduced in a beta3 `26A5378j` window (post-boot transient) |
 | **macOS** | 27.0 beta2 `26A5368g` |
 | **Component** | Apple **Shortcuts / App Intents** (`com.apple.shortcuts`), `siriactionsd`, `BackgroundShortcutRunner` |
 | **Report** | Apple Feedback: `FB________` *(to be filed)* |
@@ -121,3 +121,39 @@ awk instead.
 峰值 **1,795 行/秒**(全等级)或 1,306(仅 `Df`),对应 beta6 的 864、beta5 的 181。
 ⚠️ 但**哪一对才是同口径比较,目前判不了**:beta6 那两个数当时没记录日志等级范围,而本次两种口径相差 34%。
 两个数都留在这里,下次比较时先定口径。⚠️ 仍是**单窗口、未复现、不构成结论** —— 这条 caveat 已经连续两个 build 没被处理。
+
+## Re-verification 2026-09-03 — beta8 `26A5425a` — running at T+21h, so it does not self-settle
+
+> **Clock position, because it decides what these numbers can be compared to.** beta8
+> `26A5425a` was installed **2026-09-02 04:57:15** (`InstallHistory.plist`). Every figure below
+> was taken at **T+21h20m** on the 2026-09-02 12:55:26 boot — a **steady-state** window, not the
+> post-boot window beta6 (T+9m) and beta7 (T+0→8m) used. Log *volumes* are therefore **not**
+> matched pairs with those builds and are not presented as such. Kernel unchanged for a third
+> beta: `xnu-13432.1.9~3`. Raw capture: [`baselines/beta8-26A5425a/`](../baselines/beta8-26A5425a/README.md).
+
+`BackgroundShortcutRunner` + `siriactionsd` records in the 10-minute window: **15,672**
+(`Df` 10,652 · `A` 3,391 · `E` 1,328 · `F` 300 · `Sd` 1). Peak per second, all levels:
+
+| rate | at |
+|---|---|
+| **1,644** | 10:21:34 |
+| 1,001 | 10:21:53 |
+| 1,000 | 10:21:54 |
+
+**The total is not the finding, and is not comparable** — 10 minutes of steady state against
+beta7's 8 minutes of post-boot. **The peak second is comparable**, and it lands within **9%** of
+beta7's 1,795/s — a figure measured *inside* the boot burst, where this one is 21 hours away from
+any boot.
+
+That falsifies the reading this write-up has carried since the beta2 retest — *"storm fires
+post-boot then self-settles"*. On beta8 it is still at near-post-boot peak rate a full day in.
+Peak rate is the better discriminator here precisely because it survives the window mismatch that
+makes the volumes incomparable.
+
+Counted with the awk field-split (`{p=$4; sub(/\[.*/,"",p)}`), not an anchored regex — the
+beta7 capture lost 34% of this issue's records to the padded one-character type field.
+
+2026-09-03 beta8 复测:10 分钟稳态窗口内 **15,672** 条,峰值 **1,644 行/秒**。总量与 beta7 的
+30,699 **不可比**(窗长与时钟位置都不同),但**峰值可比** —— 距 beta7 在开机爆发期内测得的 1,795/s
+只差 **9%**,而本次已距开机 21 小时。这推翻了本条自 beta2 起沿用的判断:**"开机后爆发、随后自行平息"
+在 beta8 上不成立**。
