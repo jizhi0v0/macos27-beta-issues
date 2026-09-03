@@ -7,7 +7,7 @@
 
 | | |
 |---|---|
-| **Status** | 🔴 **Open, not yet filed.** First captured with a live, symbolicated stuck stack on 2026-08-22. Caught by chance while investigating a live report of the spinning-wait-cursor ("beachball") symptom — this is the first time this investigation has had a CPU/stack signature for a notification-adjacent hang, rather than only `usernoted` log-line counts |
+| **Status** | 🔴 **Open — not caught on beta8 `26A5425a`** (2026-09-03) — 0.0% CPU over both a 30 s and a 120 s sample. The spin is intermittent and has to be caught live, so **absence here is not evidence of a fix**. Prior: 🔴 **Open, not yet filed.** First captured with a live, symbolicated stuck stack on 2026-08-22. Caught by chance while investigating a live report of the spinning-wait-cursor ("beachball") symptom — this is the first time this investigation has had a CPU/stack signature for a notification-adjacent hang, rather than only `usernoted` log-line counts |
 | **macOS** | 27.0 beta6 `26A5416b` |
 | **Component** | Apple `NotificationCenter.app` (`com.apple.notificationcenterui` 1.0, build `1674.0.7.0.400`) — AppKit/SwiftUI interop, specifically `SwiftUI`'s `FocusBridge` / `KeyViewProxyCache` |
 | **Hardware** | MacBook Pro `Mac15,11`, M3 Max |
@@ -97,3 +97,30 @@ WindowServer ran elevated the whole time (24–99% across the 15-minute poll, no
 4. Does this reproduce on macOS 26.6? Untested.
 5. Would it ever have self-recovered past 33 minutes? Unknown — it was killed rather than observed further, on the reporter's call, to restore usability.
 6. Relationship to #27 open question 3 ("is #26 and #27 the same root cause seen through two presentations?") — this capture adds a plausible **third** presentation (SwiftUI focus-chain hang) to that same family of "something about banners breaks", but with a CPU signature strong enough that it should probably be treated as independent until shown otherwise.
+
+## Re-verification 2026-09-03 — beta8 `26A5425a` — not caught; absence is not evidence
+
+> **Clock position, because it decides what these numbers can be compared to.** beta8
+> `26A5425a` was installed **2026-09-02 04:57:15** (`InstallHistory.plist`). Every figure below
+> was taken at **T+21h20m** on the 2026-09-02 12:55:26 boot — a **steady-state** window, not the
+> post-boot window beta6 (T+9m) and beta7 (T+0→8m) used. Log *volumes* are therefore **not**
+> matched pairs with those builds and are not presented as such. Kernel unchanged for a third
+> beta: `xnu-13432.1.9~3`. Raw capture: [`baselines/beta8-26A5425a/`](../baselines/beta8-26A5425a/README.md).
+
+`NotificationCenter` measured **0.0%** CPU over both a 30-second and a 120-second cumulative
+utime+stime sample (not `ps %cpu`, which decays and has reported 0.0% for a process provably
+burning 12%). It emitted 5,030 log records in the 10-minute window, i.e. it was alive and
+working, simply not spinning.
+
+**This is not a fix signal and the status stays 🔴.** The spin was originally caught live and
+identified by two captures 90 seconds apart showing the *identical* stuck stack
+(`FocusBridge.updateDefaultKeyViewLoop()`); it is intermittent, and a sample taken at an
+arbitrary moment says nothing about whether the state can still be entered. Closing it needs
+either a positive signal (a period of use that provably would have triggered it before) or a
+source-level argument — not a quiet sample.
+
+2026-09-03 beta8 复测:两次采样(30 秒与 120 秒累计 utime+stime 增量,**不是** `ps %cpu` ——
+后者是衰减平均,曾对实际烧 12% 的进程报 0.0%)均为 **0.0%**;同期它在 10 分钟窗口内发出 5,030 条日志,
+说明进程活着、只是没在空转。**这不是修复信号,状态维持 🔴** —— 该 spin 本就是间歇性的,
+当初是抓现行、靠相隔 90 秒的两次采样拿到**完全相同**的卡住栈才定位的。要关闭它需要正向信号或源码级论证,
+而不是一次安静的采样。
