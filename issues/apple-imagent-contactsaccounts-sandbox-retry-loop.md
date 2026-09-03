@@ -224,9 +224,10 @@ binary diff ceases to exist anywhere. Binary-level follow-up on this issue there
 reachable points: **beta5** and **beta8**. beta8's side was archived 2026-09-03 to
 `~/Developer/macos27-beta8-binary-archive/` (82 files, 6.55 GiB) and **verified by `shasum -a 256`
 against the live source — all 82 identical**, which was necessary because `cp -Rp` exits 1 on this
-tree (it cannot reproduce the SIP flags; content is unaffected). ⚠️ Copy the cache **before** the
-beta9 upgrade. `sandbox-profiles/` — the direct input to this issue — was **not** archived this
-round, though the beta5 archive has it.
+tree (it cannot reproduce the SIP flags; content is unaffected). `sandbox-profiles/` — the direct input to this
+issue — is archived alongside it, 552 files, verified the same way, and this section's three
+numbers reproduce from that copy alone with no live system needed. ⚠️ Copy both **before** the
+beta9 upgrade.
 
 2026-09-03 beta8 复测:沙盒 profile **一字未动** —— 仍 404 行、仍 0 处 `ContactsAccountsService`、
 仍是 26 个提到它的同级 profile 中的唯一例外,与 beta6/beta7 三个数字完全一致。窗口内 1,586 条

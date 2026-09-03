@@ -170,6 +170,9 @@ that archive's `meta/build-facts.txt`.
 ⚠️ **Copy the cache BEFORE the beta9 upgrade.** Afterwards the beta8 side is
 unrecoverable, exactly as beta6's and beta7's now are.
 
-Not archived this round, and present in the beta5 archive: `sandbox-profiles/`
-(`/System/Library/Sandbox/Profiles`, the direct input to **#19**) and
-`diagnostic-reports/`.
+`sandbox-profiles/` is archived too — `/System/Library/Sandbox/Profiles`, 552
+files, verified identically (all 552 hashes match the live source). It is the
+direct input to **#19**, and that issue's three numbers reproduce from the
+archive alone: `com.apple.imagent.sb` is 404 lines, has 0 mentions of
+`ContactsAccountsService`, and 26 sibling profiles do name it. Only
+`diagnostic-reports/` from the beta5 archive has no counterpart here.
