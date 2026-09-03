@@ -147,9 +147,29 @@ utime+stime, not `ps %cpu`). No explanation is offered here — it is flagged
 because either the loop got cheap or one of the two measurements means something
 other than what it did on beta5.
 
-## ⚠️ Archive gap
+## Archive gap — partly closed
 
-**No `dyld_shared_cache` was archived before this upgrade.** Only
-`~/Developer/macos27-beta5-binary-archive/` exists, so #17's and #19's binary
-diffs can now only compare beta8 against **beta5** — the beta6 and beta7 sides
-are gone for good. Copy the cache *before* the beta9 upgrade.
+**The beta6 and beta7 `dyld_shared_cache`s were never archived and are gone for
+good.** Nothing recovers them: the cache only exists on the running system, so
+once a build is replaced its side of any binary diff ceases to exist anywhere.
+#17's and #19's binary comparisons therefore have exactly two reachable points,
+beta5 and beta8.
+
+**beta8's side is now archived**, 2026-09-03:
+`~/Developer/macos27-beta8-binary-archive/` — 82 files, 6.55 GiB, mirroring the
+layout of `~/Developer/macos27-beta5-binary-archive/`.
+
+It is **verified**, not merely copied: `shasum -a 256` was run over both the live
+source and the copy and the two sorted lists are identical for all 82 files.
+That check matters here because `cp -Rp` **exits 1** on this tree — it cannot
+reproduce the SIP flags, so every file logs a `chflags` failure. The beta5
+archive shows the same `exit=1` and was never verified this way, so its exit
+code alone never established anything. Provenance and the exact commands are in
+that archive's `meta/build-facts.txt`.
+
+⚠️ **Copy the cache BEFORE the beta9 upgrade.** Afterwards the beta8 side is
+unrecoverable, exactly as beta6's and beta7's now are.
+
+Not archived this round, and present in the beta5 archive: `sandbox-profiles/`
+(`/System/Library/Sandbox/Profiles`, the direct input to **#19**) and
+`diagnostic-reports/`.

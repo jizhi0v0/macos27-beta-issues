@@ -218,9 +218,15 @@ grep -lF ContactsAccountsService /System/Library/Sandbox/Profiles/*.sb | wc -l
 1,586 `imagent` records naming the service in the 10-minute window. The profile is still the
 outlier against its 26 siblings and the one-line fix has still not been applied.
 
-⚠️ **Archive gap.** No `dyld_shared_cache` was copied before this upgrade — only
-`~/Developer/macos27-beta5-binary-archive/` exists — so any binary-level follow-up on this issue
-can now only compare beta8 against **beta5**. The beta6 and beta7 sides are gone.
+**Archive gap, partly closed.** The beta6 and beta7 `dyld_shared_cache`s were never copied and
+are unrecoverable — the cache exists only on the running system, so a replaced build's side of any
+binary diff ceases to exist anywhere. Binary-level follow-up on this issue therefore has two
+reachable points: **beta5** and **beta8**. beta8's side was archived 2026-09-03 to
+`~/Developer/macos27-beta8-binary-archive/` (82 files, 6.55 GiB) and **verified by `shasum -a 256`
+against the live source — all 82 identical**, which was necessary because `cp -Rp` exits 1 on this
+tree (it cannot reproduce the SIP flags; content is unaffected). ⚠️ Copy the cache **before** the
+beta9 upgrade. `sandbox-profiles/` — the direct input to this issue — was **not** archived this
+round, though the beta5 archive has it.
 
 2026-09-03 beta8 复测:沙盒 profile **一字未动** —— 仍 404 行、仍 0 处 `ContactsAccountsService`、
 仍是 26 个提到它的同级 profile 中的唯一例外,与 beta6/beta7 三个数字完全一致。窗口内 1,586 条
