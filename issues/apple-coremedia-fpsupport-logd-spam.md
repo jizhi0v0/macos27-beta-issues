@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | 🟡 **much quieter on beta7 `26A5421a` — but not creditable as a fix** (2026-08-27). **219** `fpSupport_GetVideoRange` records in the 8-minute post-boot window against beta5's **1,744** in its own 8-minute window, a ~8× drop. The emitter set changed too, though: WeType 1,095 / DingTalk 978 / Raycast 358 / DuoUpdater 78 across the session, against beta5's DingTalk 1,338 / WeType 263 / Mail 136 — Raycast and DuoUpdater are new emitters absent from the beta5 tally. The trigger is app-dependent and the app mix was **not controlled**, so this measures the app mix, not the OS. See *Retest 2026-08-27* below. Prior: 🟡 Mitigated (workaround) — present in beta1 **and** beta2; ⚪ not reproduced in a beta3 `26A5378j` window (conditional trigger) |
+| **Status** | 🟡 **quiet again on beta8 `26A5425a`, and still not creditable as a fix** (2026-09-03) — **54** records in a 10-minute window (~324/h), emitters Mail 20 / DingTalk 16 / DuoUpdater 12 / textunderstandingd 6. WeType and Raycast, beta7's two largest emitters, are **absent**. The trigger is app-dependent, so a lower count under a changed app mix measures the app mix, not the OS — the same non-verdict as beta7. Prior: 🟡 **much quieter on beta7 `26A5421a` — but not creditable as a fix** (2026-08-27). **219** `fpSupport_GetVideoRange` records in the 8-minute post-boot window against beta5's **1,744** in its own 8-minute window, a ~8× drop. The emitter set changed too, though: WeType 1,095 / DingTalk 978 / Raycast 358 / DuoUpdater 78 across the session, against beta5's DingTalk 1,338 / WeType 263 / Mail 136 — Raycast and DuoUpdater are new emitters absent from the beta5 tally. The trigger is app-dependent and the app mix was **not controlled**, so this measures the app mix, not the OS. See *Retest 2026-08-27* below. Prior: 🟡 Mitigated (workaround) — present in beta1 **and** beta2; ⚪ not reproduced in a beta3 `26A5378j` window (conditional trigger) |
 | **macOS** | 27.0 beta2 `26A5368g` (also beta1 `26A5353q`) |
 | **Component** | Apple **MediaToolbox / CoreMedia** (`com.apple.coremedia`) |
 | **Hardware** | MacBook Pro `Mac15,11`, M3 Max, single built-in Liquid Retina XDR display |
@@ -118,3 +118,32 @@ tally at all. Settling this needs the same apps running, which was not controlle
 **但不据此判定改善** —— 发射方构成变了:beta5 是 DingTalk 1,338 / WeType 263 / Mail 136,
 本次(整段 1 小时 50 分)是 WeType 1,095 / DingTalk 978 / Raycast 358 / DuoUpdater 78 …
 Raycast 和 DuoUpdater 在 beta5 的统计里根本不存在。触发与 app 相关,app 组合没控住,这个数就只测到了 app 组合。
+
+## Re-verification 2026-09-03 — beta8 `26A5425a` — quiet again, still not creditable as a fix
+
+> **Clock position, because it decides what these numbers can be compared to.** beta8
+> `26A5425a` was installed **2026-09-02 04:57:15** (`InstallHistory.plist`). Every figure below
+> was taken at **T+21h20m** on the 2026-09-02 12:55:26 boot — a **steady-state** window, not the
+> post-boot window beta6 (T+9m) and beta7 (T+0→8m) used. Log *volumes* are therefore **not**
+> matched pairs with those builds and are not presented as such. Kernel unchanged for a third
+> beta: `xnu-13432.1.9~3`. Raw capture: [`baselines/beta8-26A5425a/`](../baselines/beta8-26A5425a/README.md).
+
+**54** records in the 10-minute window (~324/h). Emitters:
+
+| process | records |
+|---|---|
+| Mail | 20 |
+| DingTalk | 16 |
+| DuoUpdater | 12 |
+| textunderstandingd | 6 |
+
+**WeType (1,095) and Raycast (358), beta7's two largest emitters, are absent entirely.** The
+trigger is app-dependent, so a lower count under a changed app mix measures the app mix, not the
+OS — the identical reason beta7's 8× drop was not credited. Until the app set is controlled
+(the same discipline `tools/ws-idle-baseline.sh` imposes for #3), this issue cannot be closed on
+a count.
+
+2026-09-03 beta8 复测:10 分钟 **54** 条(~324/小时),发出者为 Mail 20 / DingTalk 16 /
+DuoUpdater 12 / textunderstandingd 6。**beta7 的两个头号发出者 WeType 与 Raycast 这次完全没有出现**。
+触发条件依赖 app,因此在 app 组合变化的前提下计数下降**衡量的是 app 组合而非 OS** —— 与 beta7
+不予采信的理由完全相同。app 集合未受控之前,本条不能靠计数关闭。
