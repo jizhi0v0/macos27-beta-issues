@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | 🔴 **unchanged at the source level on beta7 `26A5421a`** (2026-08-27) — `com.apple.imagent.sb` is still **404 lines** with **0** mentions of `ContactsAccountsService`, still the outlier against the **26** sibling profiles that name it; **3,096** imagent records naming the service in the 8-minute post-boot window (beta6: 2,383). The profile's Aug 21 mtime is the OS image build date, not evidence it was touched. See *Re-check 2026-08-27* below. Prior: 🔴 **unchanged at the source level on beta6 `26A5416b`** (2026-08-19) — `com.apple.imagent.sb` is still **404 lines** and still the outlier against the **26** sibling profiles that name the service, both re-verified on beta6; the one-line fix was not applied. 2,383 `ContactsAccountsService` lines in the post-boot window. See [the beta6 section](#re-check-2026-08-19--beta6-26a5416b--the-profile-is-unchanged). Prior: 🔴 Open · confirmed on `26A5378n` (live — still looping while this was written) |
+| **Status** | 🔴 **unchanged for a third build on beta8 `26A5425a`** (2026-09-03) — `com.apple.imagent.sb` still **404 lines**, still **0** mentions of `ContactsAccountsService`, still the outlier against the **26** sibling profiles that do name it. Identical to beta6 and beta7 on all three numbers; 1,586 imagent records naming the service in a 10-minute window. The one-line fix was not applied. Prior: 🔴 **unchanged at the source level on beta7 `26A5421a`** (2026-08-27) — `com.apple.imagent.sb` is still **404 lines** with **0** mentions of `ContactsAccountsService`, still the outlier against the **26** sibling profiles that name it; **3,096** imagent records naming the service in the 8-minute post-boot window (beta6: 2,383). The profile's Aug 21 mtime is the OS image build date, not evidence it was touched. See *Re-check 2026-08-27* below. Prior: 🔴 **unchanged at the source level on beta6 `26A5416b`** (2026-08-19) — `com.apple.imagent.sb` is still **404 lines** and still the outlier against the **26** sibling profiles that name the service, both re-verified on beta6; the one-line fix was not applied. 2,383 `ContactsAccountsService` lines in the post-boot window. See [the beta6 section](#re-check-2026-08-19--beta6-26a5416b--the-profile-is-unchanged). Prior: 🔴 Open · confirmed on `26A5378n` (live — still looping while this was written) |
 | **macOS** | 27.0 beta3 revision **`26A5378n`** (measured 2026-07-16; not tested on earlier builds) |
 | **Component** | Apple **imagent** `10.0` (1000) (`/System/Library/PrivateFrameworks/IMCore.framework/imagent.app`) ↔ **ContactsAccountsService** / Contacts `PersistentStoreBuilder` |
 | **Hardware** | MacBook Pro `Mac15,11`, M3 Max, 36 GB |
@@ -191,3 +191,37 @@ date; it is not evidence that the file was touched for beta7.
 2026-08-27 beta7 复查:**源头一字未改** —— `com.apple.imagent.sb` 仍 404 行、仍 **0** 处提及
 `ContactsAccountsService`,仍是 **26** 个兄弟 profile 中的唯一例外;开机后 8 分钟窗口里 imagent 相关
 记录 **3,096** 条(beta6 为 2,383)。那一行修复没有落地。
+
+## Re-verification 2026-09-03 — beta8 `26A5425a` — unchanged for a third build
+
+> **Clock position, because it decides what these numbers can be compared to.** beta8
+> `26A5425a` was installed **2026-09-02 04:57:15** (`InstallHistory.plist`). Every figure below
+> was taken at **T+21h20m** on the 2026-09-02 12:55:26 boot — a **steady-state** window, not the
+> post-boot window beta6 (T+9m) and beta7 (T+0→8m) used. Log *volumes* are therefore **not**
+> matched pairs with those builds and are not presented as such. Kernel unchanged for a third
+> beta: `xnu-13432.1.9~3`. Raw capture: [`baselines/beta8-26A5425a/`](../baselines/beta8-26A5425a/README.md).
+
+| | beta6 `26A5416b` | beta7 `26A5421a` | **beta8 `26A5425a`** |
+|---|---|---|---|
+| `com.apple.imagent.sb` lines | 404 | 404 | **404** |
+| mentions of `ContactsAccountsService` | 0 | 0 | **0** |
+| sibling profiles that *do* name it | 26 | 26 | **26** |
+
+Verifiable in three commands, as before:
+
+```
+wc -l /System/Library/Sandbox/Profiles/com.apple.imagent.sb
+grep -c ContactsAccountsService /System/Library/Sandbox/Profiles/com.apple.imagent.sb
+grep -lF ContactsAccountsService /System/Library/Sandbox/Profiles/*.sb | wc -l
+```
+
+1,586 `imagent` records naming the service in the 10-minute window. The profile is still the
+outlier against its 26 siblings and the one-line fix has still not been applied.
+
+⚠️ **Archive gap.** No `dyld_shared_cache` was copied before this upgrade — only
+`~/Developer/macos27-beta5-binary-archive/` exists — so any binary-level follow-up on this issue
+can now only compare beta8 against **beta5**. The beta6 and beta7 sides are gone.
+
+2026-09-03 beta8 复测:沙盒 profile **一字未动** —— 仍 404 行、仍 0 处 `ContactsAccountsService`、
+仍是 26 个提到它的同级 profile 中的唯一例外,与 beta6/beta7 三个数字完全一致。窗口内 1,586 条
+imagent 记录点名该服务。⚠️ 升级前**没有归档 dyld shared cache**,今后二进制比对只能对到 beta5。
