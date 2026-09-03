@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | ⚪ **still not a defect on beta6 `26A5416b`** (2026-08-19) — the mechanism re-verified as a **ramp**, exactly as this file concluded: `headroom` climbs ~0.00077 per frame from 1 toward its `potential headroom` of 16, one step every ~8.3 ms at 120 Hz, a full traversal taking ~2.7 min, while `sdr` and `ambient lux` stay constant. **But two numbers changed and one was never measured** — see [the beta6 re-measurement](#re-measurement-2026-08-19--beta6-26a5416b--frequency-up-4-5x-cost-bounded). Prior: ⚪ **Resolved 2026-08-13 — not a defect.** `nan` is an unset-field sentinel; the one permanently-`nan` field (`indicator brightness`) needs the dedicated silicon of [MacBook Neo / A18 Pro](https://support.apple.com/guide/security/mac-on-screen-camera-indicator-light-sec75a2d237d/web), which this Mac does not have (`IOMFBSupportsSecureIndicator = No`). The title's "~116 Hz toggle" is a brightness ramp. See the two 2026-08-13 sections at the bottom. No Feedback filed |
+| **Status** | ⚪ **near-silent on beta8 `26A5425a`** (2026-09-03) — 23 lines / **0** `nan` in a 5-minute `--info --debug` window (a comparable beta5 window held 2,357 lines / 1,031 `nan`). Recorded for completeness; the classification is unchanged, this was already assessed as a ramp rather than a defect. Prior: ⚪ **still not a defect on beta6 `26A5416b`** (2026-08-19) — the mechanism re-verified as a **ramp**, exactly as this file concluded: `headroom` climbs ~0.00077 per frame from 1 toward its `potential headroom` of 16, one step every ~8.3 ms at 120 Hz, a full traversal taking ~2.7 min, while `sdr` and `ambient lux` stay constant. **But two numbers changed and one was never measured** — see [the beta6 re-measurement](#re-measurement-2026-08-19--beta6-26a5416b--frequency-up-4-5x-cost-bounded). Prior: ⚪ **Resolved 2026-08-13 — not a defect.** `nan` is an unset-field sentinel; the one permanently-`nan` field (`indicator brightness`) needs the dedicated silicon of [MacBook Neo / A18 Pro](https://support.apple.com/guide/security/mac-on-screen-camera-indicator-light-sec75a2d237d/web), which this Mac does not have (`IOMFBSupportsSecureIndicator = No`). The title's "~116 Hz toggle" is a brightness ramp. See the two 2026-08-13 sections at the bottom. No Feedback filed |
 | **macOS** | 27.0 beta4 `26A5388g` |
 | **Component** | Apple **CoreBrightness** (`corebrightnessd`) → **QuartzCore** (`com.apple.coreanimation:Brightness`) |
 | **Hardware** | `Mac15,11`, M3 Max, built-in Liquid Retina XDR, 120 Hz, **Auto-Brightness ON** |
@@ -269,3 +269,32 @@ grows again.
 的更正是对的。变的是**频率** —— 有亮度行的秒数占比从 beta5 的 7% 升到 **33%**(30 分钟窗口 124,737 行)。
 另外第一次量了**代价**:配对采样下爆发比安静高约 **5 个点**(不是当天早些时候那个 20 点的估计,该估计已撤回 ——
 那两次单跑之间真正的差异更可能是 `killall Finder` 后桌面重建)。⚪ 维持。
+
+## Re-verification 2026-09-03 — beta8 `26A5425a` — near-silent, classification unchanged
+
+> **Clock position, because it decides what these numbers can be compared to.** beta8
+> `26A5425a` was installed **2026-09-02 04:57:15** (`InstallHistory.plist`). Every figure below
+> was taken at **T+21h20m** on the 2026-09-02 12:55:26 boot — a **steady-state** window, not the
+> post-boot window beta6 (T+9m) and beta7 (T+0→8m) used. Log *volumes* are therefore **not**
+> matched pairs with those builds and are not presented as such. Kernel unchanged for a third
+> beta: `xnu-13432.1.9~3`. Raw capture: [`baselines/beta8-26A5425a/`](../baselines/beta8-26A5425a/README.md).
+
+`log show --last 5m --info --debug --predicate 'process == "corebrightnessd"'`: **23 lines, 0
+containing `nan`**, against a comparable beta5 window's 2,357 lines / 1,031 `nan`.
+
+This is recorded for completeness only and changes nothing. The classification here is already
+⚪ **not a defect** — the mechanism was verified as a ramp (`headroom` +0.00077 per frame toward a
+`potentialHeadroom`), and the `nan` values are a transient of that ramp rather than a fault. A
+quieter window is also fully explained by display state (the `nan` values appear at high
+headroom / HDR content), which was not controlled here.
+
+⚠️ Remember this issue's own capture trap: `--info --debug` records live in an in-memory ring
+buffer and are evicted oldest-first, and `log show` reports the loss as a **smaller plausible
+number rather than an error**. A low count from a re-query is therefore never by itself evidence
+that the emission stopped.
+
+2026-09-03 beta8 复测:5 分钟 `--info --debug` 窗口 **23 行、0 个 `nan`**(beta5 可比窗口为
+2,357 行 / 1,031 个 `nan`)。仅作完整性记录,**不改变结论** —— 本条已判定为 ⚪ 非缺陷(斜坡机制)。
+且本次未控制显示状态(`nan` 出现在高 headroom / HDR 场景),安静窗口本就可由此解释。
+⚠️ 注意本条自己记过的陷阱:`--info --debug` 存于内存环形缓冲,被逐出后 `log show`
+**返回一个更小的、看起来合理的数字而不是报错**,故低计数本身永远不能当作"已停止"的证据。
