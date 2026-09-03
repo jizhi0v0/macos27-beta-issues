@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | 🟡 **bursty; peak rate was badly underestimated, but it does still settle** (twice-corrected 2026-08-12, beta5 `26A5406e`). A 9 h 12 m watcher tripped its 300/s threshold **10 times, all inside one 2 h 23 m burst** (min 302, median 585, **max 5,976 lines/s**), then **0 times in the following 6 h 49 m** — so the original single-window reading (279/s) understated the peak by ~20×, while its "decays and settles" shape held. ⚠️ **Confound, stated plainly:** that burst coincided with heavy local repo/build/download activity, itself a normal Spotlight-indexing trigger, so this may be induced load rather than a defect. **Not re-tested on beta6.** Prior: 🔴 Open · confirmed on beta4 |
+| **Status** | 🟡 **not storming during the beta8 `26A5425a` window** (2026-09-03) — 2,205 CoreDuet records = **3.7/s**, inside the ~2/s idle band (storm is ~2420/s). The issue is bursty by construction, so one window decides nothing — that is why `tools/mds-storm-watch.sh` exists. Not a status change. Prior: 🟡 **bursty; peak rate was badly underestimated, but it does still settle** (twice-corrected 2026-08-12, beta5 `26A5406e`). A 9 h 12 m watcher tripped its 300/s threshold **10 times, all inside one 2 h 23 m burst** (min 302, median 585, **max 5,976 lines/s**), then **0 times in the following 6 h 49 m** — so the original single-window reading (279/s) understated the peak by ~20×, while its "decays and settles" shape held. ⚠️ **Confound, stated plainly:** that burst coincided with heavy local repo/build/download activity, itself a normal Spotlight-indexing trigger, so this may be induced load rather than a defect. **Not re-tested on beta6.** Prior: 🔴 Open · confirmed on beta4 |
 | **macOS** | 27.0 beta4 `26A5388g` |
 | **Component** | Apple **Spotlight / `mds`** (`com.apple.metadata`) ↔ **CoreDuet** (`CoreDuetContext`, `contextstored`) |
 | **Hardware** | `Mac15,11`, M3 Max, 36 GB, single internal display |
@@ -213,3 +213,25 @@ min 302 · median 585 · **max 5,976 lines/s** — versus the ~2,420/s figure re
 **Methodology lesson, twice over.** A bursty phenomenon cannot be characterised from one window — that is how the 279/s peak came about. But a watcher's *aggregate* count is not enough either: ten trips look damning until you notice they are all in one 2.5-hour stretch out of nine hours. Always plot the trips against time before concluding anything about frequency, and check what the machine was doing during them. The companion process costs quoted from the original single window (`mds` 14.0%, `contextstored` 1.7%, 35 `mdworker` processes) remain unrepresentative of the burst, and the burst remains unrepresentative of idle.
 
 (The separate watcher defect noted earlier — probing without `--info --debug`, undercounting CoreDuet lines by ~52% — had already been fixed before these numbers were collected, so it is not an explanation for the discrepancy.)
+
+## Re-verification 2026-09-03 — beta8 `26A5425a` — not storming in this window
+
+> **Clock position, because it decides what these numbers can be compared to.** beta8
+> `26A5425a` was installed **2026-09-02 04:57:15** (`InstallHistory.plist`). Every figure below
+> was taken at **T+21h20m** on the 2026-09-02 12:55:26 boot — a **steady-state** window, not the
+> post-boot window beta6 (T+9m) and beta7 (T+0→8m) used. Log *volumes* are therefore **not**
+> matched pairs with those builds and are not presented as such. Kernel unchanged for a third
+> beta: `xnu-13432.1.9~3`. Raw capture: [`baselines/beta8-26A5425a/`](../baselines/beta8-26A5425a/README.md).
+
+`mds` records in the 10-minute window: 2,659, of which **2,205 name CoreDuet = 3.7/s**. That sits
+in the documented idle band (~2/s); the storm is ~2420/s, three orders of magnitude away.
+
+**This decides nothing.** The whole point of this write-up's own conclusion is that a one-shot
+`log show` is a lottery and the storm has to be caught by threshold — that is what
+`tools/mds-storm-watch.sh` exists for. A quiet window is the expected outcome most of the time
+and is recorded only so the next round knows this one was checked. Status unchanged.
+
+2026-09-03 beta8 复测:10 分钟内 mds 2,659 条,其中 **2,205 条含 CoreDuet = 3.7/s**,处于空闲带
+(~2/s),距风暴的 ~2420/s 差三个数量级。**这不构成任何判断** —— 本条自己的结论就是单次 `log show`
+全靠运气、必须靠阈值抓现行(`tools/mds-storm-watch.sh`)。安静窗口是大多数时候的预期结果,
+此处仅记录"本轮查过"。状态不变。
