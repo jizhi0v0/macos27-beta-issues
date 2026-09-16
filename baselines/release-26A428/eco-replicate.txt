@@ -1,0 +1,26 @@
+=== replicated ecosystemd measurement ===
+build: 27.0 26A428
+reps=3 window=60s  pid=2535
+start: Wed Sep 16 18:19:16 CST 2026
+
+baseline for comparison — beta4 26A5388g:
+  SecTrustCopyAppleTrustAnchors ~68-85/s | 15,885 lines/60s | 1,227 EIO | CPU 26-57%
+
+--- all running /Applications bundles at measurement start ---
+Alcove.app AndDrive.app AweSun.app BaiduNetdisk_mac.app ChatGPT.app Claude.app DingTalk.app DuoShot.app DuoTerminal.app DuoTranslator.app DuoUpdater.app Fork.app Google Chrome.app Keka.app Klack.app Macs Fan Control.app Microsoft Word.app NotchBadge.app OpenCode.app OrbStack.app Parallels Desktop.app Pearcleaner.app RustDesk.app Spotify.app Surge.app Tailscale.app Telegram.app ToDesk.app UURemote.app WeChat.app Xcode.app 
+
+rep      eco%  anchors/s    lines/win      EIO
+1        11.5       35.0         7261      504
+2         9.9       31.3         6509      450
+3        13.7       42.1         8671      603
+
+ecosystemd CPU: mean=11.7%  min=9.9%  max=13.7%  sd=1.6
+
+HOW TO READ:
+  The loop is confirmed still present by the anchors/s and EIO columns
+  regardless of CPU — those are not load-sensitive. CPU is the open
+  question: beta4 recorded 26-57%, and beta5 spot-checks disagreed with
+  each other (12.2% then 4.7%) under heavy load.
+  A tight spread here settles it; a wide one means the state is still
+  uncontrolled and something else is varying.
+done: Wed Sep 16 18:22:55 CST 2026

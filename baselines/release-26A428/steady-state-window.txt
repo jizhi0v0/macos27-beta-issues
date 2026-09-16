@@ -1,0 +1,104 @@
+=== release 27.0 26A428 — 10-minute STEADY-STATE window (NOT a post-boot window) ===
+build installed: 2026-09-11 04:28:46  (/Library/Receipts/InstallHistory.plist)
+boot:            2026-09-16 11:40:46  (kern.boottime)
+window:          2026-09-16 18:09:24.266 -> 18:19:24.244, 10m00s  = T+6h29m
+records in window: 441,832 timestamped records (468,869 lines incl. multi-line continuations)
+kernel:          xnu-13432.1.9~1  (beta6/7/8 all carried xnu-13432.1.9~3)
+
+⚠️ NOT A MATCHED PAIR WITH ANY EARLIER BUILD ON THE VOLUME AXIS. beta6 (T+9m) and
+   beta7 (T+0->8m) were post-boot windows, beta8 was T+21h20m. This one is T+6h29m.
+   Where an earlier number is quoted it is context, not a pair. The machine was NOT
+   quiesced: load average ~12, ~40 /Applications bundles running.
+
+CAPTURE METHOD: /usr/bin/log show --last 10m --style compact   (default level)
+  Process attribution uses awk field-split, NOT an anchored regex:
+    awk '{p=$4; sub(/\[.*/,"",p); if(p=="NAME") ...}'
+  Cross-checks re-run with --start/--end AND a --predicate (a predicate is required,
+  or --end is silently ignored).
+
+--- #29 NotificationCenter ---
+CAUGHT LIVE. See notificationcenter-spin.txt. 100.2% over the 120 s CPU sample below.
+
+--- #18 contactsd ---
+backlog: see contactsd-backlog.txt -- 102,678 -> 110,247, none reset.
+contactsd records in window: 44  (35 com.apple.xpc:connection, 4 contactsd:connections)
+  predicate cross-check ('process == "contactsd"', re-queried ~7 min later): 1
+  The two disagree (44 vs 1) and the gap is not explained here; ring-buffer eviction
+  is the obvious candidate and is UNVERIFIED. Either way both are ~0 against beta8's
+  45,728 (33,971 of them xpc:connection). contactsd's own XPC churn is gone.
+"Could not fetch group for change type" in window: 1,495 across all processes
+  (beta8: 1,537). Top emitters AddressBookSourceSync 108 / gamed 99 / studentd 99 /
+  SafariPlatformSupport.Helper 81 / corespotlightd 76 / FamilySettings 63 /
+  communicationtrustd 63. The client-side fan-out failure is unchanged.
+contactsd CPU: 0.0% over 120 s (beta8 also 0.0%).
+
+--- #19 imagent x ContactsAccountsService ---
+imagent records naming the service, in window: 1,058  (E 794, Df 264)
+  predicate cross-check: 1,058 -- agrees.   (beta8: 1,586)
+profile: /System/Library/Sandbox/Profiles/com.apple.imagent.sb
+  lines:      404   (beta6/7/8: 404)
+  mentions of ContactsAccountsService: 0   (beta6/7/8: 0)
+  sibling profiles that DO name it: 26   (beta6/7/8: 26)
+  cmp against ~/Developer/macos27-beta8-binary-archive/sandbox-profiles: IDENTICAL
+Whole Profiles/ dir vs the beta8 archive: 552 of 552 pre-existing files byte-identical;
+  553 files now, the one addition is
+  com.apple.GenerativeLearningPlatform.GenerativeLearningTestHarness.
+
+--- #23 ecosystemd ---
+SecTrustCopyAppleTrustAnchors, process-pinned to ecosystemd: 19,975 = 33.3/s
+  predicate cross-check: 19,975 -- agrees.   (beta8: 19,998 = 33.3/s)
+unpinned emitters of the same message:
+  19,975 ecosystemd
+  18,377 ecosystemanalyticsd   (beta8: 20,721 -- still untested whether same loop)
+     364 ContextStoreAgent
+     234 Spotify
+     202 launchservicesd
+     118 securityd
+ecosystemd and ecosystemanalyticsd are the #1 and #2 log emitters of the whole
+machine in this window (62,083 and 54,332 records).
+Replicated: see eco-replicate.txt.
+
+--- #2 Shortcuts/Siri ToolKit storm ---
+BackgroundShortcutRunner + siriactionsd records in window: 182 (Df 167 / A 12 / E 3),
+  peak 172/s @ 18:14:37. THIS WINDOW FELL IN A QUIET GAP.
+The since-boot query shows the storm recurring all afternoon: see
+shortcuts-since-boot.txt. The window count alone would have read as "fixed".
+
+--- #1 CoreMedia fpSupport_GetVideoRange ---
+in-window records: 74, all DingTalk.  predicate cross-check (unpinned): 74 -- agrees.
+  (beta8: 54 from Mail/DingTalk/DuoUpdater/textunderstandingd)
+Still app-dependent; app mix still uncontrolled. Not creditable either way.
+
+--- #24 mds CoreDuet ---
+mds records in window: 1,246; of those naming CoreDuet: 1,182 = 2.0/s
+  idle band ~2/s, storm ~2420/s. Not storming. Bursty; one window decides nothing.
+
+--- #15 appstoreagent BGSystemTaskSchedulerErrorDomain Code=8 ---
+in window: 0  (appstoreagent records: 28). beta3/5/6/7/8 + release all clean.
+
+--- #13 Spotlight `insert ranking attr at NSNotFound` ---
+0 -- expected at idle; the line is typing-time only. No typing window taken.
+
+--- #3 WindowServer `Invalid window` ---
+1,854 in window. Window count NOT controlled -> not decision-grade, no verdict.
+
+--- CPU, 120 s cumulative utime+stime deltas, 18:22:06 -> 18:24:06 ---
+⚠️ First attempt produced an EMPTY table: the script ran under zsh, which does not
+   word-split an unquoted $names, so pgrep matched nothing. Re-run under bash.
+⚠️ MACHINE NOT QUIESCED (load ~10, ~40 apps).
+  NotificationCenter   100.2%   <-- #29 spinning, see notificationcenter-spin.txt
+  WindowServer          67.8%   uncontrolled window count AND NotificationCenter pegged;
+                                not decision-grade, no #3 verdict
+  ecosystemd            11.0%
+  coreaudiod             5.7%
+  mds_stores             4.9%
+  trustd                 3.0% (pid 434) / 0.6% (pid 704)
+  ecosystemanalyticsd    2.4%
+  ControlCenter          1.4%
+  usernoted              1.0%
+  logd                   1.0%
+  MenuBarAgent           0.8%   (#12: not a quiesced read)
+  mds                    0.4%
+  corebrightnessd        0.1%
+  dasd                   0.1%
+  contactsd / imagent / siriactionsd / appstoreagent   0.0%

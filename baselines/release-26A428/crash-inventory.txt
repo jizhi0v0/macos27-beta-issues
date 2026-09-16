@@ -1,0 +1,49 @@
+=== release 27.0 26A428 — diagnostic reports since the build was installed ===
+taken:   2026-09-16 18:30 +0800
+scope:   ~/Library/Logs/DiagnosticReports + /Library/Logs/DiagnosticReports,
+         AND ~/Library/Logs/DiagnosticReports/Retired
+filter:  mtime >= 2026-09-11 04:28:46 (install time); .ips parsed as JSON
+         (line 1 = header, rest = payload), os_version read per report
+exposure: 5 days 14 h
+
+.ips os_version: macOS 27.0 (26A428) 153 | macOS 27.0 (26A5425a) 5
+         (the 5 carry the beta8 string but were written after the install)
+in Retired: 0
+
+.ips crash/fault reports, excluding binaries built locally under the user's home
+or /private (90 reports, dev/test executables, not OS or shipped-app crashes):
+  34  swiftpm-testing-helper      (Xcode test runner)
+  10  JetsamEvent                 (bug_type 298, memory-pressure snapshots)
+   8  ExcUserFault_textunderstandingd
+   7  xctest
+   5  ExcUserFault_nsattributedstringagent
+   1  ClaudeUsageMenuBar
+   1  DuoShot
+   1  cmp
+   1  sharingd
+
+Non-.ips resource reports of note (not crashes):
+   1  NotificationCenter  cpu_resource  2026-09-16 18:14-18:15, 97%  -> #29, see notificationcenter-spin.txt
+   2  WindowServer        cpu_resource  2026-09-11 18:05 (61%), 2026-09-16 13:47 (56%)
+                          -> uncontrolled window count, no #3 verdict
+   1  appstoreagent       disk writes   2026-09-14, 2,148 MB over 19.6 h
+                          -> a disk-write report, not #15's Code=8 retry loop
+   3  shutdown_stall
+
+NOT PRESENT, checked against the parsed payload (procName / lastExceptionBacktrace),
+not by filename grep:
+  #5  OrbStack process crash                         0
+  #6  Chrome with MediaRemote in the exception trace 0
+  #8  Codex                                          0
+  #10 WeChat                                         0
+  #16 modelmanagerd                                  0
+      (a plain grep hits modelmanagerd in all 10 JetsamEvent reports -- they list
+       every process; none is a modelmanagerd crash)
+  #17 NSRemoteView in lastExceptionBacktrace         0
+
+⚠️ This is "no recurrence observed in 5.5 days of ordinary use", not "the fixes
+   are re-verified on release". Nothing exercised the triggers deliberately.
+
+textunderstandingd (beta8: 5) and nsattributedstringagent (beta8: 3) are still
+producing ExcUserFault reports on release. Neither has an entry in this log.
+Not investigated.

@@ -1,0 +1,66 @@
+=== #29 NotificationCenter main-thread spin — caught live on release 27.0 26A428 ===
+process: /System/Library/CoreServices/NotificationCenter.app, pid 846,
+         version 1.0 (1674.0.7.0.400), launched 2026-09-16 11:41:32 (boot +46 s)
+
+--- timeline ---
+18:11:02.587  usernoted  Presenting  com.nssurge.surge-mac
+18:11:57.053  usernoted  Presenting  com.lumiunited.pre.homekit
+18:14:19.849  start of the interval the OS cpu_resource report covers (see below)
+18:14:20.092  usernoted  Presenting  com.lumiunited.pre.homekit
+18:14:45.987  usernoted  Presenting  com.anthropic.claudefordesktop
+18:15:52.396  end of that interval; report written 18:15:53
+18:19:20      ps: 10:42.62 user CPU on a 6h39m-old process, %cpu 99.4
+18:21:14      /usr/bin/sample 10 s (below)
+18:22:06-18:24:06  cumulative utime+stime delta: 100.2%
+18:25:04.258  a killall process (pid 45220) logs its first record
+18:25:04.262  every XPC peer logs "client process (pid 846) ... exited"
+18:25:04.274  launchd: service inactive: com.apple.notificationcenterui.agent
+18:26:18      respawned as pid 45221, 0.0%
+
+Spin duration observed: >= 10 min 44 s (18:14:19.8 -> 18:25:04.3), ended by a
+manual killall, no self-recovery within that interval.
+
+Onset attribution: the report's interval start is 0.24 s BEFORE the 18:14:20.092
+Presenting record, so this capture does not by itself pin which notification (if
+any) started it. Reporter's account (2026-09-16): it locks up when a notification
+arrives while the mouse pointer is near where the banner appears. Pointer position
+is not logged at any level used here, so that trigger is RECORDED, NOT VERIFIED.
+
+--- OS-generated report (excerpt; identifiers omitted) ---
+file:   /Library/Logs/DiagnosticReports/NotificationCenter_2026-09-16-181553_*.cpu_resource.diag
+Event:  cpu usage   Action taken: none
+CPU:    90 seconds cpu time over 93 seconds (97% cpu average),
+        exceeding limit of 50% cpu over 180 seconds
+Data Source: Microstackshots, 96 steps
+Heaviest stack (32 steps), leaf end:
+  NSHostingView.layout()
+  ViewGraphRootValueUpdater.render(interval:updateDisplayList:targetTimestamp:)
+  ViewGraph.updateOutputs(at:)
+  NSHostingView.preferencesDidChange()
+  FocusBridge.preferencesDidChange(_:)          32
+  FocusBridge.invalidateKeyViewLoop()           32
+  FocusBridge.updateDefaultKeyViewLoop()        20
+  KeyViewProxyCache.createOrUpdateProxyView(_:) 19
+  KeyViewProxyCache.configureProxy(_:for:)      18
+  KeyViewProxyCache.layoutProxy(_:)              9
+  ResponderNode.firstAncestor<A>(ofType:)        9
+  UnfoldSequence.next()                          5
+Entry into the layout pass is from the run-loop observer:
+  __CFRunLoopDoObservers -> UC::DriverCore::continueProcessing -> stepTransactionFlush
+  -> CA::Transaction::commit -> NSDisplayCycleFlush -> -[NSWindow layoutIfNeeded]
+
+--- /usr/bin/sample NotificationCenter 10 (18:21:14, 1 ms interval) ---
+main thread (com.apple.main-thread): 5,063 samples, of which
+  5,063  FocusBridge.preferencesDidChange(_:)
+  5,063  FocusBridge.invalidateKeyViewLoop()          <- 100% of main-thread samples
+  3,196  FocusBridge.updateDefaultKeyViewLoop()       (+1,589 on a second path)
+  3,164  KeyViewProxyCache.createOrUpdateProxyView(_:)
+  2,708  KeyViewProxyCache.configureProxy(_:for:)
+    902  KeyViewProxyCache.layoutProxy(_:)
+    896  KeyViewProxyCache.rootContainer<A>(for:)
+Top-of-stack is Swift runtime overhead (swift_getEnumCaseMultiPayload,
+RefCounts increment/decrement, tryCastToSwiftClass, objc_msgSend), i.e. the same
+dynamic-cast-per-step responder walk described in the 2026-08-22 capture.
+
+Same function chain as the 2026-08-22 beta capture. The raw .diag and sample
+output are not committed (they carry machine identifiers).
