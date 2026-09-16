@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | 🔴 **rate signature unchanged on beta8 `26A5425a`** (2026-09-03) — **32.9 / 38.2 / 32.7** anchors/s, **474 / 552 / 471** EIO, CPU mean **12.6%** (sd 1.0), against beta7's 33.1/32.5/32.5, 468–477, 13.1%. Better than beta7 in two ways: the three reps are genuinely distinct (beta7's reps 2–3 were byte-identical, an artefact that made it effectively n=2), and an independent 10-minute window agrees at **33.3/s**. ⚠️ **New and untested:** unpinned, the anchors message returns 47,887 for that window, of which **`ecosystemanalyticsd` accounts for 20,721 — more than ecosystemd's 19,998**. That process has never been counted in this issue; whether it is a second participant in the same loop or an unrelated caller is unknown. Not claimed either way. Prior: 🔴 **still reproducing on beta7 `26A5421a`, rate signature unchanged from beta6** (2026-08-27) — **33.1 / 32.5 / 32.5** anchors/s, **468–477** `UNIX error exception: 5` per 60 s, CPU **13.1%** mean (beta6: 33.1/s, 476 EIO, 12.7%). ⚠️ Effectively **n=2** — the flush-boundary artefact the script's header claims was fixed recurred, reps 2 and 3 byte-identical — and the machine was **not quiesced**, so the CPU column is not a matched comparison; the anchors/s and EIO columns are load-insensitive and carry the verdict. See *Re-measurement 2026-08-27* below. Prior: 🔴 **still reproducing on beta6 `26A5416b`** (2026-08-19) — the loop's rate signature is **unchanged from beta5**: `SecTrustCopyAppleTrustAnchors` **33.1/s** mean (beta5 ~32.5), **476** `UNIX error exception: 5` per 60 s (beta5 468), **6,504** lines/60 s (beta5 7,519), CPU **12.7%** mean over 8 windows (beta5 16.4%). Not fixed and not further mitigated. See [the beta6 re-measurement](#re-measurement-2026-08-19--beta6-26a5416b--rate-signature-unchanged). Prior: 🔴 **still reproducing on beta5 `26A5406e`, at roughly half the beta4 rate on every axis** (2026-08-11, 5 replicates on a quiesced desktop via [`tools/eco-replicate.sh`](../tools/eco-replicate.sh)) — CPU **16.4%** (min 13.9, max 17.2, sd 1.3) against beta4's 26–57%; `SecTrustCopyAppleTrustAnchors` **~32.5/s** against ~68–85/s; **7,519** lines/60 s against 15,885; **468** `UNIX error exception: 5` against 1,227. The failing-and-retrying shape is unchanged, so this is **mitigation, not a fix**. **Not yet re-tested on beta6 `26A5416b`.** Prior: 🔴 Open · confirmed on beta4 |
+| **Status** | 🔴 **rate signature unchanged on release `26A428`** (2026-09-16) — **35.0 / 31.3 / 42.1** anchors/s, **504 / 450 / 603** EIO, CPU mean **11.7%** (sd 1.6). The reps spread wider than beta8's, but the independent 10-minute window, predicate-pinned to ecosystemd, gives **19,975 = 33.3/s** against beta8's 19,998 = 33.3/s. `ecosystemanalyticsd` again emits nearly as many anchor calls (**18,377**) and is still untested; the two are the machine's #1 and #2 log emitters. ⚠️ Not quiesced (~40 apps). See [`baselines/release-26A428/`](../baselines/release-26A428/README.md). Prior: 🔴 **rate signature unchanged on beta8 `26A5425a`** (2026-09-03) — **32.9 / 38.2 / 32.7** anchors/s, **474 / 552 / 471** EIO, CPU mean **12.6%** (sd 1.0), against beta7's 33.1/32.5/32.5, 468–477, 13.1%. Better than beta7 in two ways: the three reps are genuinely distinct (beta7's reps 2–3 were byte-identical, an artefact that made it effectively n=2), and an independent 10-minute window agrees at **33.3/s**. ⚠️ **New and untested:** unpinned, the anchors message returns 47,887 for that window, of which **`ecosystemanalyticsd` accounts for 20,721 — more than ecosystemd's 19,998**. That process has never been counted in this issue; whether it is a second participant in the same loop or an unrelated caller is unknown. Not claimed either way. Prior: 🔴 **still reproducing on beta7 `26A5421a`, rate signature unchanged from beta6** (2026-08-27) — **33.1 / 32.5 / 32.5** anchors/s, **468–477** `UNIX error exception: 5` per 60 s, CPU **13.1%** mean (beta6: 33.1/s, 476 EIO, 12.7%). ⚠️ Effectively **n=2** — the flush-boundary artefact the script's header claims was fixed recurred, reps 2 and 3 byte-identical — and the machine was **not quiesced**, so the CPU column is not a matched comparison; the anchors/s and EIO columns are load-insensitive and carry the verdict. See *Re-measurement 2026-08-27* below. Prior: 🔴 **still reproducing on beta6 `26A5416b`** (2026-08-19) — the loop's rate signature is **unchanged from beta5**: `SecTrustCopyAppleTrustAnchors` **33.1/s** mean (beta5 ~32.5), **476** `UNIX error exception: 5` per 60 s (beta5 468), **6,504** lines/60 s (beta5 7,519), CPU **12.7%** mean over 8 windows (beta5 16.4%). Not fixed and not further mitigated. See [the beta6 re-measurement](#re-measurement-2026-08-19--beta6-26a5416b--rate-signature-unchanged). Prior: 🔴 **still reproducing on beta5 `26A5406e`, at roughly half the beta4 rate on every axis** (2026-08-11, 5 replicates on a quiesced desktop via [`tools/eco-replicate.sh`](../tools/eco-replicate.sh)) — CPU **16.4%** (min 13.9, max 17.2, sd 1.3) against beta4's 26–57%; `SecTrustCopyAppleTrustAnchors` **~32.5/s** against ~68–85/s; **7,519** lines/60 s against 15,885; **468** `UNIX error exception: 5` against 1,227. The failing-and-retrying shape is unchanged, so this is **mitigation, not a fix**. **Not yet re-tested on beta6 `26A5416b`.** Prior: 🔴 Open · confirmed on beta4 |
 | **macOS** | 27.0 beta4 `26A5388g` |
 | **Component** | Apple **`ecosystemd`** (`Ecosystem.framework`) ↔ **Security / `trustd`** |
 | **Hardware** | `Mac15,11`, M3 Max, 36 GB |
@@ -221,3 +221,56 @@ attribution trap this repo has now walked into three times.
 ⚠️ **新线索,未下结论**:同一条消息不钉进程时是 47,887 次,其中 **`ecosystemanalyticsd` 占 20,721 —
 比 ecosystemd 的 19,998 还多**。该进程从未被本条统计过,它究竟是同一重试环路的第二个参与者、
 还是碰巧调用同一 API 的独立调用方,**未测**,需要单独钉进程复测后才能说。
+
+## Re-verification 2026-09-16 — release `26A428` — rate signature unchanged
+
+> **Clock position, because it decides what these numbers can be compared to.** The release
+> build `26A428` was installed **2026-09-11 04:28:46** (`InstallHistory.plist`). Every figure below
+> was taken at **T+6h29m** on the 2026-09-16 11:40:46 boot with ~40 apps running — matched neither
+> to beta8's T+21h20m window nor to beta6/beta7's post-boot windows, so log *volumes* are not
+> presented as pairs. Kernel `xnu-13432.1.9~1` (beta6–beta8: `~3`). Raw capture:
+> [`baselines/release-26A428/`](../baselines/release-26A428/README.md).
+
+`tools/eco-replicate.sh`, 3×60 s, 18:19–18:22 (raw:
+[`eco-replicate.txt`](../baselines/release-26A428/eco-replicate.txt)):
+
+| rep | eco % | anchors/s | lines/60s | EIO |
+|---|---|---|---|---|
+| 1 | 11.5 | 35.0 | 7,261 | 504 |
+| 2 | 9.9 | 31.3 | 6,509 | 450 |
+| 3 | 13.7 | 42.1 | 8,671 | 603 |
+
+Mean CPU **11.7%** (min 9.9, max 13.7, sd 1.6), against beta8's 12.8 / 13.7 / 11.2 and
+32.9 / 38.2 / 32.7 anchors/s. The three reps are distinct (no flush-boundary artefact), but they
+spread wider than beta8's did (31.3–42.1/s against 32.7–38.2/s).
+
+The independent check is what carries the verdict: the 10-minute window 18:09–18:19, pinned with
+`--predicate 'process == "ecosystemd" AND eventMessage CONTAINS "SecTrustCopyAppleTrustAnchors"'`,
+returns **19,975 = 33.3/s**. beta8's was **19,998 = 33.3/s**. The awk field-split count over the
+captured window agrees exactly. Nothing about the loop's rate moved with the release.
+
+⚠️ The machine was **not quiesced** (load ~10–12, ~40 `/Applications` bundles), so the CPU column is
+an upper bound, not a matched comparison. anchors/s and EIO are load-insensitive.
+
+### `ecosystemanalyticsd`, still untested
+
+Unpinned, the same message comes from:
+
+| process | beta8 | **release** |
+|---|---|---|
+| ecosystemd | 19,998 | **19,975** |
+| **ecosystemanalyticsd** | 20,721 | **18,377** |
+| ContextStoreAgent | — | 364 |
+| Spotify | — | 234 |
+| launchservicesd | — | 202 |
+| securityd | — | 118 |
+
+(beta8's amfid 2,734 / tccd 2,060 / syspolicyd 568 are not in the top six this time.)
+`ecosystemanalyticsd` is again within ~10% of ecosystemd, and the two are the **#1 and #2 log
+emitters on the whole machine** in this window (62,083 and 54,332 records). Whether it is part of the
+same retry loop is still **not measured** and not claimed. It used 2.4% CPU over 120 s.
+
+2026-09-16 正式版 `26A428` 复测:**速率签名不变**。3×60 秒:35.0/31.3/42.1 anchors/s、504/450/603 EIO、
+CPU 均值 11.7%(sd 1.6),比 beta8 离散;但独立的 10 分钟窗口钉 `process == ecosystemd` 得 **19,975 = 33.3/s**,
+beta8 为 19,998 = 33.3/s,awk 计数完全一致。⚠️ 机器未静默,CPU 列只能当上界。`ecosystemanalyticsd`
+同一消息 18,377 次(beta8 20,721),与 ecosystemd 同为全机前两大日志源,是否属于同一重试环路**仍未测**。
