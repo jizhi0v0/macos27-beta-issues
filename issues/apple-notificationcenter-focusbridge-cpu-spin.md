@@ -7,7 +7,7 @@
 
 | | |
 |---|---|
-| **Status** | 🔴 **Open — not caught on beta8 `26A5425a`** (2026-09-03) — 0.0% CPU over both a 30 s and a 120 s sample. The spin is intermittent and has to be caught live, so **absence here is not evidence of a fix**. Prior: 🔴 **Open, not yet filed.** First captured with a live, symbolicated stuck stack on 2026-08-22. Caught by chance while investigating a live report of the spinning-wait-cursor ("beachball") symptom — this is the first time this investigation has had a CPU/stack signature for a notification-adjacent hang, rather than only `usernoted` log-line counts |
+| **Status** | 🔴 **caught live on release `26A428`, same stack** (2026-09-16) — the OS wrote its own `cpu_resource` report (**97% CPU over 93 s**, heaviest stack `FocusBridge.invalidateKeyViewLoop()` → `updateDefaultKeyViewLoop()` → `KeyViewProxyCache.createOrUpdateProxyView(_:)`), and independently **100.2%** over a 120 s cumulative sample with **5,063 / 5,063** main-thread `sample` frames inside `FocusBridge.invalidateKeyViewLoop()`. Spun for **≥ 10 min 44 s** until a manual `killall`; no self-recovery in that interval. The banners presented around onset came from a HomeKit app and Claude, not the menu-bar app of the first capture — but the report's interval opens 0.24 s *before* the nearest `Presenting` record, so which banner (if any) set it off is not pinned. The reporter again describes a notification arriving with the pointer nearby; still not verifiable from logs. See [`baselines/release-26A428/`](../baselines/release-26A428/README.md). Prior: 🔴 **Open — not caught on beta8 `26A5425a`** (2026-09-03) — 0.0% CPU over both a 30 s and a 120 s sample. The spin is intermittent and has to be caught live, so **absence here is not evidence of a fix**. Prior: 🔴 **Open, not yet filed.** First captured with a live, symbolicated stuck stack on 2026-08-22. Caught by chance while investigating a live report of the spinning-wait-cursor ("beachball") symptom — this is the first time this investigation has had a CPU/stack signature for a notification-adjacent hang, rather than only `usernoted` log-line counts |
 | **macOS** | 27.0 beta6 `26A5416b` |
 | **Component** | Apple `NotificationCenter.app` (`com.apple.notificationcenterui` 1.0, build `1674.0.7.0.400`) — AppKit/SwiftUI interop, specifically `SwiftUI`'s `FocusBridge` / `KeyViewProxyCache` |
 | **Hardware** | MacBook Pro `Mac15,11`, M3 Max |
@@ -124,3 +124,51 @@ source-level argument — not a quiet sample.
 说明进程活着、只是没在空转。**这不是修复信号,状态维持 🔴** —— 该 spin 本就是间歇性的,
 当初是抓现行、靠相隔 90 秒的两次采样拿到**完全相同**的卡住栈才定位的。要关闭它需要正向信号或源码级论证,
 而不是一次安静的采样。
+
+## Re-verification 2026-09-16 — release `26A428` — caught live, same stack
+
+> **Clock position, because it decides what these numbers can be compared to.** The release
+> build `26A428` was installed **2026-09-11 04:28:46** (`InstallHistory.plist`). Every figure below
+> was taken at **T+6h29m** on the 2026-09-16 11:40:46 boot with ~40 apps running — matched neither
+> to beta8's T+21h20m window nor to beta6/beta7's post-boot windows, so log *volumes* are not
+> presented as pairs. Kernel `xnu-13432.1.9~1` (beta6–beta8: `~3`). Raw capture:
+> [`baselines/release-26A428/`](../baselines/release-26A428/README.md).
+
+**Caught live on the shipped build.** Nothing was done to provoke it; the machine was in ordinary
+use. Full timeline and excerpts: [`notificationcenter-spin.txt`](../baselines/release-26A428/notificationcenter-spin.txt).
+
+| evidence | result |
+|---|---|
+| OS `cpu_resource` report, 18:14:19.8 → 18:15:52.4 | **90 s CPU over 93 s (97%)**, limit 50% over 180 s |
+| its heaviest stack (32 of 96 microstackshot steps) | `NSHostingView.preferencesDidChange()` → `FocusBridge.preferencesDidChange(_:)` → `invalidateKeyViewLoop()` → `updateDefaultKeyViewLoop()` → `KeyViewProxyCache.createOrUpdateProxyView(_:)` → `configureProxy(_:for:)` → `layoutProxy(_:)` → `ResponderNode.firstAncestor(ofType:)` → `UnfoldSequence.next()` |
+| cumulative utime+stime, 18:22:06 → 18:24:06 | **100.2%** |
+| `/usr/bin/sample` 10 s at 18:21:14, main thread | **5,063 / 5,063** samples inside `FocusBridge.invalidateKeyViewLoop()`; 3,196 + 1,589 in `updateDefaultKeyViewLoop()` |
+| top of stack | Swift runtime overhead — `swift_getEnumCaseMultiPayload`, refcount slow paths, `tryCastToSwiftClass`, `objc_msgSend` |
+| end | `killall` at 18:25:04.258; every XPC peer logs pid 846 exited at .262; launchd `service inactive` at .274; respawned at 0.0% |
+
+This is the same `preferencesDidChange()` → `invalidateKeyViewLoop()` → `updateDefaultKeyViewLoop()`
+chain as the 2026-08-22 capture. Spin duration observed **≥ 10 min 44 s**,
+ended by hand. Shipping did not fix it, and the beta8 "not caught" reading was, as recorded then, just
+a quiet sample.
+
+**What this capture adds to the open questions.**
+
+- *Q2, does any banner trigger it?* The `Presenting` records nearest onset were
+  `com.lumiunited.pre.homekit` (18:11:57, 18:14:20.092) and `com.anthropic.claudefordesktop` (18:14:45),
+  with `com.nssurge.surge-mac` at 18:11:02 — none of them the `CLAUDE_SESSION` menu-bar banner of the
+  first capture. That weakens an app- or category-specific trigger, **but only if one of these banners
+  was the trigger**, and this capture cannot show that: the OS report's interval opens at 18:14:19.849,
+  0.24 s *before* the 18:14:20.092 record. The report's start is where the over-limit interval begins,
+  not necessarily the spin's onset, so the order is suggestive at most.
+- *Q3, the mouse?* The reporter's account on 2026-09-16 is the same as in August: it locks up when a
+  notification arrives while the pointer is near where the banner appears. Pointer position is not
+  logged at any level used here, so it remains **their account, not a verified trigger** — now
+  consistent across two occurrences, which makes it the lead to test first, not a result.
+
+2026-09-16 正式版 `26A428` 复测:**当场抓到,调用栈相同**。系统自己写了 `cpu_resource` 报告
+(93 秒内 90 秒 CPU,97%),最重栈为 `FocusBridge.invalidateKeyViewLoop()` → `updateDefaultKeyViewLoop()`
+→ `KeyViewProxyCache`;独立复测 120 秒累计 **100.2%**,10 秒 `sample` 主线程 **5,063/5,063** 帧落在
+`FocusBridge.invalidateKeyViewLoop()`。持续 **≥ 10 分 44 秒**,期间未自愈,最终手动 `killall` 结束。
+起始附近弹出的是 HomeKit 与 Claude 的通知,不是首次捕获时的菜单栏 app —— 但报告区间比最近一条
+`Presenting` 早 0.24 秒开始,触发它的是哪条通知**未能钉死**。报告人再次描述为"通知到达时鼠标在附近";
+日志不记录指针位置,**仍属本人描述、未验证**,但两次一致,是下一步最该先测的线索。
