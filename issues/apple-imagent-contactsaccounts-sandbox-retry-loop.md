@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | 🔴 **unchanged for a third build on beta8 `26A5425a`** (2026-09-03) — `com.apple.imagent.sb` still **404 lines**, still **0** mentions of `ContactsAccountsService`, still the outlier against the **26** sibling profiles that do name it. Identical to beta6 and beta7 on all three numbers; 1,586 imagent records naming the service in a 10-minute window. The one-line fix was not applied. Prior: 🔴 **unchanged at the source level on beta7 `26A5421a`** (2026-08-27) — `com.apple.imagent.sb` is still **404 lines** with **0** mentions of `ContactsAccountsService`, still the outlier against the **26** sibling profiles that name it; **3,096** imagent records naming the service in the 8-minute post-boot window (beta6: 2,383). The profile's Aug 21 mtime is the OS image build date, not evidence it was touched. See *Re-check 2026-08-27* below. Prior: 🔴 **unchanged at the source level on beta6 `26A5416b`** (2026-08-19) — `com.apple.imagent.sb` is still **404 lines** and still the outlier against the **26** sibling profiles that name the service, both re-verified on beta6; the one-line fix was not applied. 2,383 `ContactsAccountsService` lines in the post-boot window. See [the beta6 section](#re-check-2026-08-19--beta6-26a5416b--the-profile-is-unchanged). Prior: 🔴 Open · confirmed on `26A5378n` (live — still looping while this was written) |
+| **Status** | 🔴 **byte-identical to beta8 on release `26A428`** (2026-09-16) — `com.apple.imagent.sb` still **404** lines, **0** mentions of `ContactsAccountsService`, **26** siblings that do name it, and `cmp` against the checksum-verified beta8 archive says the file is **identical**. All 552 profiles that existed on beta8 are byte-identical on release; the directory's only change is one added file. **1,058** imagent records naming the service in a 10-minute window (794 of them `E`). The fix did not ship. See [`baselines/release-26A428/`](../baselines/release-26A428/README.md). Prior: 🔴 **unchanged for a third build on beta8 `26A5425a`** (2026-09-03) — `com.apple.imagent.sb` still **404 lines**, still **0** mentions of `ContactsAccountsService`, still the outlier against the **26** sibling profiles that do name it. Identical to beta6 and beta7 on all three numbers; 1,586 imagent records naming the service in a 10-minute window. The one-line fix was not applied. Prior: 🔴 **unchanged at the source level on beta7 `26A5421a`** (2026-08-27) — `com.apple.imagent.sb` is still **404 lines** with **0** mentions of `ContactsAccountsService`, still the outlier against the **26** sibling profiles that name it; **3,096** imagent records naming the service in the 8-minute post-boot window (beta6: 2,383). The profile's Aug 21 mtime is the OS image build date, not evidence it was touched. See *Re-check 2026-08-27* below. Prior: 🔴 **unchanged at the source level on beta6 `26A5416b`** (2026-08-19) — `com.apple.imagent.sb` is still **404 lines** and still the outlier against the **26** sibling profiles that name the service, both re-verified on beta6; the one-line fix was not applied. 2,383 `ContactsAccountsService` lines in the post-boot window. See [the beta6 section](#re-check-2026-08-19--beta6-26a5416b--the-profile-is-unchanged). Prior: 🔴 Open · confirmed on `26A5378n` (live — still looping while this was written) |
 | **macOS** | 27.0 beta3 revision **`26A5378n`** (measured 2026-07-16; not tested on earlier builds) |
 | **Component** | Apple **imagent** `10.0` (1000) (`/System/Library/PrivateFrameworks/IMCore.framework/imagent.app`) ↔ **ContactsAccountsService** / Contacts `PersistentStoreBuilder` |
 | **Hardware** | MacBook Pro `Mac15,11`, M3 Max, 36 GB |
@@ -232,3 +232,42 @@ beta9 upgrade.
 2026-09-03 beta8 复测:沙盒 profile **一字未动** —— 仍 404 行、仍 0 处 `ContactsAccountsService`、
 仍是 26 个提到它的同级 profile 中的唯一例外,与 beta6/beta7 三个数字完全一致。窗口内 1,586 条
 imagent 记录点名该服务。⚠️ 升级前**没有归档 dyld shared cache**,今后二进制比对只能对到 beta5。
+
+## Re-verification 2026-09-16 — release `26A428` — byte-identical to beta8
+
+> **Clock position, because it decides what these numbers can be compared to.** The release
+> build `26A428` was installed **2026-09-11 04:28:46** (`InstallHistory.plist`). Every figure below
+> was taken at **T+6h29m** on the 2026-09-16 11:40:46 boot with ~40 apps running — matched neither
+> to beta8's T+21h20m window nor to beta6/beta7's post-boot windows, so log *volumes* are not
+> presented as pairs. Kernel `xnu-13432.1.9~1` (beta6–beta8: `~3`). Raw capture:
+> [`baselines/release-26A428/`](../baselines/release-26A428/README.md).
+
+| | beta6 `26A5416b` | beta7 `26A5421a` | beta8 `26A5425a` | **release `26A428`** |
+|---|---|---|---|---|
+| `com.apple.imagent.sb` lines | 404 | 404 | 404 | **404** |
+| mentions of `ContactsAccountsService` | 0 | 0 | 0 | **0** |
+| sibling profiles that *do* name it | 26 | 26 | 26 | **26** |
+| byte-identical to the previous build | — | not checkable | not checkable | **yes** |
+
+For the first time this is a byte-level comparison rather than three matching numbers, because the
+beta8 profiles were archived and checksum-verified before the upgrade
+(`~/Developer/macos27-beta8-binary-archive/sandbox-profiles/`):
+
+```
+cmp /System/Library/Sandbox/Profiles/com.apple.imagent.sb \
+    ~/Developer/macos27-beta8-binary-archive/sandbox-profiles/com.apple.imagent.sb   # identical
+```
+
+Across the whole directory, all **552** profiles present on beta8 are byte-identical on release. The
+only difference is one **added** file, `com.apple.GenerativeLearningPlatform.GenerativeLearningTestHarness`
+(553 files now), which has nothing to do with this issue.
+
+The loop is still running: **1,058** `imagent` records naming the service in the 10-minute window
+(`E` 794, `Df` 264), and a predicate-pinned re-query agrees exactly (beta8: 1,586; not a matched
+window). imagent measured 0.0% over a 120 s cumulative CPU sample — as before, a log-volume bug, not a
+CPU one.
+
+2026-09-16 正式版 `26A428` 复测:**与 beta8 逐字节相同**。仍 404 行、0 处 `ContactsAccountsService`、
+26 个同级 profile 提到它;这次有经过校验和的 beta8 归档可对照,`cmp` 结果为**完全一致**。beta8 上已有的
+552 个 profile 在正式版上全部未变,目录里唯一的变化是新增了一个无关文件。10 分钟窗口内 **1,058** 条
+imagent 记录点名该服务(794 条 `E`),谓词复查一致。**修复没有进正式版。**
