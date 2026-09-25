@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | 🟡 **still storming on release `26A428`, peak 3,033 lines/s** (2026-09-16) — a since-boot query returns **444,874** records, with ~17k-record bursts recurring from T+40m to at least T+5h50m after the boot burst and a peak second of **3,033/s** at T+2h17m (beta8: 1,644/s at T+21h). The 10-minute T+6h29m window, taken alone, fell in a lull — **182** records, peak 172/s — and would have read as fixed; the since-boot query is what shows it is not. See [`baselines/release-26A428/`](../baselines/release-26A428/README.md). Prior: 🟡 **still storming at T+21h on beta8 `26A5425a`, so it does not self-settle** (2026-09-03) — 15,672 records in a 10-minute steady-state window, peak **1,644 lines/s**. The totals are not comparable to beta7's (different window length and clock position) but the peak second is, and it lands within **9%** of beta7's 1,795/s — which was measured *inside* the boot burst. The standing reading carried since beta2, *"fires post-boot then self-settles"*, **does not hold on this build**. Prior: 🟡 **still present on beta7 `26A5421a` and higher again** (2026-08-27) — **30,699** records in the 8-minute post-boot window against beta6's 16,203 in 7m47s; peak **1,795 lines/s** counting all levels, **1,306** counting `Df` only, against beta6's 864 and beta5's 181. ⚠️ Beta6's figure was recorded without its log-level scope and the two scopes differ by **34%**, so which pair is like-for-like is undecided; and this is still **one window, not replicated, not a verdict** — a caveat now carried unaddressed for two builds. See *Re-test 2026-08-27* below. Prior: 🟡 **still present on beta6 `26A5416b`, and measured worse** (2026-08-19): peak **864 lines/s** against beta5's 181, 16,203 lines in the 7m47s post-boot window, all three peak seconds within ~60 s of boot. Same window shape as the beta5 figure, so comparable — but **one window, not replicated, and not a verdict**. See [the beta6 section](#re-test-2026-08-19--beta6-26a5416b--peak-rate-4.8x-beta5s-one-window). Prior: 🟡 Mitigated — self-settles post-boot; ⚪ not reproduced in a beta3 `26A5378j` window (post-boot transient) |
+| **Status** | 🟡 **still storming on 27.2 beta2 `26B5091g`** (2026-09-25) — **98,046** records from boot to 17:17, a boot burst peaking at **8,813 lines/s** (T+2m52s), then bursts of **1,885/s** at T+40m and ~1,550/s as late as T+2h10m; 48 seconds ≥ 500/s. No post-boot 10-minute bucket exceeds 9,411, where release's recurring bursts were ~17k each — a different clock position on one boot, so recorded, not credited. See [`../baselines/27.2-beta2-26B5091g/`](../baselines/27.2-beta2-26B5091g/README.md). Prior: 🟡 **still storming on release `26A428`, peak 3,033 lines/s** (2026-09-16) — a since-boot query returns **444,874** records, with ~17k-record bursts recurring from T+40m to at least T+5h50m after the boot burst and a peak second of **3,033/s** at T+2h17m (beta8: 1,644/s at T+21h). The 10-minute T+6h29m window, taken alone, fell in a lull — **182** records, peak 172/s — and would have read as fixed; the since-boot query is what shows it is not. See [`baselines/release-26A428/`](../baselines/release-26A428/README.md). Prior: 🟡 **still storming at T+21h on beta8 `26A5425a`, so it does not self-settle** (2026-09-03) — 15,672 records in a 10-minute steady-state window, peak **1,644 lines/s**. The totals are not comparable to beta7's (different window length and clock position) but the peak second is, and it lands within **9%** of beta7's 1,795/s — which was measured *inside* the boot burst. The standing reading carried since beta2, *"fires post-boot then self-settles"*, **does not hold on this build**. Prior: 🟡 **still present on beta7 `26A5421a` and higher again** (2026-08-27) — **30,699** records in the 8-minute post-boot window against beta6's 16,203 in 7m47s; peak **1,795 lines/s** counting all levels, **1,306** counting `Df` only, against beta6's 864 and beta5's 181. ⚠️ Beta6's figure was recorded without its log-level scope and the two scopes differ by **34%**, so which pair is like-for-like is undecided; and this is still **one window, not replicated, not a verdict** — a caveat now carried unaddressed for two builds. See *Re-test 2026-08-27* below. Prior: 🟡 **still present on beta6 `26A5416b`, and measured worse** (2026-08-19): peak **864 lines/s** against beta5's 181, 16,203 lines in the 7m47s post-boot window, all three peak seconds within ~60 s of boot. Same window shape as the beta5 figure, so comparable — but **one window, not replicated, and not a verdict**. See [the beta6 section](#re-test-2026-08-19--beta6-26a5416b--peak-rate-4.8x-beta5s-one-window). Prior: 🟡 Mitigated — self-settles post-boot; ⚪ not reproduced in a beta3 `26A5378j` window (post-boot transient) |
 | **macOS** | 27.0 beta2 `26A5368g` |
 | **Component** | Apple **Shortcuts / App Intents** (`com.apple.shortcuts`), `siriactionsd`, `BackgroundShortcutRunner` |
 | **Report** | Apple Feedback: `FB________` *(to be filed)* |
@@ -211,3 +211,39 @@ was identified.
 开机爆发之后,约 17k 条一簇的爆发从 T+40m 一直反复到至少 T+5h50m,峰值 **3,033/s** 出现在 T+2h17m
 (beta8 为 T+21h 的 1,644/s)。峰值是单点、仅一次开机,**不据此主张"正式版更严重"**;能确定的是形状 ——
 不是开机后自行平息的瞬态,而是持续数小时的反复爆发,单个 10 分钟窗口全凭运气。各次爆发的触发因素未查明。
+
+## Re-verification 2026-09-25 — 27.2 beta2 `26B5091g` — still storming
+
+> **Clock position, because it decides what these numbers can be compared to.** macOS 27.2 beta2
+> `26B5091g` was installed **2026-09-25 07:08:18 UTC** (`InstallHistory.plist`), two minutes after
+> the 15:06:19 +0800 boot. The window is **T+1h54m → T+2h04m** with 32 apps running and the
+> post-update reindex still active — matched to no earlier window, so log *volumes* are not
+> presented as pairs. Kernel `xnu-13432.40.162~92` (release: `xnu-13432.1.9~1`). Raw capture:
+> [`baselines/27.2-beta2-26B5091g/`](../baselines/27.2-beta2-26B5091g/README.md).
+
+Since-boot query, `process == "BackgroundShortcutRunner" OR process == "siriactionsd"`, default
+level, sliced at 17:20:00 (raw: [`shortcuts-since-boot.txt`](../baselines/27.2-beta2-26B5091g/shortcuts-since-boot.txt)):
+
+| | release `26A428` (to T+6h34m) | **27.2 b2 (to T+2h11m)** |
+|---|---|---|
+| records | 444,874 | **98,046** |
+| BackgroundShortcutRunner / siriactionsd | 236,110 / 208,764 | **86,911 / 11,135** |
+| peak second | 3,033 at T+2h17m | **8,813 at T+2m52s** (boot burst) |
+| peak second after the boot burst | — | **1,885 at T+40m**; 1,549 at T+2h10m |
+| recurring bursts | ~17k records per 10-minute bucket | ≤ 9,411 per bucket |
+
+Records per 10-minute bucket: 15:00 **51,979** (boot burst) | 15:10 6,392 | 15:20 0 | 15:30 3,936 |
+15:40 5,249 | 15:50 2,100 | 16:00 173 | 16:10 171 | 16:20 3,923 | 16:30 9,411 | 16:40 3,749 |
+16:50 4,428 | 17:00 2,623 | 17:10 3,912 (to 17:17). The 15:20 bucket being exactly 0 is unexplained.
+
+The storm is present from boot and still recurring two hours in. The mix shifted toward
+BackgroundShortcutRunner (89% of records, release 53%) and the recurring bursts are smaller than
+release's, but these are T+2h vs T+6h on a single boot each — **recorded, not credited**. The
+status stays 🟡.
+
+⚠️ **Measurement note.** The query carried `--end 17:20:00` *and* a predicate and still returned
+a 2,090-record burst at 17:22:28–17:22:40. Two 1-minute re-queries were bounded correctly, so this
+is not "always ignored", but the counts above are sliced by timestamp rather than trusting `--end`.
+
+2026-09-25 27.2 beta2 `26B5091g` 复测:开机以来 98,046 条,开机爆发峰值 **8,813/s**,之后 T+40m 仍有
+1,885/s、T+2h10m 仍有 ~1,550/s。周期性爆发比 release 小,但时钟位置不同、各只一次开机,只记录不计功。仍记 🟡。
