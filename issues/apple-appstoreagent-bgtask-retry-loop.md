@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | ⚪ **still not triggered on release `26A428`** (2026-09-16) — **0** `Code=8` in a 10-minute window, six consecutive clean builds (beta3/5/6/7/8 + release). The one appstoreagent diagnostic report since install is a **disk-writes** report (2,148 MB over 19.6 h), not this retry loop. Not reproduced ≠ fixed. See [`baselines/release-26A428/`](../baselines/release-26A428/README.md). Prior: ⚪ **still not triggered on beta8 `26A5425a`** (2026-09-03) — **0** `Code=8` in a 10-minute window, making beta3/5/6/7/8 five consecutive clean builds. Conditional trigger, last actually seen on beta2. Not reproduced ≠ fixed. Prior: ⚪ **still not triggered on beta7 `26A5421a`** (2026-08-27) — **0** `BGSystemTaskSchedulerErrorDomain Code=8` in the 8-minute post-boot window, making beta3, beta5, beta6 and beta7 all clean. The trigger is conditional and was last actually seen on **beta2**. Four clean windows across four builds are grounds to consider closing this as *cannot reproduce* — they are **not** a positive signal and must not be written up as 🟢. See *Retest on beta7* below. Prior: ⚪ Not reproduced in beta3 `26A5378j` window (conditional trigger); confirmed beta2 |
+| **Status** | ⚪ **still not triggered on 27.2 beta2 `26B5091g`** (2026-09-25) — **0** `Code=8` in a 10-minute window (appstoreagent: 226 records, 0.0% CPU over 120 s), seven consecutive clean builds (beta3/5/6/7/8, release, 27.2 b2). No appstoreagent diagnostic report since the install. Not reproduced ≠ fixed; grounds to consider closing as *cannot reproduce*, not as 🟢. See [`../baselines/27.2-beta2-26B5091g/`](../baselines/27.2-beta2-26B5091g/README.md). Prior: ⚪ **still not triggered on release `26A428`** (2026-09-16) — **0** `Code=8` in a 10-minute window, six consecutive clean builds (beta3/5/6/7/8 + release). The one appstoreagent diagnostic report since install is a **disk-writes** report (2,148 MB over 19.6 h), not this retry loop. Not reproduced ≠ fixed. See [`baselines/release-26A428/`](../baselines/release-26A428/README.md). Prior: ⚪ **still not triggered on beta8 `26A5425a`** (2026-09-03) — **0** `Code=8` in a 10-minute window, making beta3/5/6/7/8 five consecutive clean builds. Conditional trigger, last actually seen on beta2. Not reproduced ≠ fixed. Prior: ⚪ **still not triggered on beta7 `26A5421a`** (2026-08-27) — **0** `BGSystemTaskSchedulerErrorDomain Code=8` in the 8-minute post-boot window, making beta3, beta5, beta6 and beta7 all clean. The trigger is conditional and was last actually seen on **beta2**. Four clean windows across four builds are grounds to consider closing this as *cannot reproduce* — they are **not** a positive signal and must not be written up as 🟢. See *Retest on beta7* below. Prior: ⚪ Not reproduced in beta3 `26A5378j` window (conditional trigger); confirmed beta2 |
 | **macOS** | confirmed 27.0 beta2 `26A5368g`; not observed in a beta3 `26A5378j` window |
 | **Component** | Apple **appstoreagent** + **dasd** (DuetActivityScheduler) / BGTaskScheduler, around **App Store / Apple Arcade AppUsage** reporting |
 | **Report** | Apple Feedback: **`FB23413997`** (filed 2026-06-26, App Store → Incorrect/Unexpected Behavior; sysdiagnose + log capture attached) |
@@ -113,3 +113,24 @@ mistake it for a recurrence.
 2026-09-16 正式版 `26A428` 复测:窗口内 **0** 条 `Code=8`,连续第六个干净构建。安装后唯一一份
 appstoreagent 诊断报告是**磁盘写入**报告(19.6 小时写 2,148 MB),不是本条的重试环路,特此记录以免被
 按文件名误判为复发。**未复现 ≠ 已修复**,仍记 ⚪。
+
+## Re-verification 2026-09-25 — 27.2 beta2 `26B5091g` — a seventh clean window
+
+> **Clock position, because it decides what these numbers can be compared to.** macOS 27.2 beta2
+> `26B5091g` was installed **2026-09-25 07:08:18 UTC** (`InstallHistory.plist`), two minutes after
+> the 15:06:19 +0800 boot. The window is **T+1h54m → T+2h04m** with 32 apps running and the
+> post-update reindex still active — matched to no earlier window, so log *volumes* are not
+> presented as pairs. Kernel `xnu-13432.40.162~92` (release: `xnu-13432.1.9~1`). Raw capture:
+> [`baselines/27.2-beta2-26B5091g/`](../baselines/27.2-beta2-26B5091g/README.md).
+
+**0** `BGSystemTaskSchedulerErrorDomain Code=8` in the 10-minute window 17:00:09–17:10:09;
+`appstoreagent` logged 226 records in the same window and measured 0.0% CPU over a 120 s cumulative
+sample. No appstoreagent report of any kind in the diagnostic inventory since the install
+(2 h 15 m of exposure). That makes beta3, beta5, beta6, beta7, beta8, release and 27.2 beta2
+**seven consecutive clean windows**; the trigger was last actually observed on beta2.
+
+**Not reproduced ≠ fixed.** Nothing exercised the trigger. After seven builds this is grounds to
+close as *cannot reproduce* if the reporter chooses to — never as 🟢. The status stays ⚪.
+
+2026-09-25 27.2 beta2 `26B5091g` 复测:窗口内 **0** 条 `Code=8`,连续第七个干净构建。**未复现 ≠ 已修复**;
+可考虑以「无法复现」关闭,但不能记 🟢。仍记 ⚪。
