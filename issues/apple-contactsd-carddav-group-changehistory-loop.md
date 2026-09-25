@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | 🔴 **the backlog crossed the release upgrade to `26A428`** (2026-09-16) — 102,678 → **110,247** unconsumed rows, worst source 30,471 → **32,489**, all 12 sources carried over, all 7 non-zero ones up, **none reset** — a fourth upgrade survived without draining. ⚠️ T+21h29m vs T+6h38m, so the +7,569 delta is **not** a rate. **Changed:** contactsd's own log volume collapsed, **45,728 → 44** records per 10 minutes — the XPC churn beta8 attributed three quarters of the volume to is gone. **Not changed:** `Could not fetch group for change type` still appears **1,495** times across the client fan-out (beta8: 1,537). The store still grows and its clients still fail to read it. See [`baselines/release-26A428/`](../baselines/release-26A428/README.md). Prior: 🔴 **the backlog crossed a *third* upgrade on beta8 `26A5425a`** (2026-09-03) — 98,489 → **102,678** unconsumed rows, worst source 29,289 → **30,471**, all 12 sources carried over, all 7 non-zero ones up, **none reset**, ruling out "the upgrade rebuilt the stores" for a third time. The store has never drained across five OS builds and seven weeks. ⚠️ The three readings sit at T+9m / T+1h56m / T+21h29m, so the +4,189 delta is **not** a rate. New: **33,971 of contactsd's 45,728 records in a 10-minute window are `com.apple.xpc:connection`**, not Contacts traffic — the fan-out is visible as XPC churn. See [`baselines/beta8-26A5425a/`](../baselines/beta8-26A5425a/README.md). Prior: 🔴 **the backlog crossed a second upgrade on beta7 `26A5421a`** (2026-08-27) — 91,030 → **98,489** unconsumed rows, worst source 27,388 → **29,289**, **all 12 sources carried over and none reset**, which rules out the "the upgrade rebuilt the stores" false positive for a second time. Log volume ~214k → **~343k lines/h** in the matched 8-minute post-boot window. ⚠️ The backlog readings themselves are **not** a matched pair (beta6 at T+9m, beta7 at T+1h56m), so the +7,459 delta is not a rate. See *Re-verification 2026-08-27* below. Prior: 🔴 **still reproducing on beta6 `26A5416b`** (2026-08-19) — the backlog **crossed the upgrade intact and kept growing**: 90,209 → **91,030** rows, all 12 sources carried over, every non-zero one up, **none reset**, which rules out the "the upgrade rebuilt the stores and cleared it" false positive. Worst source 27,202 → **27,388**. Log volume unchanged (~214k lines/h). See [the beta6 section](#re-verification-2026-08-19--beta6-26a5416b--the-backlog-crossed-the-upgrade). Prior: 🔴 Open · **filed with Apple as [FB24264605](https://feedbackassistant.apple.com/feedback/24264605)** (2026-08-11) · confirmed on `26A5378n`, `26A5388g` and **`26A5406e` (beta5)** — and **still accumulating**: 53,686 → **76,366** unconsumed rows between beta3 and beta5 (+42%). See [beta5 re-verification](#re-verification-2026-08-11--beta5-26a5406e--still-growing-and-two-findings-the-original-write-up-missed) |
+| **Status** | 🔴 **the backlog crossed a fifth upgrade, to 27.2 beta2 `26B5091g`** (2026-09-25) — 110,247 → **115,412** unconsumed rows, worst source 32,489 → **33,836**, all 12 sources carried over, all 7 non-zero ones up, **none reset**. ⚠️ T+6h38m vs T+2h08m, so the +5,165 delta is **not** a rate. `Could not fetch group for change type` read **0** in the 10-minute window but **9,107** since boot on an unscoped predicate (last seen 17:12:31) — the window fell between bursts; the client failure is unchanged. contactsd read **19.4%** CPU over 120 s (release 0.0%), one un-replicated reading. See [`../baselines/27.2-beta2-26B5091g/`](../baselines/27.2-beta2-26B5091g/README.md). Prior: 🔴 **the backlog crossed the release upgrade to `26A428`** (2026-09-16) — 102,678 → **110,247** unconsumed rows, worst source 30,471 → **32,489**, all 12 sources carried over, all 7 non-zero ones up, **none reset** — a fourth upgrade survived without draining. ⚠️ T+21h29m vs T+6h38m, so the +7,569 delta is **not** a rate. **Changed:** contactsd's own log volume collapsed, **45,728 → 44** records per 10 minutes — the XPC churn beta8 attributed three quarters of the volume to is gone. **Not changed:** `Could not fetch group for change type` still appears **1,495** times across the client fan-out (beta8: 1,537). The store still grows and its clients still fail to read it. See [`baselines/release-26A428/`](../baselines/release-26A428/README.md). Prior: 🔴 **the backlog crossed a *third* upgrade on beta8 `26A5425a`** (2026-09-03) — 98,489 → **102,678** unconsumed rows, worst source 29,289 → **30,471**, all 12 sources carried over, all 7 non-zero ones up, **none reset**, ruling out "the upgrade rebuilt the stores" for a third time. The store has never drained across five OS builds and seven weeks. ⚠️ The three readings sit at T+9m / T+1h56m / T+21h29m, so the +4,189 delta is **not** a rate. New: **33,971 of contactsd's 45,728 records in a 10-minute window are `com.apple.xpc:connection`**, not Contacts traffic — the fan-out is visible as XPC churn. See [`baselines/beta8-26A5425a/`](../baselines/beta8-26A5425a/README.md). Prior: 🔴 **the backlog crossed a second upgrade on beta7 `26A5421a`** (2026-08-27) — 91,030 → **98,489** unconsumed rows, worst source 27,388 → **29,289**, **all 12 sources carried over and none reset**, which rules out the "the upgrade rebuilt the stores" false positive for a second time. Log volume ~214k → **~343k lines/h** in the matched 8-minute post-boot window. ⚠️ The backlog readings themselves are **not** a matched pair (beta6 at T+9m, beta7 at T+1h56m), so the +7,459 delta is not a rate. See *Re-verification 2026-08-27* below. Prior: 🔴 **still reproducing on beta6 `26A5416b`** (2026-08-19) — the backlog **crossed the upgrade intact and kept growing**: 90,209 → **91,030** rows, all 12 sources carried over, every non-zero one up, **none reset**, which rules out the "the upgrade rebuilt the stores and cleared it" false positive. Worst source 27,202 → **27,388**. Log volume unchanged (~214k lines/h). See [the beta6 section](#re-verification-2026-08-19--beta6-26a5416b--the-backlog-crossed-the-upgrade). Prior: 🔴 Open · **filed with Apple as [FB24264605](https://feedbackassistant.apple.com/feedback/24264605)** (2026-08-11) · confirmed on `26A5378n`, `26A5388g` and **`26A5406e` (beta5)** — and **still accumulating**: 53,686 → **76,366** unconsumed rows between beta3 and beta5 (+42%). See [beta5 re-verification](#re-verification-2026-08-11--beta5-26a5406e--still-growing-and-two-findings-the-original-write-up-missed) |
 | **macOS** | 27.0 beta3 revision **`26A5378n`** (first measured 2026-07-16; not yet tested on earlier builds) |
 | **Component** | Apple **contactsd** `3837.100.1` (`/System/Library/Frameworks/Contacts.framework/Support/contactsd`) + **AddressBookManager** (`com.apple.AddressBook.abd`) + Contacts change-history (`_CNCDChangeHistoryResultIncrementalSyncQuery`) |
 | **Hardware** | MacBook Pro `Mac15,11`, M3 Max, 36 GB |
@@ -368,3 +368,41 @@ count is not a signal to close this, just as beta8's 0.0% CPU was not.
 **跌到 44 条**(beta8 里占四分之三的 XPC 连接抖动消失);谓词复查只得 1 条,与 44 不一致,推测是环形缓冲
 被淘汰,**未验证**,但两者都近乎为零。**未变**:`Could not fetch group for change type` 仍在 10 分钟内出现
 **1,495** 次(beta8 1,537),扇出形状相同 —— store 仍在增长、客户端仍读不出来。**状态维持 🔴。**
+
+## Re-verification 2026-09-25 — 27.2 beta2 `26B5091g` — the backlog crossed a fifth upgrade
+
+> **Clock position, because it decides what these numbers can be compared to.** macOS 27.2 beta2
+> `26B5091g` was installed **2026-09-25 07:08:18 UTC** (`InstallHistory.plist`), two minutes after
+> the 15:06:19 +0800 boot. The window is **T+1h54m → T+2h04m** with 32 apps running and the
+> post-update reindex still active — matched to no earlier window, so log *volumes* are not
+> presented as pairs. Kernel `xnu-13432.40.162~92` (release: `xnu-13432.1.9~1`). Raw capture:
+> [`baselines/27.2-beta2-26B5091g/`](../baselines/27.2-beta2-26B5091g/README.md).
+
+| | beta3 | beta5 08-11 | beta5 08-18 | beta6 08-19 | beta7 08-27 | beta8 09-03 | release 09-16 | **27.2 b2 09-25** |
+|---|---|---|---|---|---|---|---|---|
+| unconsumed group-change rows | 53,686 | 76,366 | 90,209 | 91,030 | 98,489 | 102,678 | 110,247 | **115,412** |
+| worst single source | 17,918 | 23,849 | 27,202 | 27,388 | 29,289 | 30,471 | 32,489 | **33,836** |
+
+**All 12 sources carried over, all 7 non-zero ones up, none reset** (per-source table in
+[`contactsd-backlog.txt`](../baselines/27.2-beta2-26B5091g/contactsd-backlog.txt)). The first build since
+this issue was filed with a genuinely new kernel (`xnu-13432.40.x`) did not drain the store either.
+
+⚠️ **Not a rate.** release's reading was at T+6h38m, this one at T+2h08m, nine days apart.
+
+### A zero in the window that was not a zero
+
+`Could not fetch group for change type` appeared **0** times in the 10-minute window (release:
+1,495). Re-queried since boot with `--predicate 'eventMessage CONTAINS "Could not fetch group"'`:
+**9,107**, in bursts — 15:00 1,295 | 15:10 948 | 15:20 3,581 | 15:30 2,226 | 16:10 1,048 | 16:20 8 |
+17:10 2 per 10-minute bucket, last at 17:12:31.951. The window (17:00:09–17:10:09) sat in a gap.
+The clients still fail to read the store.
+
+contactsd's own volume stayed low (6 records in the window; release 44, beta8 45,728). Its CPU read
+**19.4%** over a 120 s cumulative sample, against 0.0% on release and beta8 — **one reading, not
+replicated**, taken two hours after an OS update; recorded, not interpreted.
+
+**The status stays 🔴.**
+
+2026-09-25 27.2 beta2 `26B5091g` 复测:积压 110,247 → **115,412**,12 个源全部保留、7 个非零源全部上涨、
+**无一重置**,第五次跨升级未被清空。窗口内 `Could not fetch group` 为 0,但开机以来带 predicate 重查为
+**9,107**,窗口恰好落在爆发间隙 —— 客户端读取失败未变。仍记 🔴。
