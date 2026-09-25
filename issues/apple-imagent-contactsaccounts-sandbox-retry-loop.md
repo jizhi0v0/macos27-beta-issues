@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | 🔴 **byte-identical to beta8 on release `26A428`** (2026-09-16) — `com.apple.imagent.sb` still **404** lines, **0** mentions of `ContactsAccountsService`, **26** siblings that do name it, and `cmp` against the checksum-verified beta8 archive says the file is **identical**. All 552 profiles that existed on beta8 are byte-identical on release; the directory's only change is one added file. **1,058** imagent records naming the service in a 10-minute window (794 of them `E`). The fix did not ship. See [`baselines/release-26A428/`](../baselines/release-26A428/README.md). Prior: 🔴 **unchanged for a third build on beta8 `26A5425a`** (2026-09-03) — `com.apple.imagent.sb` still **404 lines**, still **0** mentions of `ContactsAccountsService`, still the outlier against the **26** sibling profiles that do name it. Identical to beta6 and beta7 on all three numbers; 1,586 imagent records naming the service in a 10-minute window. The one-line fix was not applied. Prior: 🔴 **unchanged at the source level on beta7 `26A5421a`** (2026-08-27) — `com.apple.imagent.sb` is still **404 lines** with **0** mentions of `ContactsAccountsService`, still the outlier against the **26** sibling profiles that name it; **3,096** imagent records naming the service in the 8-minute post-boot window (beta6: 2,383). The profile's Aug 21 mtime is the OS image build date, not evidence it was touched. See *Re-check 2026-08-27* below. Prior: 🔴 **unchanged at the source level on beta6 `26A5416b`** (2026-08-19) — `com.apple.imagent.sb` is still **404 lines** and still the outlier against the **26** sibling profiles that name the service, both re-verified on beta6; the one-line fix was not applied. 2,383 `ContactsAccountsService` lines in the post-boot window. See [the beta6 section](#re-check-2026-08-19--beta6-26a5416b--the-profile-is-unchanged). Prior: 🔴 Open · confirmed on `26A5378n` (live — still looping while this was written) |
+| **Status** | 🔴 **the profile changed on 27.2 beta2 `26B5091g`, but not where it matters** (2026-09-25) — `com.apple.imagent.sb` moved for the first time since this issue was filed, 404 → **405** lines, and the diff against the beta8 archive (= release) is one line: `(global-name "com.apple.sharereportingd")`. Mentions of `ContactsAccountsService`: still **0**; siblings that name it: still **26**. imagent records naming the service: **0** in the 10-minute window but **20,456** since boot, including **151** `E` records in two seconds at 17:11:24 (`Code=4099 … was invalidated`). See [`../baselines/27.2-beta2-26B5091g/`](../baselines/27.2-beta2-26B5091g/README.md). Prior: 🔴 **byte-identical to beta8 on release `26A428`** (2026-09-16) — `com.apple.imagent.sb` still **404** lines, **0** mentions of `ContactsAccountsService`, **26** siblings that do name it, and `cmp` against the checksum-verified beta8 archive says the file is **identical**. All 552 profiles that existed on beta8 are byte-identical on release; the directory's only change is one added file. **1,058** imagent records naming the service in a 10-minute window (794 of them `E`). The fix did not ship. See [`baselines/release-26A428/`](../baselines/release-26A428/README.md). Prior: 🔴 **unchanged for a third build on beta8 `26A5425a`** (2026-09-03) — `com.apple.imagent.sb` still **404 lines**, still **0** mentions of `ContactsAccountsService`, still the outlier against the **26** sibling profiles that do name it. Identical to beta6 and beta7 on all three numbers; 1,586 imagent records naming the service in a 10-minute window. The one-line fix was not applied. Prior: 🔴 **unchanged at the source level on beta7 `26A5421a`** (2026-08-27) — `com.apple.imagent.sb` is still **404 lines** with **0** mentions of `ContactsAccountsService`, still the outlier against the **26** sibling profiles that name it; **3,096** imagent records naming the service in the 8-minute post-boot window (beta6: 2,383). The profile's Aug 21 mtime is the OS image build date, not evidence it was touched. See *Re-check 2026-08-27* below. Prior: 🔴 **unchanged at the source level on beta6 `26A5416b`** (2026-08-19) — `com.apple.imagent.sb` is still **404 lines** and still the outlier against the **26** sibling profiles that name the service, both re-verified on beta6; the one-line fix was not applied. 2,383 `ContactsAccountsService` lines in the post-boot window. See [the beta6 section](#re-check-2026-08-19--beta6-26a5416b--the-profile-is-unchanged). Prior: 🔴 Open · confirmed on `26A5378n` (live — still looping while this was written) |
 | **macOS** | 27.0 beta3 revision **`26A5378n`** (measured 2026-07-16; not tested on earlier builds) |
 | **Component** | Apple **imagent** `10.0` (1000) (`/System/Library/PrivateFrameworks/IMCore.framework/imagent.app`) ↔ **ContactsAccountsService** / Contacts `PersistentStoreBuilder` |
 | **Hardware** | MacBook Pro `Mac15,11`, M3 Max, 36 GB |
@@ -271,3 +271,60 @@ CPU one.
 26 个同级 profile 提到它;这次有经过校验和的 beta8 归档可对照,`cmp` 结果为**完全一致**。beta8 上已有的
 552 个 profile 在正式版上全部未变,目录里唯一的变化是新增了一个无关文件。10 分钟窗口内 **1,058** 条
 imagent 记录点名该服务(794 条 `E`),谓词复查一致。**修复没有进正式版。**
+
+## Re-verification 2026-09-25 — 27.2 beta2 `26B5091g` — the profile changed, but not where it matters
+
+> **Clock position, because it decides what these numbers can be compared to.** macOS 27.2 beta2
+> `26B5091g` was installed **2026-09-25 07:08:18 UTC** (`InstallHistory.plist`), two minutes after
+> the 15:06:19 +0800 boot. The window is **T+1h54m → T+2h04m** with 32 apps running and the
+> post-update reindex still active — matched to no earlier window, so log *volumes* are not
+> presented as pairs. Kernel `xnu-13432.40.162~92` (release: `xnu-13432.1.9~1`). Raw capture:
+> [`baselines/27.2-beta2-26B5091g/`](../baselines/27.2-beta2-26B5091g/README.md).
+
+### The profile moved for the first time
+
+| | beta6 | beta7 | beta8 | release | **27.2 b2** |
+|---|---|---|---|---|---|
+| `com.apple.imagent.sb` lines | 404 | 404 | 404 | 404 | **405** |
+| mentions of `ContactsAccountsService` | 0 | 0 | 0 | 0 | **0** |
+| sibling profiles that name it | 26 | 26 | 26 | 26 | **26** |
+
+```
+$ diff ~/Developer/macos27-beta8-binary-archive/sandbox-profiles/com.apple.imagent.sb \
+       /System/Library/Sandbox/Profiles/com.apple.imagent.sb
+211a212
+>     (global-name "com.apple.sharereportingd")
+```
+
+The beta8 archive stands in for release here: on 2026-09-16 the release profile was `cmp`-identical
+to it. So Apple did edit imagent's sandbox in this build, and added an unrelated mach lookup, and
+the one this issue is about is still not there. Across the whole `Profiles/` directory, 59 of
+beta8's 552 files changed, `PrototypeInferenceProvider.sb` and release's
+`GenerativeLearningTestHarness` addition are gone, and `com.apple.appledepthd.sb` and
+`com.apple.contextualunderstandingd.sb` are new.
+
+The 27.2 beta2 profiles are archived and checksum-verified at
+`~/Developer/macos27-27.2beta2-binary-archive/sandbox-profiles/`; this section's three numbers
+reproduce from the archive alone (405 / 0 / 26).
+
+### The retry loop still runs — and the window missed it
+
+imagent records naming the service in the 10-minute window: **0** (release: 1,058). Re-queried since
+boot with `--predicate 'process == "imagent" AND eventMessage CONTAINS "ContactsAccountsService"'`:
+**20,456**, bursty — 15:00 1,239 | 15:10 3,176 | 15:20 11,280 | 15:30 2,642 | 15:40 177 | 16:10 1,765 |
+16:40 177 | 17:10 530, last at 17:11:30. The 17:11:24 burst alone holds **151 `E` records in two
+seconds**:
+
+```
+E imagent [com.apple.contacts:migration] Migration service failed database preparation:
+  Error Domain=NSCocoaErrorDomain Code=4099 "The connection to service named
+  com.apple.AddressBook.ContactsAccountsService was invalidated ...
+E imagent [com.apple.contacts:accounts-service] There was an error while trying to load
+  accounts. We'll return an empty array. ... Code=4099
+```
+
+**The status stays 🔴.**
+
+2026-09-25 27.2 beta2 `26B5091g` 复测:`com.apple.imagent.sb` 自本条立项以来首次变化(404 → 405 行),
+但新增的唯一一行是无关的 `com.apple.sharereportingd`,`ContactsAccountsService` 仍是 0 次提及。窗口内 0 条,
+开机以来重查 **20,456** 条,17:11:24 两秒内 151 条 `E` —— 无退避重试照旧。仍记 🔴。
