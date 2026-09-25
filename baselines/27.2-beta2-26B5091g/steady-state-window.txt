@@ -1,0 +1,100 @@
+=== macOS 27.2 beta2 26B5091g — 10-minute window at T+1h54m (NOT a post-boot window) ===
+build installed: 2026-09-25 07:08:18 UTC = 15:08:18 +0800  (/Library/Receipts/InstallHistory.plist)
+boot:            2026-09-25 15:06:19 +0800  (kern.boottime)
+window:          2026-09-25 17:00:09.537 -> 17:10:09.480, 10m00s  = T+1h54m -> T+2h04m
+records in window: 662,741 timestamped records (819,348 lines incl. multi-line continuations)
+kernel:          xnu-13432.40.162~92   (release: xnu-13432.1.9~1)
+
+⚠️ NOT A MATCHED PAIR WITH ANY EARLIER BUILD ON THE VOLUME AXIS. release was T+6h29m,
+   beta8 T+21h20m, beta7/beta6 post-boot. Where an earlier number is quoted it is context,
+   not a pair. NOT quiesced: load average ~11-12, 32 /Applications bundles running
+   (list in eco-replicate.txt). Two hours after an OS update, so reindex daemons were active.
+
+CAPTURE METHOD: /usr/bin/log show --last 10m --style compact   (default level)
+  Process attribution uses awk field-split:  awk '{p=$4; sub(/\[.*/,"",p); if(p=="NAME") ...}'
+  Every in-window ZERO below was re-queried SINCE BOOT with a predicate before being
+  believed. Two of them (#18, #19) turned out to be gaps between bursts, not absence.
+
+top emitters: kernel 80,792 | ecosystemd 69,774 | ecosystemanalyticsd 54,264 |
+              swiftpm-testing-helper 34,045 | DuoUpdater 32,370 | mDNSResponder 32,021 | Mail 30,386
+
+--- #18 contactsd ---
+backlog: see contactsd-backlog.txt -- 110,247 -> 115,412, none reset.
+contactsd records in window: 6
+"Could not fetch group for change type" in window: 0     (release: 1,495)
+  SINCE BOOT, unscoped predicate 'eventMessage CONTAINS "Could not fetch group"': 9,107
+  per 10-min bucket: 15:00 1,295 | 15:10 948 | 15:20 3,581 | 15:30 2,226 | 16:10 1,048 |
+                     16:20 8 | 17:10 2 ; last seen 17:12:31.951
+  -> the window fell between bursts. The client-side failure is still present.
+contactsd CPU: 19.4% over 120 s (release 0.0%, beta8 0.0%). One reading, not replicated.
+
+--- #19 imagent x ContactsAccountsService ---
+imagent records naming the service, in window: 0     (release: 1,058)
+  SINCE BOOT, predicate 'process == "imagent" AND eventMessage CONTAINS "ContactsAccountsService"': 20,456
+  per 10-min bucket: 15:00 1,239 | 15:10 3,176 | 15:20 11,280 | 15:30 2,642 | 15:40 177 |
+                     16:10 1,765 | 16:40 177 | 17:10 530 ; last seen 17:11:30.141
+  17:11:24-17:11:26: 151 E-level records naming the service in 2 s -- the no-backoff retry
+  sample (17:11:24.887):
+    E imagent [com.apple.contacts:migration] Migration service failed database preparation:
+      Error Domain=NSCocoaErrorDomain Code=4099 "The connection to service named
+      com.apple.AddressBook.ContactsAccountsService was invalidated ...
+    E imagent [com.apple.contacts:accounts-service] There was an error while trying to load
+      accounts. We'll return an empty array. ... Code=4099
+profile: /System/Library/Sandbox/Profiles/com.apple.imagent.sb
+  lines:      405   (beta6/7/8/release: 404)   <- CHANGED for the first time
+  mentions of ContactsAccountsService: 0      (unchanged)
+  sibling profiles that DO name it: 26        (unchanged)
+  diff against the beta8 archive (= release, which was byte-identical to beta8):
+    211a212
+    >     (global-name "com.apple.sharereportingd")
+  -> the one added line is an unrelated mach lookup. The lookup this issue is about is still absent.
+Whole Profiles/ dir vs the beta8 archive: 553 files now. Of beta8's 552: 59 changed, 1 gone
+  (PrototypeInferenceProvider.sb). release's one addition (GenerativeLearningTestHarness) is
+  also gone. Added: com.apple.appledepthd.sb, com.apple.contextualunderstandingd.sb.
+
+--- #23 ecosystemd ---
+SecTrustCopyAppleTrustAnchors, awk-pinned to ecosystemd: 19,888 = 33.1/s
+  predicate cross-check (17:00:09 -> 17:10:10): 19,950 -- agrees within the boundary.
+  (release: 19,975 = 33.3/s | beta8: 19,998 = 33.3/s)
+unpinned emitters: ecosystemd 19,888 | ecosystemanalyticsd 18,354 | codesign 525 |
+                   swiftpm-testing-helper 414 | syspolicyd 337
+Replicated: see eco-replicate.txt.
+
+--- #2 Shortcuts/Siri ToolKit storm ---
+BackgroundShortcutRunner + siriactionsd records in window: 2,623
+Since boot: see shortcuts-since-boot.txt -- 98,046 records, post-boot-burst peak 1,885/s.
+
+--- #1 CoreMedia fpSupport_GetVideoRange ---
+in-window: 54 = WeType 18 / Safari 18 / Mail 18.  predicate cross-check (unpinned): 54 -- agrees.
+  (release: 74, all DingTalk | beta8: 54 from Mail/DingTalk/DuoUpdater/textunderstandingd)
+Still emitting; app mix different again. Not creditable either way.
+
+--- #24 mds CoreDuet ---
+mds records in window: 1,612; naming CoreDuet: 1,175 = 2.0/s.  predicate cross-check: 1,175.
+  idle band ~2/s, storm ~2420/s. Not storming. Bursty; one window decides nothing.
+
+--- #15 appstoreagent BGSystemTaskSchedulerErrorDomain Code=8 ---
+in window: 0  (appstoreagent records: 226). beta3/5/6/7/8 + release + 27.2b2 all clean.
+
+--- #13 Spotlight `insert ranking attr at NSNotFound` ---
+1,415 in window. (Closed issue; the log line was already recorded as benign after beta3.)
+
+--- #3 WindowServer `Invalid window` ---
+4,259 in window. Window count NOT controlled -> not decision-grade, no verdict.
+
+--- #25 corebrightnessd nan ---
+0 in window (default level only; the beta5 figure was --info --debug). Not comparable.
+
+--- CPU, 120 s cumulative utime+stime deltas, 17:14:33 -> 17:16:33 (run under bash) ---
+⚠️ MACHINE NOT QUIESCED (load ~9-11, 32 apps).
+  WindowServer          46.2%   uncontrolled window count; no #3 verdict
+  contactsd             19.4%   one reading; release/beta8 read 0.0%
+  ecosystemd            15.3%
+  NotificationCenter     3.9%   (#29: 61.5 s total CPU over 2h05m uptime = 0.8% average)
+  ecosystemanalyticsd    3.3%
+  ControlCenter          1.2%
+  mds                    0.6%
+  MenuBarAgent           0.2%
+  corebrightnessd        0.2%
+  imagent                0.1%
+  siriactionsd / appstoreagent   0.0%

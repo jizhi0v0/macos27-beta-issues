@@ -1,0 +1,38 @@
+=== #2 Shortcuts/Siri ToolKit storm — since boot, macOS 27.2 beta2 26B5091g ===
+query:  /usr/bin/log show --start "2026-09-25 15:06:19" --end "2026-09-25 17:20:00" --style compact \
+          --predicate 'process == "BackgroundShortcutRunner" OR process == "siriactionsd"'
+        (default level; counted only lines that start with a timestamp)
+⚠️ --end LEAKED: despite a predicate, the output also contained one 2,090-record burst at
+   17:22:28-17:22:40 (query run 17:28:56). A 1-minute re-query of 17:19-17:20 with the same
+   predicate returned 0, and a 1-minute ecosystemd query 16:00-16:01 was bounded correctly,
+   so this is not "--end always ignored". The counts below are SLICED BY TIMESTAMP (< 17:20:00).
+range:  2026-09-25 15:08:37.014 -> 17:17:09.658
+records: 98,046   (BackgroundShortcutRunner 86,911 / siriactionsd 11,135)
+levels:  A 67,486 | Df 25,304 | E 5,219 | F 30 | Sd 7
+
+peak seconds, all levels:
+  8,813  15:09:11   <- boot burst (T+2m52s)
+  7,133  15:09:12
+  6,940  15:09:10
+peak seconds after the boot burst (>= 15:20):
+  1,885  15:46:37   (T+40m)
+  1,558  16:35:00
+  1,549  17:16:57
+  1,543  16:41:17
+  1,541  15:34:02
+  (release T+2h17m: 3,033 | beta8 T+21h: 1,644 | beta7 post-boot: 1,795 | beta6: 864 | beta5: 181)
+
+seconds with >= 500 records, by hour:
+  15h 32 | 16h 13 | 17h 3        (48 total)
+
+records per 10-minute bucket:
+  15:00 51,979  <- boot burst
+  15:10  6,392   15:20      0   15:30  3,936   15:40  5,249   15:50  2,100
+  16:00    173   16:10    171   16:20  3,923   16:30  9,411   16:40  3,749   16:50  4,428
+  17:00  2,623   17:10  3,912 (to 17:17:09)
+
+READING: the storm is still there -- a boot burst peaking at 8,813/s and recurring bursts
+of ~1,500-1,900/s up to at least T+2h10m. The SHAPE differs from release: release's recurring
+bursts were ~17k records per 10-minute bucket, here no post-boot bucket exceeds 9,411.
+That is a different clock position (T+2h vs T+6h) and a single boot, so the shape change
+is RECORDED, NOT CREDITED. The 15:20 bucket being exactly 0 is unexplained.

@@ -1,0 +1,34 @@
+=== macOS 27.2 beta2 26B5091g — diagnostic reports since the build was installed ===
+taken:   2026-09-25 ~17:25 +0800
+scope:   ~/Library/Logs/DiagnosticReports + /Library/Logs/DiagnosticReports,
+         AND ~/Library/Logs/DiagnosticReports/Retired
+filter:  mtime >= 2026-09-25 15:08:18 +0800 (install); .ips parsed as JSON
+         (line 1 = header, rest = payload), os_version read per report
+exposure: ~2 h 15 m. Far too short to say anything about crash recurrence.
+
+files: 14 | in Retired: 0
+.ips os_version: macOS 27.2 (26B5091g) 3
+
+.ips reports:
+  1  JetsamEvent               (bug_type 298)
+  1  ExcUserFault nsattributedstringagent   (bug_type 309; also present on beta8 and release)
+  1  ExcUserFault iconservicesd             (bug_type 309; new here, not investigated)
+
+non-.ips resource/diag reports:
+  2  mds_stores                diag
+  2  STExtractionService.privileged  diag
+  1  ANECompilerService        diag
+  1  coresymbolicationd        diag
+  1  mediaanalysisd            diag
+  1  duetexpertd               cpu_resource
+  1  fileproviderd             cpu_resource
+  1  FPCKService               cpu_resource
+  1  Google Chrome 154.0.8037.58  disk writes, 2,147.52 MB over 8,049 s (not a crash)
+  (post-upgrade reindex daemons; expected in the first hours after an OS update)
+
+NOT PRESENT, checked against the parsed payload (procName / lastExceptionBacktrace):
+  #5  OrbStack 0 | #6 Chrome+MediaRemote 0 | #8 Codex 0 | #10 WeChat 0
+  #16 modelmanagerd 0 | #17 NSRemoteView in lastExceptionBacktrace 0
+  #29 NotificationCenter cpu_resource 0
+
+⚠️ 2 h 15 m of ordinary use. This says nothing about whether any fix holds.

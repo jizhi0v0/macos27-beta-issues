@@ -1,0 +1,31 @@
+=== #23 replicated ecosystemd measurement, 27.2 beta2 26B5091g — raw tools/eco-replicate.sh output ===
+command: REPS=3 bash tools/eco-replicate.sh   (T+2h04m on the 2026-09-25 15:06:19 boot)
+⚠️ The lead-in asks for apps to be quit; they were NOT (32 bundles listed below). Same as release.
+
+lead-in 30s — quit your apps now, then leave the machine alone.
+=== replicated ecosystemd measurement ===
+build: 27.2 26B5091g
+reps=3 window=60s  pid=6507
+start: Fri Sep 25 17:10:20 CST 2026
+
+baseline for comparison — beta4 26A5388g:
+  SecTrustCopyAppleTrustAnchors ~68-85/s | 15,885 lines/60s | 1,227 EIO | CPU 26-57%
+
+--- all running /Applications bundles at measurement start ---
+Alcove.app AndDrive.app AweSun.app BaiduNetdisk_mac.app ChatGPT.app Claude.app DuoShot.app DuoTerminal.app DuoTranslator.app DuoUpdater.app Fork.app Google Chrome.app Keka.app Klack.app Lettera.app Macs Fan Control.app NotchBadge.app OrbStack.app Parallels Desktop.app Pearcleaner.app Postman.app RustDesk.app Spotify.app Surge.app TablePlus.app Tailscale.app Telegram.app ToDesk.app UURemote.app WeChat.app Xcode.app Zed Preview.app 
+
+rep      eco%  anchors/s    lines/win      EIO
+1        15.1       35.0         8101      504
+2        14.4       32.5         7519      468
+3        14.5       33.5         7753      483
+
+ecosystemd CPU: mean=14.7%  min=14.4%  max=15.1%  sd=0.3
+
+HOW TO READ:
+  The loop is confirmed still present by the anchors/s and EIO columns
+  regardless of CPU — those are not load-sensitive. CPU is the open
+  question: beta4 recorded 26-57%, and beta5 spot-checks disagreed with
+  each other (12.2% then 4.7%) under heavy load.
+  A tight spread here settles it; a wide one means the state is still
+  uncontrolled and something else is varying.
+done: Fri Sep 25 17:13:55 CST 2026

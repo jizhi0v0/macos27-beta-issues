@@ -1,0 +1,40 @@
+=== #26 getDeliveredNotifications visibility race — 27.2 beta2 26B5091g ===
+tool:    tools/un-delivered-race-probe (UNDVerify/v5, the copy already installed at ~/Applications/UNDVerify.app, bundle com.example.undverify)
+run:     2026-09-25 ~17:14 +0800, T+2h08m. Stale copies killed, previous log moved aside first.
+launch:  open ~/Applications/UNDVerify.app ; results from ~/undverify_run.log
+NOTE:    this measures the OS-side window only. Chrome is not involved; Chrome is now
+         154.0.8037.58 (beta7 re-verification ran 152.0.7977.65) and its side was NOT re-checked.
+
+--- raw ---
+=== UNDVerify/v5 ===
+os=Version 27.2 (Build 26B5091g)
+bundle=com.example.undverify
+startup ok, requesting authorization…
+initial authorizationStatus=2 (0=notDetermined 1=denied 2=authorized 3=provisional 4=ephemeral)
+already authorized — starting trials
+settings auth=2 alertStyle=1 alertSetting=2
+A trial 1 addMs=2.55  0@0.1/0.8:N(n=0) 5@5.5/6.3:N(n=0) 10@11.1/11.6:N(n=0) 15@15.5/17.2:N(n=0) 25@26.8/34.4:Y(n=1) 50@50.2/51.6:Y(n=1) 100@105.6/107.8:Y(n=1) 250@266.7/274.1:Y(n=1)
+A trial 2 addMs=6.70  0@0.0/0.7:N(n=0) 5@6.0/11.3:Y(n=1) 10@10.3/11.4:Y(n=1) 15@16.6/21.4:Y(n=1) 25@27.7/33.9:Y(n=1) 50@53.0/59.9:Y(n=1) 100@106.5/110.1:Y(n=1) 250@265.2/268.6:Y(n=1)
+A trial 3 addMs=9.65  0@0.0/0.5:N(n=0) 5@6.1/6.9:N(n=0) 10@10.4/22.0:Y(n=1) 15@15.8/22.1:Y(n=1) 25@25.5/35.0:Y(n=1) 50@52.1/59.4:Y(n=1) 100@106.4/113.3:Y(n=1) 250@266.3/267.9:Y(n=1)
+A trial 4 addMs=1.49  0@0.0/0.4:N(n=0) 5@6.1/7.1:N(n=0) 10@10.4/10.9:N(n=0) 15@15.1/15.4:N(n=0) 25@26.8/33.8:Y(n=1) 50@53.2/54.3:Y(n=1) 100@106.7/108.5:Y(n=1) 250@265.1/268.4:Y(n=1)
+A trial 5 addMs=3.53  0@0.0/0.8:N(n=0) 5@6.1/17.7:Y(n=1) 10@14.6/17.8:Y(n=1) 15@15.3/17.9:Y(n=1) 25@26.8/27.6:Y(n=1) 50@52.2/62.5:Y(n=1) 100@106.7/108.2:Y(n=1) 250@265.3/268.0:Y(n=1)
+A trial 6 addMs=3.48  0@0.0/1.1:N(n=0) 5@7.3/10.7:N(n=0) 10@10.7/10.9:N(n=0) 15@16.1/22.2:Y(n=1) 25@26.3/35.7:Y(n=1) 50@51.3/52.4:Y(n=1) 100@106.7/108.0:Y(n=1) 250@265.4/269.7:Y(n=1)
+A trial 7 addMs=6.00  0@0.0/1.5:N(n=0) 5@5.9/12.9:Y(n=1) 10@10.6/12.9:Y(n=1) 15@16.3/20.8:Y(n=1) 25@26.8/29.0:Y(n=1) 50@52.3/58.3:Y(n=1) 100@105.9/107.9:Y(n=1) 250@266.3/270.0:Y(n=1)
+A trial 8 addMs=2.78  0@0.0/0.5:N(n=0) 5@5.4/6.0:N(n=0) 10@13.0/13.5:N(n=0) 15@16.1/16.5:N(n=0) 25@25.7/28.1:Y(n=1) 50@53.5/55.2:Y(n=1) 100@105.4/112.7:Y(n=1) 250@263.8/265.2:Y(n=1)
+B trial 1 addMs=18.99 firstPollIssued=0.02ms polls=26 VISIBLE issued=9.81ms replied=28.92ms lastMiss(issued=9.49 replied=9.81) n=1
+B trial 2 addMs=5.01 firstPollIssued=0.02ms polls=24 VISIBLE issued=14.75ms replied=15.97ms lastMiss(issued=14.37 replied=14.74) n=1
+B trial 3 addMs=2.10 firstPollIssued=0.01ms polls=27 VISIBLE issued=9.59ms replied=23.05ms lastMiss(issued=9.37 replied=9.58) n=1
+B trial 4 addMs=1.23 firstPollIssued=0.01ms polls=134 VISIBLE issued=34.72ms replied=35.60ms lastMiss(issued=34.48 replied=34.71) n=1
+B trial 5 addMs=1.57 firstPollIssued=0.01ms polls=27 VISIBLE issued=7.28ms replied=9.36ms lastMiss(issued=7.02 replied=7.26) n=1
+B trial 6 addMs=1.16 firstPollIssued=0.01ms polls=27 VISIBLE issued=7.92ms replied=9.98ms lastMiss(issued=7.30 replied=7.91) n=1
+B trial 7 addMs=2.37 firstPollIssued=0.02ms polls=27 VISIBLE issued=13.40ms replied=15.21ms lastMiss(issued=13.19 replied=13.40) n=1
+B trial 8 addMs=1.05 firstPollIssued=0.01ms polls=24 VISIBLE issued=7.72ms replied=9.51ms lastMiss(issued=7.13 replied=7.71) n=1
+ALL DONE
+
+--- summary ---
+phase A, visible at offset (n=8):  0 ms 0/8 | 5 ms 3/8 | 10 ms 4/8 | 15 ms 5/8 | 25 ms 8/8
+phase B, first-visible (n=8):      min 7.28 | median 9.70 | max 34.72 ms
+  sorted: 7.28 7.72 7.92 9.59 9.81 13.40 14.75 34.72
+  (repo-recorded: beta5 18.62 | beta6 8.07 | beta7 8.36 median; macOS 26.6: 0.01-0.03 ms)
+  the 34.72 ms max is a single trial (134 polls); without it the max is 14.75 ms.
+READING: the window is still there. 0/8 visible at 0 ms, which is exactly Chromium's kill condition.
