@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | 🔴 **the profile changed on 27.2 beta2 `26B5091g`, but not where it matters** (2026-09-25) — `com.apple.imagent.sb` moved for the first time since this issue was filed, 404 → **405** lines, and the diff against the beta8 archive (= release) is one line: `(global-name "com.apple.sharereportingd")`. Mentions of `ContactsAccountsService`: still **0**; siblings that name it: still **26**. imagent records naming the service: **0** in the 10-minute window but **20,456** since boot, including **151** `E` records in two seconds at 17:11:24 (`Code=4099 … was invalidated`). See [`../baselines/27.2-beta2-26B5091g/`](../baselines/27.2-beta2-26B5091g/README.md). Prior: 🔴 **byte-identical to beta8 on release `26A428`** (2026-09-16) — `com.apple.imagent.sb` still **404** lines, **0** mentions of `ContactsAccountsService`, **26** siblings that do name it, and `cmp` against the checksum-verified beta8 archive says the file is **identical**. All 552 profiles that existed on beta8 are byte-identical on release; the directory's only change is one added file. **1,058** imagent records naming the service in a 10-minute window (794 of them `E`). The fix did not ship. See [`baselines/release-26A428/`](../baselines/release-26A428/README.md). Prior: 🔴 **unchanged for a third build on beta8 `26A5425a`** (2026-09-03) — `com.apple.imagent.sb` still **404 lines**, still **0** mentions of `ContactsAccountsService`, still the outlier against the **26** sibling profiles that do name it. Identical to beta6 and beta7 on all three numbers; 1,586 imagent records naming the service in a 10-minute window. The one-line fix was not applied. Prior: 🔴 **unchanged at the source level on beta7 `26A5421a`** (2026-08-27) — `com.apple.imagent.sb` is still **404 lines** with **0** mentions of `ContactsAccountsService`, still the outlier against the **26** sibling profiles that name it; **3,096** imagent records naming the service in the 8-minute post-boot window (beta6: 2,383). The profile's Aug 21 mtime is the OS image build date, not evidence it was touched. See *Re-check 2026-08-27* below. Prior: 🔴 **unchanged at the source level on beta6 `26A5416b`** (2026-08-19) — `com.apple.imagent.sb` is still **404 lines** and still the outlier against the **26** sibling profiles that name the service, both re-verified on beta6; the one-line fix was not applied. 2,383 `ContactsAccountsService` lines in the post-boot window. See [the beta6 section](#re-check-2026-08-19--beta6-26a5416b--the-profile-is-unchanged). Prior: 🔴 Open · confirmed on `26A5378n` (live — still looping while this was written) |
+| **Status** | 🔴 **the profile is byte-identical to 27.2 beta2 on 27.2 beta3 `26B5101f`** (2026-10-07) — `com.apple.imagent.sb` still 405 lines, **0** mentions of `ContactsAccountsService`, **26** siblings that name it; `diff` against the 27.2 b2 archive prints nothing (18 other profiles did change). imagent logged **3,529** records naming the service since boot, **2,648** of them `E`-level stating `Connection init failed at lookup with error 159 - Sandbox restriction.`, peak 259 in one second. See [`../baselines/27.2-beta3-26B5101f/`](../baselines/27.2-beta3-26B5101f/README.md). Prior: 🔴 **the profile changed on 27.2 beta2 `26B5091g`, but not where it matters** (2026-09-25) — `com.apple.imagent.sb` moved for the first time since this issue was filed, 404 → **405** lines, and the diff against the beta8 archive (= release) is one line: `(global-name "com.apple.sharereportingd")`. Mentions of `ContactsAccountsService`: still **0**; siblings that name it: still **26**. imagent records naming the service: **0** in the 10-minute window but **20,456** since boot, including **151** `E` records in two seconds at 17:11:24 (`Code=4099 … was invalidated`). See [`../baselines/27.2-beta2-26B5091g/`](../baselines/27.2-beta2-26B5091g/README.md). Prior: 🔴 **byte-identical to beta8 on release `26A428`** (2026-09-16) — `com.apple.imagent.sb` still **404** lines, **0** mentions of `ContactsAccountsService`, **26** siblings that do name it, and `cmp` against the checksum-verified beta8 archive says the file is **identical**. All 552 profiles that existed on beta8 are byte-identical on release; the directory's only change is one added file. **1,058** imagent records naming the service in a 10-minute window (794 of them `E`). The fix did not ship. See [`baselines/release-26A428/`](../baselines/release-26A428/README.md). Prior: 🔴 **unchanged for a third build on beta8 `26A5425a`** (2026-09-03) — `com.apple.imagent.sb` still **404 lines**, still **0** mentions of `ContactsAccountsService`, still the outlier against the **26** sibling profiles that do name it. Identical to beta6 and beta7 on all three numbers; 1,586 imagent records naming the service in a 10-minute window. The one-line fix was not applied. Prior: 🔴 **unchanged at the source level on beta7 `26A5421a`** (2026-08-27) — `com.apple.imagent.sb` is still **404 lines** with **0** mentions of `ContactsAccountsService`, still the outlier against the **26** sibling profiles that name it; **3,096** imagent records naming the service in the 8-minute post-boot window (beta6: 2,383). The profile's Aug 21 mtime is the OS image build date, not evidence it was touched. See *Re-check 2026-08-27* below. Prior: 🔴 **unchanged at the source level on beta6 `26A5416b`** (2026-08-19) — `com.apple.imagent.sb` is still **404 lines** and still the outlier against the **26** sibling profiles that name the service, both re-verified on beta6; the one-line fix was not applied. 2,383 `ContactsAccountsService` lines in the post-boot window. See [the beta6 section](#re-check-2026-08-19--beta6-26a5416b--the-profile-is-unchanged). Prior: 🔴 Open · confirmed on `26A5378n` (live — still looping while this was written) |
 | **macOS** | 27.0 beta3 revision **`26A5378n`** (measured 2026-07-16; not tested on earlier builds) |
 | **Component** | Apple **imagent** `10.0` (1000) (`/System/Library/PrivateFrameworks/IMCore.framework/imagent.app`) ↔ **ContactsAccountsService** / Contacts `PersistentStoreBuilder` |
 | **Hardware** | MacBook Pro `Mac15,11`, M3 Max, 36 GB |
@@ -328,3 +328,43 @@ E imagent [com.apple.contacts:accounts-service] There was an error while trying 
 2026-09-25 27.2 beta2 `26B5091g` 复测:`com.apple.imagent.sb` 自本条立项以来首次变化(404 → 405 行),
 但新增的唯一一行是无关的 `com.apple.sharereportingd`,`ContactsAccountsService` 仍是 0 次提及。窗口内 0 条,
 开机以来重查 **20,456** 条,17:11:24 两秒内 151 条 `E` —— 无退避重试照旧。仍记 🔴。
+
+## Re-verification 2026-10-07 — 27.2 beta3 `26B5101f` — the profile is byte-identical to 27.2 beta2
+
+> **Clock position, because it decides what these numbers can be compared to.** macOS 27.2 beta3
+> `26B5101f` was installed **2026-10-07 12:22:37 +0800** (`InstallHistory.plist`) and booted at
+> 12:26:01. This is a **post-boot** pass — the window is **T+13m → T+23m** with 22 apps running and
+> the post-update reindex active — matched to no earlier window, so log *volumes* are not presented
+> as pairs. Kernel `xnu-13432.40.177.0.3~56` (27.2 b2: `xnu-13432.40.162~92`). Raw capture:
+> [`baselines/27.2-beta3-26B5101f/`](../baselines/27.2-beta3-26B5101f/README.md).
+
+| | 27.2 b2 | **27.2 b3** |
+|---|---|---|
+| `com.apple.imagent.sb` lines | 405 | **405** |
+| mentions of `ContactsAccountsService` | 0 | **0** |
+| sibling profiles that name it | 26 | **26** |
+| `diff` against the previous build's archive | one added line (`sharereportingd`) | **no output** |
+
+Across the whole `Profiles/` directory, 18 of 553 profiles changed against the 27.2 b2 archive and
+none were added or removed; imagent's is not one of them. All three numbers also reproduce from the
+new archive alone (`~/Developer/macos27-27.2beta3-binary-archive/`).
+
+**The failure is logged in so many words.** Since boot, `process == "imagent" AND eventMessage
+CONTAINS "ContactsAccountsService"`: **3,529** records (E 2,648 / Df 881), all between 12:26 and
+12:37:06, peak **259** in one second (12:32:11). Every `E` record carries the lookup failure
+verbatim:
+
+```
+E imagent [com.apple.contacts:migration] [Migration] Migration service failed database
+  preparation: Error Domain=NSCocoaErrorDomain Code=4099 "The connection to service named
+  com.apple.AddressBook.ContactsAccountsService was invalidated: Connection init failed at
+  lookup with error 159 - Sandbox restriction."
+```
+
+The 10-minute window (T+13m → T+23m) held **0** — after the burst, the same gap shape as 27.2 b2.
+
+**The status stays 🔴.**
+
+2026-10-07 27.2 beta3 `26B5101f` 复测:`com.apple.imagent.sb` 与 27.2 beta2 存档**逐字节一致**(405 行、
+0 处提及、26 个兄弟 profile 有它)。开机以来 imagent 相关记录 **3,529** 条,其中 2,648 条 `E` 级明写
+`error 159 - Sandbox restriction`。仍记 🔴。
