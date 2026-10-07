@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | 🔴 **rate signature unchanged on 27.2 beta2 `26B5091g`** (2026-09-25) — **35.0 / 32.5 / 33.5** anchors/s, **504 / 468 / 483** EIO, CPU mean **14.7%** (sd 0.3). The 10-minute window gives **19,888 = 33.1/s** (predicate cross-check 19,950) against release's 33.3/s and beta8's 33.3/s — a new kernel and the rate did not move. `ecosystemanalyticsd` 18,354. See [`../baselines/27.2-beta2-26B5091g/`](../baselines/27.2-beta2-26B5091g/README.md). Prior: 🔴 **rate signature unchanged on release `26A428`** (2026-09-16) — **35.0 / 31.3 / 42.1** anchors/s, **504 / 450 / 603** EIO, CPU mean **11.7%** (sd 1.6). The reps spread wider than beta8's, but the independent 10-minute window, predicate-pinned to ecosystemd, gives **19,975 = 33.3/s** against beta8's 19,998 = 33.3/s. `ecosystemanalyticsd` again emits nearly as many anchor calls (**18,377**) and is still untested; the two are the machine's #1 and #2 log emitters. ⚠️ Not quiesced (~40 apps). See [`baselines/release-26A428/`](../baselines/release-26A428/README.md). Prior: 🔴 **rate signature unchanged on beta8 `26A5425a`** (2026-09-03) — **32.9 / 38.2 / 32.7** anchors/s, **474 / 552 / 471** EIO, CPU mean **12.6%** (sd 1.0), against beta7's 33.1/32.5/32.5, 468–477, 13.1%. Better than beta7 in two ways: the three reps are genuinely distinct (beta7's reps 2–3 were byte-identical, an artefact that made it effectively n=2), and an independent 10-minute window agrees at **33.3/s**. ⚠️ **New and untested:** unpinned, the anchors message returns 47,887 for that window, of which **`ecosystemanalyticsd` accounts for 20,721 — more than ecosystemd's 19,998**. That process has never been counted in this issue; whether it is a second participant in the same loop or an unrelated caller is unknown. Not claimed either way. Prior: 🔴 **still reproducing on beta7 `26A5421a`, rate signature unchanged from beta6** (2026-08-27) — **33.1 / 32.5 / 32.5** anchors/s, **468–477** `UNIX error exception: 5` per 60 s, CPU **13.1%** mean (beta6: 33.1/s, 476 EIO, 12.7%). ⚠️ Effectively **n=2** — the flush-boundary artefact the script's header claims was fixed recurred, reps 2 and 3 byte-identical — and the machine was **not quiesced**, so the CPU column is not a matched comparison; the anchors/s and EIO columns are load-insensitive and carry the verdict. See *Re-measurement 2026-08-27* below. Prior: 🔴 **still reproducing on beta6 `26A5416b`** (2026-08-19) — the loop's rate signature is **unchanged from beta5**: `SecTrustCopyAppleTrustAnchors` **33.1/s** mean (beta5 ~32.5), **476** `UNIX error exception: 5` per 60 s (beta5 468), **6,504** lines/60 s (beta5 7,519), CPU **12.7%** mean over 8 windows (beta5 16.4%). Not fixed and not further mitigated. See [the beta6 re-measurement](#re-measurement-2026-08-19--beta6-26a5416b--rate-signature-unchanged). Prior: 🔴 **still reproducing on beta5 `26A5406e`, at roughly half the beta4 rate on every axis** (2026-08-11, 5 replicates on a quiesced desktop via [`tools/eco-replicate.sh`](../tools/eco-replicate.sh)) — CPU **16.4%** (min 13.9, max 17.2, sd 1.3) against beta4's 26–57%; `SecTrustCopyAppleTrustAnchors` **~32.5/s** against ~68–85/s; **7,519** lines/60 s against 15,885; **468** `UNIX error exception: 5` against 1,227. The failing-and-retrying shape is unchanged, so this is **mitigation, not a fix**. **Not yet re-tested on beta6 `26A5416b`.** Prior: 🔴 Open · confirmed on beta4 |
+| **Status** | 🔴 **rate signature unchanged on 27.2 beta3 `26B5101f`, and the loop is deterministic per minute** (2026-10-07) — **32.5 / 32.5 / 34.0** anchors/s, **468 / 468 / 492** EIO, CPU mean **12.2%** (sd 1.0); the 10-minute window gives **19,350 = 32.3/s** (predicate cross-check 19,350) against 27.2 b2's 33.1/s. Four independent clock minutes each logged **exactly 1,950 anchors / 468 EIO / 6,139 lines** with different first and last timestamps, so identical replicates are a property of the loop, not the tool's old flush-boundary defect. See [`../baselines/27.2-beta3-26B5101f/`](../baselines/27.2-beta3-26B5101f/README.md). Prior: 🔴 **rate signature unchanged on 27.2 beta2 `26B5091g`** (2026-09-25) — **35.0 / 32.5 / 33.5** anchors/s, **504 / 468 / 483** EIO, CPU mean **14.7%** (sd 0.3). The 10-minute window gives **19,888 = 33.1/s** (predicate cross-check 19,950) against release's 33.3/s and beta8's 33.3/s — a new kernel and the rate did not move. `ecosystemanalyticsd` 18,354. See [`../baselines/27.2-beta2-26B5091g/`](../baselines/27.2-beta2-26B5091g/README.md). Prior: 🔴 **rate signature unchanged on release `26A428`** (2026-09-16) — **35.0 / 31.3 / 42.1** anchors/s, **504 / 450 / 603** EIO, CPU mean **11.7%** (sd 1.6). The reps spread wider than beta8's, but the independent 10-minute window, predicate-pinned to ecosystemd, gives **19,975 = 33.3/s** against beta8's 19,998 = 33.3/s. `ecosystemanalyticsd` again emits nearly as many anchor calls (**18,377**) and is still untested; the two are the machine's #1 and #2 log emitters. ⚠️ Not quiesced (~40 apps). See [`baselines/release-26A428/`](../baselines/release-26A428/README.md). Prior: 🔴 **rate signature unchanged on beta8 `26A5425a`** (2026-09-03) — **32.9 / 38.2 / 32.7** anchors/s, **474 / 552 / 471** EIO, CPU mean **12.6%** (sd 1.0), against beta7's 33.1/32.5/32.5, 468–477, 13.1%. Better than beta7 in two ways: the three reps are genuinely distinct (beta7's reps 2–3 were byte-identical, an artefact that made it effectively n=2), and an independent 10-minute window agrees at **33.3/s**. ⚠️ **New and untested:** unpinned, the anchors message returns 47,887 for that window, of which **`ecosystemanalyticsd` accounts for 20,721 — more than ecosystemd's 19,998**. That process has never been counted in this issue; whether it is a second participant in the same loop or an unrelated caller is unknown. Not claimed either way. Prior: 🔴 **still reproducing on beta7 `26A5421a`, rate signature unchanged from beta6** (2026-08-27) — **33.1 / 32.5 / 32.5** anchors/s, **468–477** `UNIX error exception: 5` per 60 s, CPU **13.1%** mean (beta6: 33.1/s, 476 EIO, 12.7%). ⚠️ Effectively **n=2** — the flush-boundary artefact the script's header claims was fixed recurred, reps 2 and 3 byte-identical — and the machine was **not quiesced**, so the CPU column is not a matched comparison; the anchors/s and EIO columns are load-insensitive and carry the verdict. See *Re-measurement 2026-08-27* below. Prior: 🔴 **still reproducing on beta6 `26A5416b`** (2026-08-19) — the loop's rate signature is **unchanged from beta5**: `SecTrustCopyAppleTrustAnchors` **33.1/s** mean (beta5 ~32.5), **476** `UNIX error exception: 5` per 60 s (beta5 468), **6,504** lines/60 s (beta5 7,519), CPU **12.7%** mean over 8 windows (beta5 16.4%). Not fixed and not further mitigated. See [the beta6 re-measurement](#re-measurement-2026-08-19--beta6-26a5416b--rate-signature-unchanged). Prior: 🔴 **still reproducing on beta5 `26A5406e`, at roughly half the beta4 rate on every axis** (2026-08-11, 5 replicates on a quiesced desktop via [`tools/eco-replicate.sh`](../tools/eco-replicate.sh)) — CPU **16.4%** (min 13.9, max 17.2, sd 1.3) against beta4's 26–57%; `SecTrustCopyAppleTrustAnchors` **~32.5/s** against ~68–85/s; **7,519** lines/60 s against 15,885; **468** `UNIX error exception: 5` against 1,227. The failing-and-retrying shape is unchanged, so this is **mitigation, not a fix**. **Not yet re-tested on beta6 `26A5416b`.** Prior: 🔴 Open · confirmed on beta4 |
 | **macOS** | 27.0 beta4 `26A5388g` |
 | **Component** | Apple **`ecosystemd`** (`Ecosystem.framework`) ↔ **Security / `trustd`** |
 | **Hardware** | `Mac15,11`, M3 Max, 36 GB |
@@ -311,3 +311,48 @@ The rate is within 1% of the last two builds on the first build with a genuinely
 
 2026-09-25 27.2 beta2 `26B5091g` 复测:3×60 s 复测 35.0 / 32.5 / 33.5 anchors/s、EIO 504 / 468 / 483、
 CPU 均值 14.7%(sd 0.3);10 分钟窗口 33.1/s,与 release / beta8 的 33.3/s 相差不到 1%。仍记 🔴。
+
+## Re-verification 2026-10-07 — 27.2 beta3 `26B5101f` — rate signature unchanged, and the loop is deterministic per minute
+
+> **Clock position, because it decides what these numbers can be compared to.** macOS 27.2 beta3
+> `26B5101f` was installed **2026-10-07 12:22:37 +0800** (`InstallHistory.plist`) and booted at
+> 12:26:01. This is a **post-boot** pass — the window is **T+13m → T+23m** with 22 apps running and
+> the post-update reindex active — matched to no earlier window, so log *volumes* are not presented
+> as pairs. Kernel `xnu-13432.40.177.0.3~56` (27.2 b2: `xnu-13432.40.162~92`). Raw capture:
+> [`baselines/27.2-beta3-26B5101f/`](../baselines/27.2-beta3-26B5101f/README.md).
+
+| rep | eco % | anchors/s | lines/60s | EIO |
+|---|---|---|---|---|
+| 1 | 11.1 | 32.5 | 6,295 | 468 |
+| 2 | 11.9 | 32.5 | 6,295 | 468 |
+| 3 | 13.6 | 34.0 | 6,603 | 492 |
+
+Mean CPU **12.2%** (sd 1.0); a separate 120 s cumulative sample at T+32m read **13.7%**. The
+10-minute window gives **19,350 = 32.3/s**, predicate cross-check 19,350 (27.2 b2 33.1/s, release
+33.3/s, beta8 33.3/s). Run with `LEAD=0` and 22 apps open — same non-quiesced state as the last two
+builds. Raw: [`eco-replicate.txt`](../baselines/27.2-beta3-26B5101f/eco-replicate.txt).
+
+### Identical replicates are real
+
+Reps 1 and 2 agree in three columns. `tools/eco-replicate.sh` once returned byte-identical reps
+because `--last Ns` landed on the same flushed extent (fixed 2026-08-19), so this had to be ruled
+out before the numbers could be used. Four consecutive clock minutes, each with its own
+`--start`/`--end`:
+
+| minute | lines | anchors | EIO | first record | last record |
+|---|---|---|---|---|---|
+| 12:41 | 6,139 | 1,950 | 468 | 12:41:02.317 | 12:41:57.554 |
+| 12:42 | 6,139 | 1,950 | 468 | 12:42:02.237 | 12:42:57.538 |
+| 12:43 | 6,139 | 1,950 | 468 | 12:43:02.029 | 12:43:57.429 |
+| 12:44 | 6,139 | 1,950 | 468 | 12:44:01.815 | 12:44:57.047 |
+
+Four different extents of the log, identical counts. The loop does a **fixed amount of work per
+minute** — 1,950 trust-anchor fetches (= 32.5/s) and 468 EIO. The same 1,950 / 468 pair is in the
+tool's 08-19 validation run and in 27.2 b2's rep 2, so it has held across three builds. What the
+period is tied to (a timer, a retry budget) is **not established**.
+
+**The status stays 🔴.**
+
+2026-10-07 27.2 beta3 `26B5101f` 复测:每秒 32.5 / 32.5 / 34.0 次 anchors,EIO 468 / 468 / 492,CPU 平均
+12.2%。连续 4 个独立整分钟各自恰好 **1,950 次 anchors / 468 EIO / 6,139 行**,首尾时间戳各不相同 ——
+重复数值是循环本身按分钟固定节拍,不是工具旧缺陷复发。仍记 🔴。
