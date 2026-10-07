@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | ⚪ **still not triggered on 27.2 beta2 `26B5091g`** (2026-09-25) — **0** `Code=8` in a 10-minute window (appstoreagent: 226 records, 0.0% CPU over 120 s), seven consecutive clean builds (beta3/5/6/7/8, release, 27.2 b2). No appstoreagent diagnostic report since the install. Not reproduced ≠ fixed; grounds to consider closing as *cannot reproduce*, not as 🟢. See [`../baselines/27.2-beta2-26B5091g/`](../baselines/27.2-beta2-26B5091g/README.md). Prior: ⚪ **still not triggered on release `26A428`** (2026-09-16) — **0** `Code=8` in a 10-minute window, six consecutive clean builds (beta3/5/6/7/8 + release). The one appstoreagent diagnostic report since install is a **disk-writes** report (2,148 MB over 19.6 h), not this retry loop. Not reproduced ≠ fixed. See [`baselines/release-26A428/`](../baselines/release-26A428/README.md). Prior: ⚪ **still not triggered on beta8 `26A5425a`** (2026-09-03) — **0** `Code=8` in a 10-minute window, making beta3/5/6/7/8 five consecutive clean builds. Conditional trigger, last actually seen on beta2. Not reproduced ≠ fixed. Prior: ⚪ **still not triggered on beta7 `26A5421a`** (2026-08-27) — **0** `BGSystemTaskSchedulerErrorDomain Code=8` in the 8-minute post-boot window, making beta3, beta5, beta6 and beta7 all clean. The trigger is conditional and was last actually seen on **beta2**. Four clean windows across four builds are grounds to consider closing this as *cannot reproduce* — they are **not** a positive signal and must not be written up as 🟢. See *Retest on beta7* below. Prior: ⚪ Not reproduced in beta3 `26A5378j` window (conditional trigger); confirmed beta2 |
+| **Status** | ⚪ **still not triggered on 27.2 beta3 `26B5101f`** (2026-10-07) — **0** `Code=8` in a 10-minute post-boot window (appstoreagent: 290 records) and **0 since boot** (a raw since-boot query returns 2, both `/usr/bin/log`'s own records of earlier queries for the string). **Eight** consecutive clean builds (beta3/5/6/7/8, release, 27.2 b2, 27.2 b3). Not reproduced ≠ fixed; still grounds to close as *cannot reproduce* if the reporter chooses to, never as 🟢. See [`../baselines/27.2-beta3-26B5101f/`](../baselines/27.2-beta3-26B5101f/README.md). Prior: ⚪ **still not triggered on 27.2 beta2 `26B5091g`** (2026-09-25) — **0** `Code=8` in a 10-minute window (appstoreagent: 226 records, 0.0% CPU over 120 s), seven consecutive clean builds (beta3/5/6/7/8, release, 27.2 b2). No appstoreagent diagnostic report since the install. Not reproduced ≠ fixed; grounds to consider closing as *cannot reproduce*, not as 🟢. See [`../baselines/27.2-beta2-26B5091g/`](../baselines/27.2-beta2-26B5091g/README.md). Prior: ⚪ **still not triggered on release `26A428`** (2026-09-16) — **0** `Code=8` in a 10-minute window, six consecutive clean builds (beta3/5/6/7/8 + release). The one appstoreagent diagnostic report since install is a **disk-writes** report (2,148 MB over 19.6 h), not this retry loop. Not reproduced ≠ fixed. See [`baselines/release-26A428/`](../baselines/release-26A428/README.md). Prior: ⚪ **still not triggered on beta8 `26A5425a`** (2026-09-03) — **0** `Code=8` in a 10-minute window, making beta3/5/6/7/8 five consecutive clean builds. Conditional trigger, last actually seen on beta2. Not reproduced ≠ fixed. Prior: ⚪ **still not triggered on beta7 `26A5421a`** (2026-08-27) — **0** `BGSystemTaskSchedulerErrorDomain Code=8` in the 8-minute post-boot window, making beta3, beta5, beta6 and beta7 all clean. The trigger is conditional and was last actually seen on **beta2**. Four clean windows across four builds are grounds to consider closing this as *cannot reproduce* — they are **not** a positive signal and must not be written up as 🟢. See *Retest on beta7* below. Prior: ⚪ Not reproduced in beta3 `26A5378j` window (conditional trigger); confirmed beta2 |
 | **macOS** | confirmed 27.0 beta2 `26A5368g`; not observed in a beta3 `26A5378j` window |
 | **Component** | Apple **appstoreagent** + **dasd** (DuetActivityScheduler) / BGTaskScheduler, around **App Store / Apple Arcade AppUsage** reporting |
 | **Report** | Apple Feedback: **`FB23413997`** (filed 2026-06-26, App Store → Incorrect/Unexpected Behavior; sysdiagnose + log capture attached) |
@@ -134,3 +134,28 @@ close as *cannot reproduce* if the reporter chooses to — never as 🟢. The st
 
 2026-09-25 27.2 beta2 `26B5091g` 复测:窗口内 **0** 条 `Code=8`,连续第七个干净构建。**未复现 ≠ 已修复**;
 可考虑以「无法复现」关闭,但不能记 🟢。仍记 ⚪。
+
+## Re-verification 2026-10-07 — 27.2 beta3 `26B5101f` — an eighth clean window, still not a fix
+
+> **Clock position, because it decides what these numbers can be compared to.** macOS 27.2 beta3
+> `26B5101f` was installed **2026-10-07 12:22:37 +0800** (`InstallHistory.plist`) and booted at
+> 12:26:01. This is a **post-boot** pass — the window is **T+13m → T+23m** with 22 apps running and
+> the post-update reindex active — matched to no earlier window, so log *volumes* are not presented
+> as pairs. Kernel `xnu-13432.40.177.0.3~56` (27.2 b2: `xnu-13432.40.162~92`). Raw capture:
+> [`baselines/27.2-beta3-26B5101f/`](../baselines/27.2-beta3-26B5101f/README.md).
+
+**0** `BGSystemTaskSchedulerErrorDomain Code=8` in the window 12:39:24–12:49:24; `appstoreagent`
+logged 290 records in it and measured 0.0% CPU over a 120 s cumulative sample at T+32m. Since boot
+to 13:01, `eventMessage CONTAINS "BGSystemTaskSchedulerErrorDomain Code=8"`: **2 raw, 0 real** —
+both hits were `/usr/bin/log` recording its own command line from earlier queries for the same
+string, so the query had matched itself. No appstoreagent report of any kind in the diagnostic
+inventory since the install (36 minutes of exposure).
+
+That makes beta3, beta5, beta6, beta7, beta8, release, 27.2 beta2 and 27.2 beta3 **eight consecutive
+clean windows**; the trigger was last actually observed on beta2.
+
+**Not reproduced ≠ fixed.** Nothing exercised the trigger. This remains grounds to close as *cannot
+reproduce* if the reporter chooses to — never as 🟢. The status stays ⚪.
+
+2026-10-07 27.2 beta3 `26B5101f` 复测:窗口内 **0** 条 `Code=8`,开机以来亦为 0(原始查询命中 2 条,
+均为 `log` 记录自身先前的查询命令)。连续第八个干净构建。**未复现 ≠ 已修复**;仍记 ⚪。
