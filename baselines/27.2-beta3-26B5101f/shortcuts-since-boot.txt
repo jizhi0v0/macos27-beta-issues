@@ -1,0 +1,38 @@
+=== #2 Shortcuts/Siri ToolKit storm — since boot, macOS 27.2 beta3 26B5101f ===
+query:  /usr/bin/log show --start "2026-10-07 12:26:01" --end "2026-10-07 13:00:00" --style compact \
+          --predicate 'process == "BackgroundShortcutRunner" OR process == "siriactionsd"'
+        (default level; counted only lines that start with a timestamp, sliced < 13:00:00
+         by timestamp before counting, so any --end leak like 27.2 b2's is excluded either way)
+run:    13:00:24
+range:  2026-10-07 12:26:34.043 -> 12:54:59.977   (first record T+33s after boot)
+records: 148,934   (BackgroundShortcutRunner 104,815 / siriactionsd 44,119)
+levels:  Df 73,267 | A 61,824 | E 11,699 | F 2,135 | Sd 9
+
+peak seconds, all levels:
+  7,384  12:37:13   (T+11m12s)
+  7,304  12:37:14
+  4,806  12:37:15
+  4,780  12:37:16
+  3,291  12:27:02   (T+1m01s -- an earlier, smaller burst)
+  3,106  12:37:09
+peak seconds from 12:40 on:
+  1,516  12:40:03
+  1,408  12:52:42   (seven seconds after the #29 banner burst ended at 12:52:35 --
+                     coincidence or not, NOT tested)
+  1,265  12:48:49
+  1,257  12:52:45
+  (27.2 b2: boot burst 8,813/s at T+2m52s, then 1,885/s at T+40m | release T+2h17m: 3,033 |
+   beta8 T+21h: 1,644 | beta7 post-boot: 1,795 | beta6: 864 | beta5: 181)
+
+seconds with >= 500 records: 116   (27.2 b2: 48 over its whole 2h10m)
+
+records per 10-minute bucket:
+  12:20 20,744  (from 12:26:34)
+  12:30 80,241  <- main burst
+  12:40 31,924  (equals the 12:39:24-12:49:24 window count: 0 records fell in 12:39:24-12:40:00
+                 or 12:49:00-12:50:00 -- checked, not a double count)
+  12:50 16,025  (to 12:54:59)
+
+READING: the storm is still there and the post-boot burst is as large as ever -- 7,384/s
+against 27.2 b2's 8,813/s -- but it peaked at T+11m rather than T+3m, and 116 seconds reached
+>= 500/s in the first 34 minutes. One boot; the shape differences are RECORDED, NOT CREDITED.

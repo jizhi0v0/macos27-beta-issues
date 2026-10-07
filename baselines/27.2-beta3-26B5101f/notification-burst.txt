@@ -1,0 +1,26 @@
+=== #29 20-banner burst with the reporter gesturing nearby — 27.2 beta3 26B5101f ===
+run:     2026-10-07 12:51:35 -> 12:52:35 +0800, T+25m
+sender:  osascript -e 'display notification "#29 beachball test — banner N of 20"
+                       with title "Notification test N/20" subtitle "<HH:MM:SS>"'
+         20 banners, one every 3 s (posted as com.apple.ScriptEditor2; usernoted logged
+         "Connection com.apple.ScriptEditor2 with path: /usr/bin/osascript" for each).
+reporter: moved the pointer and made trackpad gestures near the banner area while they
+          presented -- the condition the reporter described for both earlier captures.
+outcome (reporter's own observation): NO beachball.
+
+NotificationCenter pid 904 (alive since boot), cumulative utime+stime:
+  12:51:35  before the first banner   0:26.54 + 0:03.55  = 30.09 s
+  12:52:38  after the last banner     0:42.87 + 0:05.39  = 48.26 s
+            -> 18.17 s over 63 s = ~29% average while presenting 20 banners
+  12:52:38 -> +30 s (no banners)      48.26 s -> 48.52 s = 0.26 s over 30 s = ~0.9%
+  12:58:12 -> 13:00:12 (120 s)        0.0%   (cpu table in post-boot-window.txt)
+
+Diagnostic reports since the install naming NotificationCenter (cpu_resource / .spin / .hang): 0
+
+READING: the burst did NOT put NotificationCenter into the stuck state -- it fell back to
+~1% the moment banners stopped, where the captured spin held ~100% for 10-33 min with no
+self-recovery. The ~29% during the burst has no earlier-build comparison (20 banners were
+never measured this way before), so it is recorded, not judged.
+WHAT THIS IS NOT: a fix signal. There is no reproduction recipe, so this burst is not a
+period of use that provably would have triggered the spin on release -- the bar the issue
+sets for closing it. One negative attempt; the status stays 🔴.

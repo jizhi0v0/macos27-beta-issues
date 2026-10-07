@@ -1,0 +1,29 @@
+=== macOS 27.2 beta3 26B5101f — diagnostic reports since the build was installed ===
+taken:   2026-10-07 13:01:59 +0800
+scope:   ~/Library/Logs/DiagnosticReports + /Library/Logs/DiagnosticReports,
+         AND ~/Library/Logs/DiagnosticReports/Retired
+filter:  mtime >= 2026-10-07 12:22:37 +0800 (install); .ips parsed as JSON
+         (line 1 = header, rest = payload), os_version read per report
+exposure: ~36 min since boot. Far too short to say anything about crash recurrence.
+
+files: 8 | in Retired: 0
+.ips os_version: macOS 27.2 (26B5101f) 4
+
+.ips reports:
+  2  ExcUserFault textunderstandingd   (bug_type 309; 12:24:01 is BEFORE the 12:26:01 boot,
+                                        i.e. during the install's shutdown; 12:26:57 after)
+  1  ExcUserFault iconservicesd        (bug_type 309; also on 27.2 b2, not investigated)
+  1  JetsamEvent                       (bug_type 298)
+
+non-.ips resource/diag reports:
+  1  shutdown_stall    12:24:44   (the install's own shutdown)
+  1  mdsync            cpu_resource
+  1  ANECompilerService diag
+  1  cp                diag   (the dyld-cache archive copy made for this baseline -- self-inflicted)
+
+NOT PRESENT, checked against the parsed payload (procName / lastExceptionBacktrace):
+  #5  OrbStack 0 | #6 Chrome+MediaRemote 0 | #8 Codex 0 | #10 WeChat 0
+  #16 modelmanagerd 0 | #17 NSRemoteView in lastExceptionBacktrace 0
+  #29 NotificationCenter cpu_resource 0
+
+⚠️ 36 minutes of ordinary use. This says nothing about whether any fix holds.

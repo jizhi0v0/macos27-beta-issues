@@ -1,0 +1,107 @@
+=== macOS 27.2 beta3 26B5101f — 10-minute window at T+13m (a POST-BOOT window) ===
+build installed: 2026-10-07 12:22:37 +0800  (/Library/Receipts/InstallHistory.plist)
+boot:            2026-10-07 12:26:01 +0800  (kern.boottime)
+window:          2026-10-07 12:39:24.888 -> 12:49:24.823, 10m00s  = T+13m23s -> T+23m23s
+records in window: 539,777 timestamped records (629,855 lines incl. multi-line continuations)
+kernel:          xnu-13432.40.177.0.3~56   (27.2 beta2: xnu-13432.40.162~92)
+
+⚠️ NOT A MATCHED PAIR WITH 27.2 beta2 ON THE VOLUME AXIS. beta2's window was T+1h54m, release
+   T+6h29m, beta8 T+21h20m. This one sits inside the first half hour after boot, the clock
+   position of the beta6/beta7 post-boot windows, but with a different app mix.
+   NOT quiesced: load average 15.65 / 28.18 / 24.75 at 12:39, 22 /Applications bundles
+   running (list in eco-replicate.txt). Thirteen minutes after an OS update, so the
+   post-update reindex was active.
+
+CAPTURE METHOD: /usr/bin/log show --last 10m --style compact   (default level),
+  run at the end of a 600 s wait so the window is exactly the 10 minutes it names.
+  Process attribution uses awk field-split:  awk '{p=$4; sub(/\[.*/,"",p); if(p=="NAME") ...}'
+  Every in-window count below was cross-checked with a bounded predicate query, and every
+  in-window ZERO was re-queried SINCE BOOT before being believed.
+
+⚠️ NEW TRAP — `log` logs its own command line. /usr/bin/log writes a Df record
+   "log run noninteractively, ... args: '/usr/bin/log' 'show' ... '--predicate' '<...>'"
+   for every invocation, so an `eventMessage CONTAINS "X"` predicate matches every EARLIER
+   query for X. Since-boot counts below EXCLUDE process `log`. Two counts it would have
+   corrupted: #15 since boot read 2 instead of 0, and #18's single in-window hit was
+   itself one of these records (12:39:44.955), not a client failure.
+
+top emitters: kernel 74,866 | ecosystemd 60,906 | ecosystemanalyticsd 52,632 | Mail 26,168 |
+              DuoUpdater 20,714 | BackgroundShortcutRunner 17,871
+
+--- #18 contactsd ---
+backlog: see contactsd-backlog.txt -- 115,412 -> 122,126, none reset.
+contactsd records in window: 1,516
+"Could not fetch group for change type" in window: 0 real   (the 1 raw hit is a `log` self-record)
+  SINCE BOOT, unscoped predicate, process `log` excluded, sliced < 13:00:00: 3,908
+  per 10-min bucket: 12:20 (from 12:26) 2,898 | 12:30 1,010 ; last seen 12:32:28.168
+  33 distinct emitting processes (top: corespotlightd 448, AddressBookSourceSync 283,
+  Mail 275, suggestd 273, NotificationCenter 273)
+  -> the failures are a burst in the first six minutes after boot; the window came after it.
+contactsd CPU: 0.0% over 120 s at 12:58, but 146.68 s cumulative since boot at that point
+  (32 min) = 7.6% average. The work is front-loaded.
+
+--- #19 imagent x ContactsAccountsService ---
+imagent records naming the service, in window: 0
+  SINCE BOOT, predicate 'process == "imagent" AND eventMessage CONTAINS "ContactsAccountsService"',
+  to 13:00:00: 3,529   (E 2,648 / Df 881); last seen 12:37:06.981
+  per 10-min bucket: 12:20 (from 12:26) 1,941 | 12:30 1,588
+  peak seconds: 259 at 12:32:11, 231 at 12:32:06 -- the no-backoff retry
+  2,648 of them carry the lookup failure verbatim:
+    "Connection init failed at lookup with error 159 - Sandbox restriction."
+  sample (12:26:47.802):
+    E imagent [com.apple.contacts:migration] [Migration] Migration service failed database
+      preparation: Error Domain=NSCocoaErrorDomain Code=4099 "The connection to service named
+      com.apple.AddressBook.ContactsAccountsService was invalidated: Connection init failed
+      at lookup with error 159 - Sandbox restriction."
+profile: /System/Library/Sandbox/Profiles/com.apple.imagent.sb
+  lines:      405   (27.2 b2: 405)
+  mentions of ContactsAccountsService: 0
+  sibling profiles that DO name it: 26
+  diff against the 27.2 beta2 archive: NO OUTPUT -- byte-identical.
+
+--- #23 ecosystemd ---
+SecTrustCopyAppleTrustAnchors, awk-pinned to ecosystemd: 19,350 = 32.3/s
+  predicate cross-check (bounded, sliced to the window): 19,350 -- agrees exactly.
+  (27.2 b2: 19,888 = 33.1/s | release: 19,975 = 33.3/s | beta8: 19,998 = 33.3/s)
+unpinned emitters: ecosystemd 19,350 | ecosystemanalyticsd 17,802 | syspolicyd 592 | amfid 327
+Replicated, and a per-minute determinism finding: see eco-replicate.txt.
+
+--- #2 Shortcuts/Siri ToolKit storm ---
+BackgroundShortcutRunner + siriactionsd records in window: 31,924
+Since boot: see shortcuts-since-boot.txt -- 148,934 records in 34 min, peak 7,384/s.
+
+--- #1 CoreMedia fpSupport_GetVideoRange ---
+in-window: 22 = DuoMail 22.  predicate cross-check: 22 -- agrees.
+  (27.2 b2: 54 = WeType / Safari / Mail 18 each | release: 74, all DingTalk)
+Still emitting; a new single emitter. The count measures the app mix, not the OS.
+
+--- #24 mds CoreDuet ---
+mds records in window: 2,748; naming CoreDuet: 2,508 = 4.2/s.  predicate cross-check: 2,509.
+  idle band ~2/s, storm ~2420/s. Not storming. Bursty; one window decides nothing.
+
+--- #15 appstoreagent BGSystemTaskSchedulerErrorDomain Code=8 ---
+in window: 0  (appstoreagent records: 290).
+SINCE BOOT to 13:01, process `log` excluded: 0   (raw: 2, both `log` self-records)
+beta3/5/6/7/8 + release + 27.2 b2 + 27.2 b3: eight consecutive clean builds.
+
+--- #13 Spotlight `insert ranking attr at NSNotFound` ---
+3,826 in window. (Closed issue; the log line was already recorded as benign after beta3.)
+
+--- #3 WindowServer `Invalid window` ---
+4,242 in window. Window count NOT controlled -> not decision-grade, no verdict.
+
+--- #25 corebrightnessd nan ---
+not counted (default level only; the beta5 figure was --info --debug). Not comparable.
+
+--- CPU, 120 s cumulative utime+stime deltas, 12:58:12 -> 13:00:12 (bash script) ---
+⚠️ MACHINE NOT QUIESCED (load ~4-6 at this point, 22 apps). T+32m.
+  WindowServer          45.8%   uncontrolled window count; no #3 verdict
+  ecosystemd            13.7%
+  ecosystemanalyticsd    2.6%
+  ControlCenter          2.1%
+  MenuBarAgent           0.7%
+  mds                    0.4%
+  corebrightnessd        0.2%
+  contactsd              0.0%   (146.68 s cumulative since boot -- see #18)
+  NotificationCenter     0.0%   (see notification-burst.txt for #29)
+  imagent / siriactionsd / appstoreagent   0.0%
