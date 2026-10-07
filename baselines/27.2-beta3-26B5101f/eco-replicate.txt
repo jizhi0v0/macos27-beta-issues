@@ -1,0 +1,49 @@
+=== #23 replicated ecosystemd measurement, 27.2 beta3 26B5101f — raw tools/eco-replicate.sh output ===
+command: LEAD=0 REPS=3 bash tools/eco-replicate.sh   (T+13m on the 2026-10-07 12:26:01 boot)
+⚠️ LEAD=0 and apps NOT quit (22 bundles listed below), concurrent with the 10-minute window.
+
+=== replicated ecosystemd measurement ===
+build: 27.2 26B5101f
+reps=3 window=60s  pid=5933
+start: Wed Oct  7 12:39:33 CST 2026
+
+baseline for comparison — beta4 26A5388g:
+  SecTrustCopyAppleTrustAnchors ~68-85/s | 15,885 lines/60s | 1,227 EIO | CPU 26-57%
+
+--- all running /Applications bundles at measurement start ---
+Alcove.app AndDrive.app AweSun.app BaiduNetdisk_mac.app Claude.app DuoShot.app DuoTerminal.app DuoTranslator.app DuoUpdater.app Keka.app Klack.app Macs Fan Control.app NotchBadge.app Parallels Desktop.app Pearcleaner.app RustDesk.app Spotify.app Surge.app Tailscale.app ToDesk.app UURemote.app Xcode.app
+
+rep      eco%  anchors/s    lines/win      EIO
+1        11.1       32.5         6295      468
+2        11.9       32.5         6295      468
+3        13.6       34.0         6603      492
+
+ecosystemd CPU: mean=12.2%  min=11.1%  max=13.6%  sd=1.0
+done: Wed Oct  7 12:42:36 CST 2026
+
+=== Reps 1 and 2 are identical in three columns. Is that the old flush-boundary defect? ===
+The tool's own comment records a 2026-08-11 defect where `--last Ns` made back-to-back reps
+return byte-identical counts (7519 lines / 468 EIO), fixed 2026-08-19 by pinning --start/--end.
+To tell a recurrence from a real property of the loop, four consecutive CLOCK minutes were
+queried independently, each with its own --start/--end:
+
+  for m in 41 42 43 44: /usr/bin/log show --start "12:$m:00" --end "12:$((m+1)):00" \
+                          --info --debug --predicate 'process == "ecosystemd"'
+
+  12:41 lines=6139 anchors=1950 eio=468  first=12:41:02.317145 last=12:41:57.554592
+  12:42 lines=6139 anchors=1950 eio=468  first=12:42:02.237734 last=12:42:57.538900
+  12:43 lines=6139 anchors=1950 eio=468  first=12:43:02.029003 last=12:43:57.429315
+  12:44 lines=6139 anchors=1950 eio=468  first=12:44:01.815635 last=12:44:57.047839
+
+Four windows with DIFFERENT first/last timestamps -- so four different extents of the log,
+not one extent read four times -- return the SAME counts. The loop is deterministic per
+minute: exactly 1,950 anchors (= 32.5/s) and 468 EIO. That is the same 1,950 / 468 pair the
+tool's 08-19 validation run and 27.2 b2's rep 2 recorded, so identical reps are expected
+whenever a 60 s window catches exactly one cycle, and are NOT by themselves evidence of the
+tool defect. Rep 3's 2,040 / 492 is a window that straddled a cycle boundary.
+Not established: what the per-minute period is tied to (a timer, a retry budget, ...).
+
+HOW TO READ:
+  The loop is confirmed still present by the anchors/s and EIO columns regardless of CPU.
+  27.2 b2: 35.0 / 32.5 / 33.5 anchors/s, 504 / 468 / 483 EIO, CPU mean 14.7% (sd 0.3).
+  120 s cumulative sample at 12:58 (see post-boot-window.txt): 13.7%.
