@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | 🟡 **still emitting on 27.2 beta2 `26B5091g`, still not decidable** (2026-09-25) — **54** records in a 10-minute window, **WeType / Safari / Mail, 18 each** (release: 74, all DingTalk). The signature exists on this build too; the trigger is app-dependent and the app mix changed again, so the count measures the apps, not the OS. See [`../baselines/27.2-beta2-26B5091g/`](../baselines/27.2-beta2-26B5091g/README.md). Prior: 🟡 **still emitting on release `26A428`, still not decidable** (2026-09-16) — **74** records in a 10-minute window, **all DingTalk** (beta8: 54 from Mail / DingTalk / DuoUpdater / textunderstandingd). The loop's signature exists on the shipped build, but the trigger is app-dependent and the app mix is still uncontrolled, so neither this rise nor beta8's fall measures the OS. See [`baselines/release-26A428/`](../baselines/release-26A428/README.md). Prior: 🟡 **quiet again on beta8 `26A5425a`, and still not creditable as a fix** (2026-09-03) — **54** records in a 10-minute window (~324/h), emitters Mail 20 / DingTalk 16 / DuoUpdater 12 / textunderstandingd 6. WeType and Raycast, beta7's two largest emitters, are **absent**. The trigger is app-dependent, so a lower count under a changed app mix measures the app mix, not the OS — the same non-verdict as beta7. Prior: 🟡 **much quieter on beta7 `26A5421a` — but not creditable as a fix** (2026-08-27). **219** `fpSupport_GetVideoRange` records in the 8-minute post-boot window against beta5's **1,744** in its own 8-minute window, a ~8× drop. The emitter set changed too, though: WeType 1,095 / DingTalk 978 / Raycast 358 / DuoUpdater 78 across the session, against beta5's DingTalk 1,338 / WeType 263 / Mail 136 — Raycast and DuoUpdater are new emitters absent from the beta5 tally. The trigger is app-dependent and the app mix was **not controlled**, so this measures the app mix, not the OS. See *Retest 2026-08-27* below. Prior: 🟡 Mitigated (workaround) — present in beta1 **and** beta2; ⚪ not reproduced in a beta3 `26A5378j` window (conditional trigger) |
+| **Status** | 🟡 **still emitting on 27.2 beta3 `26B5101f`, still not decidable** (2026-10-07) — **22** records in a 10-minute post-boot window, **all DuoMail**, a new single emitter (27.2 b2: 54, WeType / Safari / Mail 18 each). The trigger is app-dependent and the app mix changed again, so the count measures the apps, not the OS. See [`../baselines/27.2-beta3-26B5101f/`](../baselines/27.2-beta3-26B5101f/README.md). Prior: 🟡 **still emitting on 27.2 beta2 `26B5091g`, still not decidable** (2026-09-25) — **54** records in a 10-minute window, **WeType / Safari / Mail, 18 each** (release: 74, all DingTalk). The signature exists on this build too; the trigger is app-dependent and the app mix changed again, so the count measures the apps, not the OS. See [`../baselines/27.2-beta2-26B5091g/`](../baselines/27.2-beta2-26B5091g/README.md). Prior: 🟡 **still emitting on release `26A428`, still not decidable** (2026-09-16) — **74** records in a 10-minute window, **all DingTalk** (beta8: 54 from Mail / DingTalk / DuoUpdater / textunderstandingd). The loop's signature exists on the shipped build, but the trigger is app-dependent and the app mix is still uncontrolled, so neither this rise nor beta8's fall measures the OS. See [`baselines/release-26A428/`](../baselines/release-26A428/README.md). Prior: 🟡 **quiet again on beta8 `26A5425a`, and still not creditable as a fix** (2026-09-03) — **54** records in a 10-minute window (~324/h), emitters Mail 20 / DingTalk 16 / DuoUpdater 12 / textunderstandingd 6. WeType and Raycast, beta7's two largest emitters, are **absent**. The trigger is app-dependent, so a lower count under a changed app mix measures the app mix, not the OS — the same non-verdict as beta7. Prior: 🟡 **much quieter on beta7 `26A5421a` — but not creditable as a fix** (2026-08-27). **219** `fpSupport_GetVideoRange` records in the 8-minute post-boot window against beta5's **1,744** in its own 8-minute window, a ~8× drop. The emitter set changed too, though: WeType 1,095 / DingTalk 978 / Raycast 358 / DuoUpdater 78 across the session, against beta5's DingTalk 1,338 / WeType 263 / Mail 136 — Raycast and DuoUpdater are new emitters absent from the beta5 tally. The trigger is app-dependent and the app mix was **not controlled**, so this measures the app mix, not the OS. See *Retest 2026-08-27* below. Prior: 🟡 Mitigated (workaround) — present in beta1 **and** beta2; ⚪ not reproduced in a beta3 `26A5378j` window (conditional trigger) |
 | **macOS** | 27.0 beta2 `26A5368g` (also beta1 `26A5353q`) |
 | **Component** | Apple **MediaToolbox / CoreMedia** (`com.apple.coremedia`) |
 | **Hardware** | MacBook Pro `Mac15,11`, M3 Max, single built-in Liquid Retina XDR display |
@@ -200,3 +200,25 @@ every build the count cannot be credited to or against the OS. **The status stay
 
 2026-09-25 27.2 beta2 `26B5091g` 复测:窗口内 54 条,WeType / Safari / Mail 各 18 条(release 为 74 条、全是
 钉钉)。签名仍在,但触发取决于 app,且 app 组合又变了,不能归因到系统。仍记 🟡。
+
+## Re-verification 2026-10-07 — 27.2 beta3 `26B5101f` — still emitting, still not decidable
+
+> **Clock position, because it decides what these numbers can be compared to.** macOS 27.2 beta3
+> `26B5101f` was installed **2026-10-07 12:22:37 +0800** (`InstallHistory.plist`) and booted at
+> 12:26:01. This is a **post-boot** pass — the window is **T+13m → T+23m** with 22 apps running and
+> the post-update reindex active — matched to no earlier window, so log *volumes* are not presented
+> as pairs. Kernel `xnu-13432.40.177.0.3~56` (27.2 b2: `xnu-13432.40.162~92`). Raw capture:
+> [`baselines/27.2-beta3-26B5101f/`](../baselines/27.2-beta3-26B5101f/README.md).
+
+`fpSupport_GetVideoRange…` in the 10-minute window: **22**, every one from **DuoMail**; bounded
+predicate cross-check 22. On 27.2 b2 it was 54 from WeType, Safari and Mail (18 each); on release
+74, all DingTalk. None of those three appeared this time — DuoMail is a new emitter.
+
+The signature exists on this build. As on every build since beta7, the trigger is app-dependent
+and the running apps were not controlled, so a lower number here measures which apps happened to
+draw video, not the OS.
+
+**The status stays 🟡.**
+
+2026-10-07 27.2 beta3 `26B5101f` 复测:开机后 10 分钟窗口 **22** 条,全部来自 DuoMail(新出现的发出者)。
+触发依赖 app,app 组合又变了,数量不能说明 OS。仍记 🟡。
