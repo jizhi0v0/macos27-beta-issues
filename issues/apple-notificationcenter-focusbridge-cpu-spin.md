@@ -7,7 +7,7 @@
 
 | | |
 |---|---|
-| **Status** | 🔴 **not caught on 27.2 beta2 `26B5091g`, which decides nothing** (2026-09-25) — no NotificationCenter `cpu_resource` report since the install, and **61.5 s** of total CPU over 2 h 05 m of uptime (**0.8%** average; 3.9% over one 120 s sample). release caught it once in 5.5 days; two hours cannot rule it in or out. See [`../baselines/27.2-beta2-26B5091g/`](../baselines/27.2-beta2-26B5091g/README.md). Prior: 🔴 **caught live on release `26A428`, same stack** (2026-09-16) — the OS wrote its own `cpu_resource` report (**97% CPU over 93 s**, heaviest stack `FocusBridge.invalidateKeyViewLoop()` → `updateDefaultKeyViewLoop()` → `KeyViewProxyCache.createOrUpdateProxyView(_:)`), and independently **100.2%** over a 120 s cumulative sample with **5,063 / 5,063** main-thread `sample` frames inside `FocusBridge.invalidateKeyViewLoop()`. Spun for **≥ 10 min 44 s** until a manual `killall`; no self-recovery in that interval. The banners presented around onset came from a HomeKit app and Claude, not the menu-bar app of the first capture — but the report's interval opens 0.24 s *before* the nearest `Presenting` record, so which banner (if any) set it off is not pinned. The reporter again describes a notification arriving with the pointer nearby; still not verifiable from logs. See [`baselines/release-26A428/`](../baselines/release-26A428/README.md). Prior: 🔴 **Open — not caught on beta8 `26A5425a`** (2026-09-03) — 0.0% CPU over both a 30 s and a 120 s sample. The spin is intermittent and has to be caught live, so **absence here is not evidence of a fix**. Prior: 🔴 **Open, not yet filed.** First captured with a live, symbolicated stuck stack on 2026-08-22. Caught by chance while investigating a live report of the spinning-wait-cursor ("beachball") symptom — this is the first time this investigation has had a CPU/stack signature for a notification-adjacent hang, rather than only `usernoted` log-line counts |
+| **Status** | 🔴 **not triggered by a deliberate 20-banner burst on 27.2 beta3 `26B5101f`, which still decides nothing** (2026-10-07) — 20 `osascript` banners in 60 s with the reporter moving the pointer and gesturing near them (the condition described for both captures): **no beachball** (reporter's observation). NotificationCenter averaged ~29% CPU while presenting, fell to **~0.9%** the moment the banners stopped and read 0.0% at T+32m; no `cpu_resource` report. There is no reproduction recipe, so this is not a period that provably would have triggered the spin on release — the bar for closing. See [`../baselines/27.2-beta3-26B5101f/`](../baselines/27.2-beta3-26B5101f/README.md). Prior: 🔴 **not caught on 27.2 beta2 `26B5091g`, which decides nothing** (2026-09-25) — no NotificationCenter `cpu_resource` report since the install, and **61.5 s** of total CPU over 2 h 05 m of uptime (**0.8%** average; 3.9% over one 120 s sample). release caught it once in 5.5 days; two hours cannot rule it in or out. See [`../baselines/27.2-beta2-26B5091g/`](../baselines/27.2-beta2-26B5091g/README.md). Prior: 🔴 **caught live on release `26A428`, same stack** (2026-09-16) — the OS wrote its own `cpu_resource` report (**97% CPU over 93 s**, heaviest stack `FocusBridge.invalidateKeyViewLoop()` → `updateDefaultKeyViewLoop()` → `KeyViewProxyCache.createOrUpdateProxyView(_:)`), and independently **100.2%** over a 120 s cumulative sample with **5,063 / 5,063** main-thread `sample` frames inside `FocusBridge.invalidateKeyViewLoop()`. Spun for **≥ 10 min 44 s** until a manual `killall`; no self-recovery in that interval. The banners presented around onset came from a HomeKit app and Claude, not the menu-bar app of the first capture — but the report's interval opens 0.24 s *before* the nearest `Presenting` record, so which banner (if any) set it off is not pinned. The reporter again describes a notification arriving with the pointer nearby; still not verifiable from logs. See [`baselines/release-26A428/`](../baselines/release-26A428/README.md). Prior: 🔴 **Open — not caught on beta8 `26A5425a`** (2026-09-03) — 0.0% CPU over both a 30 s and a 120 s sample. The spin is intermittent and has to be caught live, so **absence here is not evidence of a fix**. Prior: 🔴 **Open, not yet filed.** First captured with a live, symbolicated stuck stack on 2026-08-22. Caught by chance while investigating a live report of the spinning-wait-cursor ("beachball") symptom — this is the first time this investigation has had a CPU/stack signature for a notification-adjacent hang, rather than only `usernoted` log-line counts |
 | **macOS** | 27.0 beta6 `26A5416b` |
 | **Component** | Apple `NotificationCenter.app` (`com.apple.notificationcenterui` 1.0, build `1674.0.7.0.400`) — AppKit/SwiftUI interop, specifically `SwiftUI`'s `FocusBridge` / `KeyViewProxyCache` |
 | **Hardware** | MacBook Pro `Mac15,11`, M3 Max |
@@ -197,3 +197,48 @@ something.
 
 2026-09-25 27.2 beta2 `26B5091g` 复测:安装后无 NotificationCenter `cpu_resource` 报告,2 小时 05 分平均
 CPU 0.8%。release 版 5.5 天才抓到一次,两小时说明不了什么。仍记 🔴。
+
+## Re-verification 2026-10-07 — 27.2 beta3 `26B5101f` — a deliberate trigger attempt, not caught
+
+> **Clock position, because it decides what these numbers can be compared to.** macOS 27.2 beta3
+> `26B5101f` was installed **2026-10-07 12:22:37 +0800** (`InstallHistory.plist`) and booted at
+> 12:26:01. This is a **post-boot** pass — the window is **T+13m → T+23m** with 22 apps running and
+> the post-update reindex active — matched to no earlier window, so log *volumes* are not presented
+> as pairs. Kernel `xnu-13432.40.177.0.3~56` (27.2 b2: `xnu-13432.40.162~92`). Raw capture:
+> [`baselines/27.2-beta3-26B5101f/`](../baselines/27.2-beta3-26B5101f/README.md).
+
+**First deliberate attempt at the reported trigger.** 20 banners were posted one every 3 s,
+12:51:35 → 12:52:35 (T+25m), with
+
+```
+osascript -e 'display notification "#29 beachball test — banner N of 20"
+              with title "Notification test N/20" subtitle "<HH:MM:SS>"'
+```
+
+(each reached `usernoted` as `com.apple.ScriptEditor2`), while the reporter moved the pointer and
+made trackpad gestures near where the banners present — the condition described for both earlier
+captures. Raw: [`notification-burst.txt`](../baselines/27.2-beta3-26B5101f/notification-burst.txt).
+
+| | |
+|---|---|
+| beachball | **none** — reporter's own observation |
+| NotificationCenter CPU during the 63 s burst | 18.17 s → **~29%** average |
+| the 30 s right after the last banner | 0.26 s → **~0.9%** |
+| 120 s cumulative sample at T+32m | **0.0%** |
+| NotificationCenter `cpu_resource` / `.spin` / `.hang` since install | **0** |
+
+The burst did not put NotificationCenter into the stuck state: the captured spin held ~100% for
+10–33 minutes with no self-recovery, and here CPU fell back the moment banners stopped. The ~29%
+while presenting has **no earlier-build comparison** — 20 banners were never measured this way —
+so it is recorded, not judged.
+
+**Why this is still not a fix signal.** The bar this issue sets is a period of use that provably
+would have triggered the spin before. There is no recipe: whether the reporter's gestures coincided
+with a banner's presentation in the way that matters cannot be checked from logs, and `osascript`
+banners from Script Editor are not the HomeKit / Claude / menu-bar-app banners present at the two
+captures. One negative attempt. **The status stays 🔴.**
+
+2026-10-07 27.2 beta3 `26B5101f` 复测:首次主动尝试触发 —— 60 秒内用 `osascript` 发 20 条横幅,报告人同时在
+横幅附近移动指针、做触控板手势:**未出现彩虹圈**。发送期间 NotificationCenter 平均约 29% CPU,停发后立即
+回落到约 0.9%;无 `cpu_resource` 报告。没有复现配方,这次不是"在旧版上必然触发"的使用区间,一次未触发
+不能算修复。仍记 🔴。
