@@ -9,7 +9,7 @@
 | **macOS** | 27.0 beta3 revision **`26A5378n`** (measured 2026-07-16; not tested on earlier builds) |
 | **Component** | Apple **imagent** `10.0` (1000) (`/System/Library/PrivateFrameworks/IMCore.framework/imagent.app`) ↔ **ContactsAccountsService** / Contacts `PersistentStoreBuilder` |
 | **Hardware** | MacBook Pro `Mac15,11`, M3 Max, 36 GB |
-| **Report** | Feedback candidate `FB________` |
+| **Report** | **[FB25167334](https://feedbackassistant.apple.com/feedback/25167334)** (filed 2026-10-13) |
 
 ## Summary / 摘要
 
@@ -368,3 +368,46 @@ The 10-minute window (T+13m → T+23m) held **0** — after the burst, the same 
 2026-10-07 27.2 beta3 `26B5101f` 复测:`com.apple.imagent.sb` 与 27.2 beta2 存档**逐字节一致**(405 行、
 0 处提及、26 个兄弟 profile 有它)。开机以来 imagent 相关记录 **3,529** 条,其中 2,648 条 `E` 级明写
 `error 159 - Sandbox restriction`。仍记 🔴。
+
+## 2026-10-13 — 27.2 beta3 `26B5101f` — a reported symptom, and the retry comes in runs of 44
+
+### A user-visible symptom, reported elsewhere and not reproduced here
+
+[bmisiak](https://github.com/jizhi0v0/macos27-beta-issues/issues/19#issuecomment-6131733503)
+(`26B5101f`) saw Messages show phone numbers instead of contact names in every chat, with contact
+photos still shown, while imagent was logging this error; a reboot restored the names.
+
+Control on this machine, same build, ~13 min after a reboot:
+
+| | |
+|---|---|
+| `grep -c ContactsAccountsService com.apple.imagent.sb` | **0** — the denial is static, so a reboot cannot lift it |
+| imagent `error 159` lines, last 1 h | **6,492** (660 in a later 10-minute window) |
+| Messages, while that was firing | the name for every chat whose number is a saved contact; bare numbers only for banks and vendors that are not contacts |
+
+So the denial alone is **not sufficient** to hide names. It does not rule out that it contributes
+when something else also fails. Not 🟢 or ⚪ either way; the issue's 🔴 is about the profile, which
+is unchanged. Asked on the issue for a step-by-step test (`killall Messages` → `imagent` →
+`contactsd`) the next time the names disappear.
+
+### Correction: "no cap" was wrong — each trigger is a run of exactly 44 attempts
+
+One hour of `Migration service failed` lines (09:57:57–10:48:14), split into runs on gaps over 0.5 s:
+
+| | |
+|---|---|
+| attempts | 2,156 |
+| runs of exactly **44** attempts | **42** (the 77 and 88 counts are adjacent runs merged by the split; 1/9/11/33 are window edges or partial) |
+| gap inside a run | median **1 ms**, p90 6 ms, 1,697 of 2,106 under 2.5 ms; no growth across a run |
+| runs | often ~1.5 s apart (15 runs between 10:28:07 and 10:28:26) |
+
+The beta5 note above — "44 attempts in a live burst" — was the same number, read then as one
+burst's size. Earlier wording here ("no cap", "forever") is superseded: within a run there is no
+delay; runs recur on every trigger. What 44 is (a cap, or 44 distinct callers) is unknown.
+
+imagent CPU: 1.79 s over 22 m 45 s. The Feedback draft ([`../feedback/imagent.md`](../feedback/imagent.md))
+was rewritten with these numbers before filing.
+
+2026-10-13 `26B5101f`:他人报告 Messages 联系人名变成号码、重启后恢复;本机同版本错误照常刷(1 小时
+6,492 条)而联系人名显示正常,故沙盒拒绝**单独不足以**导致该症状。另更正:重试并非"无上限",每次触发是
+**恰好 44 次**的连发(中位间隔 1 ms),触发一次来一轮。仍记 🔴。
