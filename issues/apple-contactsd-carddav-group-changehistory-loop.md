@@ -155,7 +155,9 @@ An Apple engineer with symbols resolves this in seconds; it defeated static anal
 
 ## Workaround / 临时规避
 
-**None known.** No app can be quit (the loop is entirely Apple-internal). Disabling Contacts for the CardDAV accounts would presumably rebuild the source stores and clear the backlog, but that touches real contact data, all 7 CardDAV accounts are affected, and — with the fetch failure not understood — there is no reason to believe a rebuilt store wouldn't re-materialize the same collection-group. Not recommended until the root cause is known.
+**A partial one, reported by another user and not tested here** ([bmisiak, 2026-10-12](https://github.com/jizhi0v0/macos27-beta-issues/issues/18#issuecomment-6118399368), `26B5101f`, M1 Pro, iCloud + Google CardDAV): moving `~/Library/Application Support/AddressBook` aside and letting both accounts re-download cut the hourly sync from ~30 s to under 12 s. **It does not stop the loop**: five hours later the Google source already had 3 info records, against exactly 1 in the old database that went back to Nov 2021. Their old database also had iCloud collection-group `Z_OPT` 93,669 and Google 60,090, which they describe as growing 30–80 a day the whole time — if that holds, the accumulation predates macOS 27. Both points are asked about on the issue; neither is reproduced here.
+
+Before that report, this section read: **None known.** No app can be quit (the loop is entirely Apple-internal). Disabling Contacts for the CardDAV accounts would presumably rebuild the source stores and clear the backlog, but that touches real contact data, all 7 CardDAV accounts are affected, and — with the fetch failure not understood — there is no reason to believe a rebuilt store wouldn't re-materialize the same collection-group. Not recommended until the root cause is known.
 
 ## Notes / 备注
 
