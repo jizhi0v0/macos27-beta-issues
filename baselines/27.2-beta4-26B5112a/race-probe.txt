@@ -1,0 +1,29 @@
+=== #26 getDeliveredNotifications visibility race — 27.2 beta4 26B5112a ===
+tool: tools/un-delivered-race-probe (UNDVerify/v5 at ~/Applications/UNDVerify.app), run 2026-10-14 ~11:00 +0800, T+46m
+Chrome's side NOT re-checked.
+
+--- raw ---
+=== UNDVerify/v5 ===
+os=Version 27.2 (Build 26B5112a)
+bundle=com.example.undverify
+startup ok, requesting authorization…
+initial authorizationStatus=2 (0=notDetermined 1=denied 2=authorized 3=provisional 4=ephemeral)
+already authorized — starting trials
+settings auth=2 alertStyle=1 alertSetting=2
+A trial 1 addMs=3.50  0@0.0/0.5:N(n=0) 5@5.8/6.4:N(n=0) 10@10.9/12.9:N(n=0) 15@16.1/18.1:Y(n=1) 25@25.2/26.3:Y(n=1) 50@50.2/51.0:Y(n=1) 100@105.0/106.8:Y(n=1) 250@266.3/269.9:Y(n=1)
+A trial 2 addMs=6.22  0@0.1/0.6:N(n=0) 5@6.1/11.3:Y(n=1) 10@10.5/11.9:Y(n=1) 15@15.2/19.7:Y(n=1) 25@26.8/28.1:Y(n=1) 50@52.1/56.9:Y(n=1) 100@106.3/112.1:Y(n=1) 250@265.1/266.1:Y(n=1)
+A trial 3 addMs=3.46  0@0.0/1.4:N(n=0) 5@6.1/6.8:N(n=0) 10@11.1/11.9:N(n=0) 15@18.8/19.7:N(n=0) 25@26.8/28.3:Y(n=1) 50@52.0/53.6:Y(n=1) 100@104.8/110.6:Y(n=1) 250@266.7/268.7:Y(n=1)
+A trial 4 addMs=5.86  0@0.0/0.7:N(n=0) 5@6.1/13.8:N(n=0) 10@10.8/13.8:N(n=0) 15@15.7/17.6:Y(n=1) 25@25.6/28.0:Y(n=1) 50@52.3/57.8:Y(n=1) 100@105.0/105.9:Y(n=1) 250@263.3/268.8:Y(n=1)
+A trial 5 addMs=1.40  0@0.0/0.4:N(n=0) 5@6.4/6.9:N(n=0) 10@11.1/12.4:Y(n=1) 15@15.4/16.4:Y(n=1) 25@26.3/27.2:Y(n=1) 50@51.4/52.3:Y(n=1) 100@104.9/106.7:Y(n=1) 250@265.2/270.7:Y(n=1)
+A trial 6 addMs=3.33  0@0.0/0.5:N(n=0) 5@5.9/15.1:Y(n=1) 10@11.1/15.3:Y(n=1) 15@15.6/23.9:Y(n=1) 25@25.4/34.4:Y(n=1) 50@50.4/54.1:Y(n=1) 100@105.9/107.4:Y(n=1) 250@266.5/271.3:Y(n=1)
+A trial 7 addMs=1.94  0@0.0/0.4:N(n=0) 5@5.2/5.7:N(n=0) 10@11.0/12.5:Y(n=1) 15@16.5/17.6:Y(n=1) 25@25.8/26.8:Y(n=1) 50@50.8/51.7:Y(n=1) 100@106.4/107.4:Y(n=1) 250@266.6/271.5:Y(n=1)
+A trial 8 addMs=2.22  0@0.0/0.3:N(n=0) 5@6.1/10.4:Y(n=1) 10@11.1/18.9:Y(n=1) 15@16.1/18.9:Y(n=1) 25@26.3/27.1:Y(n=1) 50@51.3/56.7:Y(n=1) 100@106.0/110.2:Y(n=1) 250@265.5/266.3:Y(n=1)
+B trial 1 addMs=2.05 firstPollIssued=0.01ms polls=36 VISIBLE issued=9.46ms replied=12.98ms lastMiss(issued=9.20 replied=9.46) n=1
+B trial 2 addMs=1.67 firstPollIssued=0.01ms polls=9 VISIBLE issued=8.49ms replied=10.52ms lastMiss(issued=8.23 replied=8.48) n=1
+B trial 3 addMs=6.43 firstPollIssued=0.01ms polls=5 VISIBLE issued=9.24ms replied=11.80ms lastMiss(issued=8.85 replied=9.22) n=1
+B trial 4 addMs=2.78 firstPollIssued=0.01ms polls=36 VISIBLE issued=13.46ms replied=15.62ms lastMiss(issued=12.02 replied=13.45) n=1
+B trial 5 addMs=2.14 firstPollIssued=0.01ms polls=14 VISIBLE issued=3.63ms replied=11.99ms lastMiss(issued=3.42 replied=3.63) n=1
+B trial 6 addMs=1.25 firstPollIssued=0.01ms polls=10 VISIBLE issued=2.53ms replied=11.48ms lastMiss(issued=2.30 replied=2.52) n=1
+B trial 7 addMs=7.27 firstPollIssued=0.02ms polls=5 VISIBLE issued=1.43ms replied=10.14ms lastMiss(issued=1.17 replied=1.43) n=1
+B trial 8 addMs=2.30 firstPollIssued=0.01ms polls=33 VISIBLE issued=7.75ms replied=10.88ms lastMiss(issued=7.56 replied=7.75) n=1
+ALL DONE

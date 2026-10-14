@@ -1,0 +1,35 @@
+=== #23 replicated ecosystemd measurement, 27.2 beta4 26B5112a — raw tools/eco-replicate.sh output ===
+command: LEAD=0 REPS=3 bash tools/eco-replicate.sh   (T+45m on the 2026-10-14 10:14:00 boot; apps NOT quit)
+
+build: 27.2 26B5112a
+reps=3 window=60s  pid=13064
+start: Wed Oct 14 10:59:12 CST 2026
+
+baseline for comparison — beta4 26A5388g:
+  SecTrustCopyAppleTrustAnchors ~68-85/s | 15,885 lines/60s | 1,227 EIO | CPU 26-57%
+
+--- all running /Applications bundles at measurement start ---
+Alcove.app AndDrive.app AweSun.app Backdrop.app BaiduNetdisk_mac.app ChatGPT.app Claude.app DingTalk.app DuoLaunch.app DuoShot.app DuoTerminal.app DuoTranslator.app DuoUpdater.app Google Chrome.app Keka.app Klack.app Macs Fan Control.app NotchBadge.app OneDrive.app Pearcleaner.app RustDesk.app Spotify.app Surge.app Tailscale.app Telegram.app ToDesk.app UURemote.app WeChat.app Xcode.app 
+
+rep      eco%  anchors/s    lines/win      EIO
+1         0.0        0.0            1        0
+2         0.0        0.0            1        0
+3         0.0        0.0            1        0
+
+ecosystemd CPU: mean=0.0%  min=0.0%  max=0.0%  sd=0.0
+
+HOW TO READ:
+  The loop is confirmed still present by the anchors/s and EIO columns
+  regardless of CPU — those are not load-sensitive. CPU is the open
+  question: beta4 recorded 26-57%, and beta5 spot-checks disagreed with
+  each other (12.2% then 4.7%) under heavy load.
+  A tight spread here settles it; a wide one means the state is still
+  uncontrolled and something else is varying.
+done: Wed Oct 14 11:02:17 CST 2026
+
+[exited with code 0]
+
+--- since boot, predicate 'process == "ecosystemd"', 10:14:00 -> 11:00:00 ---
+ecosystemd pid 13064 started 10:18:37 (T+4m37s); cumulative CPU 0:00.34 at 10:58
+records:      569 | SecTrustCopyAppleTrustAnchors: 0 | UNIX error exception: 5: 0
+10-minute window 10:47-10:57: ecosystemd 1 record (27.2 b3: 60,906 records, 19,350 anchors)

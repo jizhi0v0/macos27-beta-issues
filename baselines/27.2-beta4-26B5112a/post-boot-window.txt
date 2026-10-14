@@ -1,0 +1,69 @@
+=== macOS 27.2 beta4 26B5112a — 10-minute window at T+33m ===
+build installed: 2026-10-14 02:16:02 UTC = 10:16:02 +0800  (/Library/Receipts/InstallHistory.plist)
+boot:            2026-10-14 10:14:00 +0800  (kern.boottime)
+   ⚠️ the receipt is dated 2 min AFTER kern.boottime (27.2 b3: 3.5 min before). Recorded, not explained.
+window:          2026-10-14 10:47:00 -> 10:57:00, 10m00s = T+33m -> T+43m
+records in window: 613,770 timestamped lines (693,583 raw incl. continuations; sliced by timestamp)
+kernel:          xnu-13432.41.4~3   (27.2 beta3: xnu-13432.40.177.0.3~56)
+
+⚠️ NOT A MATCHED PAIR with 27.2 b3 (T+13m). NOT quiesced: load 56.7 / 26.7 / 33.6 at 10:57,
+   23 GUI apps, mds_stores 34.6% — post-update reindex active.
+CAPTURE: /usr/bin/log show --start ... --end ... --style compact (default level), sliced by
+   timestamp; process field split with awk. Since-boot counts exclude process `log`.
+
+top emitters: kernel 72,319 | swiftpm-testing-helper 62,871 | bluetoothd 47,697 |
+              contactsd 35,228 | DuoUpdater 30,820 | Mail 26,522
+   (27.2 b3: ecosystemd 60,906 and ecosystemanalyticsd 52,632 were #2 and #3; here ecosystemd = 1)
+
+--- #23 ecosystemd --- see eco-replicate.txt
+in window: ecosystemd 1 record, SecTrustCopyAppleTrustAnchors from ecosystemd 0
+   (27.2 b3: 19,350 = 32.3/s). Since boot: 569 records, 0 anchors, 0 EIO.
+
+--- #18 contactsd --- see contactsd-backlog.txt: 122,126 -> 125,914, none reset.
+"Could not fetch group for change type", since boot to 11:00, process `log` excluded: 9,254
+   from 39 processes (27.2 b3: 3,908 from 33, all in the first 6 min)
+   per 10-min bucket: 10:10 1,104 | 10:20 5,095 | 10:30 944 | 10:40 0 | 10:50 2,111 ; last 10:57:09
+   -> NOT front-loaded this time: it resumed at T+36m after a quiet 10:40 bucket.
+contactsd records in window: 35,228 (34,192 of them in the single minute 10:56; 26,275 are
+   xpc connection lines, 3,873 to com.apple.tccd)
+contactsd CPU: 40.1% over 120 s at 11:01:38-11:03:38, then 0.0 / 0.0 / 0.0% in three 30 s
+   samples 11:04-11:05. Bursty. 321.3 s cumulative since its 10:17:27 start.
+
+--- #19 imagent x ContactsAccountsService ---
+profile com.apple.imagent.sb: 405 lines, 0 mentions, 26 siblings name it,
+   diff against the 27.2 b3 archive: NO OUTPUT -- byte-identical (8 profiles differ overall).
+imagent records naming the service, since boot to 11:00: 8,637 (E 6,480 / Df 2,157)
+   E records carrying "error 159 - Sandbox restriction": 6,480
+   per 10-min bucket: 10:10 1,592 | 10:20 3,696 | 10:30 528 | 10:40 0 | 10:50 2,821
+   peak second 331 at 10:25:39. In window: 2,290.
+
+--- #2 Shortcuts/Siri ToolKit storm ---
+since boot (BackgroundShortcutRunner OR siriactionsd), 10:14:00 -> 11:00:00: 244,437
+   (BSR 190,260 / siriactionsd 54,177; A 135,233 / Df 92,516 / E 14,498 / F 2,181 / Sd 9)
+   first record 10:16:19. peak 14,824/s at 10:17:53 (T+3m53s); 12,660 at 10:17:56
+   seconds >= 500/s: 107. per 10-min: 10:10 125,566 | 10:20 59,768 | 10:30 57,662 |
+   10:40 1,044 | 10:50 397
+   (27.2 b3: 148,934 in 34 min, peak 7,384/s, 116 s >= 500/s)
+in window: 702
+
+--- #1 CoreMedia fpSupport_GetVideoRange --- in window: 28 = DingTalk 28. Measures the app mix.
+--- #24 mds CoreDuet --- in window: 1,928 = 3.2/s. Idle band.
+--- #15 appstoreagent Code=8 --- in window 0. Since boot, unscoped "BGSystemTaskSchedulerErrorDomain",
+   `log` excluded: 28 records, 2 with Code=8 -- corespeechd 10:17:40 (On-Device ASR task) and
+   siriactionsd 10:18:28 (scheduleReindex). Neither is appstoreagent/dasd; one-shots, no loop.
+   Not #15's signature. appstoreagent: 0 hits.
+--- #13 --- 0 in window. --- #3 Invalid window --- 4,298 in window; window count uncontrolled.
+
+--- CPU, 120 s cumulative deltas, 11:01:38 -> 11:03:38 (T+48m), not quiesced ---
+  WindowServer 48.2% | contactsd 40.1% (burst, see above) | mds_stores 12.2% | siriactionsd 4.4%
+  mds 2.9% | NotificationCenter 2.4% | ControlCenter 1.9% | MenuBarAgent 1.1% | imagent 0.3%
+  corebrightnessd 0.2% | ecosystemd 0.0% (0.3 s cumulative) | ecosystemanalyticsd 0.0%
+
+--- crash inventory since 10:16:02, incl. Retired/ (8 files) ---
+  .ips: textunderstandingd ExcUserFault 10:22:51 | JetsamEvent 10:18:07 ; non-ips: ANECompilerService
+  diag + cpu_resource, Telegram diag, coresymbolicationd, mds_stores, swift-frontend diag.
+  #5 #6 #8 #10 #16 #17 #29: 0. 45 minutes of use -- says nothing about recurrence.
+
+Apple's 27.2 beta4 release notes (read 2026-10-14) mention none of the open entries.
+Binary archive: ~/Developer/macos27-27.2beta4-binary-archive/ (84 dyld files, 553 profiles,
+   both sha256-verified against live).
