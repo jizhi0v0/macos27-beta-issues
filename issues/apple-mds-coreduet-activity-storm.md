@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | 🟡 **not storming during the 27.2 beta3 `26B5101f` window** (2026-10-07) — 2,508 CoreDuet records in a 10-minute post-boot window = **4.2/s** (predicate cross-check 2,509), the idle band (storm ~2420/s); `mds` 0.4% CPU over 120 s. Bursty by construction; one window decides nothing. Not a status change. See [`../baselines/27.2-beta3-26B5101f/`](../baselines/27.2-beta3-26B5101f/README.md). Prior: 🟡 **not storming during the 27.2 beta2 `26B5091g` window** (2026-09-25) — 1,175 CoreDuet records = **2.0/s** (predicate cross-check 1,175), the idle band (storm ~2420/s). Bursty by construction; one window decides nothing. Not a status change. See [`../baselines/27.2-beta2-26B5091g/`](../baselines/27.2-beta2-26B5091g/README.md). Prior: 🟡 **not storming during the release `26A428` window** (2026-09-16) — 1,182 CoreDuet records = **2.0/s**, the idle band (storm ~2420/s). Bursty by construction; one window decides nothing. Not a status change. See [`baselines/release-26A428/`](../baselines/release-26A428/README.md). Prior: 🟡 **not storming during the beta8 `26A5425a` window** (2026-09-03) — 2,205 CoreDuet records = **3.7/s**, inside the ~2/s idle band (storm is ~2420/s). The issue is bursty by construction, so one window decides nothing — that is why `tools/mds-storm-watch.sh` exists. Not a status change. Prior: 🟡 **bursty; peak rate was badly underestimated, but it does still settle** (twice-corrected 2026-08-12, beta5 `26A5406e`). A 9 h 12 m watcher tripped its 300/s threshold **10 times, all inside one 2 h 23 m burst** (min 302, median 585, **max 5,976 lines/s**), then **0 times in the following 6 h 49 m** — so the original single-window reading (279/s) understated the peak by ~20×, while its "decays and settles" shape held. ⚠️ **Confound, stated plainly:** that burst coincided with heavy local repo/build/download activity, itself a normal Spotlight-indexing trigger, so this may be induced load rather than a defect. **Not re-tested on beta6.** Prior: 🔴 Open · confirmed on beta4 |
+| **Status** | 🟡 **not storming during the 27.2 beta4 `26B5112a` window** (2026-10-14) — 1,928 CoreDuet records in a 10-minute window at T+33m = **3.2/s** (predicate cross-check 1,928), the idle band (storm ~2420/s); `mds` 2.9% CPU over 120 s. Bursty by construction; one quiet window decides nothing. See [`../baselines/27.2-beta4-26B5112a/`](../baselines/27.2-beta4-26B5112a/README.md). Prior: 🟡 **not storming during the 27.2 beta3 `26B5101f` window** (2026-10-07) — 2,508 CoreDuet records in a 10-minute post-boot window = **4.2/s** (predicate cross-check 2,509), the idle band (storm ~2420/s); `mds` 0.4% CPU over 120 s. Bursty by construction; one window decides nothing. Not a status change. See [`../baselines/27.2-beta3-26B5101f/`](../baselines/27.2-beta3-26B5101f/README.md). Prior: 🟡 **not storming during the 27.2 beta2 `26B5091g` window** (2026-09-25) — 1,175 CoreDuet records = **2.0/s** (predicate cross-check 1,175), the idle band (storm ~2420/s). Bursty by construction; one window decides nothing. Not a status change. See [`../baselines/27.2-beta2-26B5091g/`](../baselines/27.2-beta2-26B5091g/README.md). Prior: 🟡 **not storming during the release `26A428` window** (2026-09-16) — 1,182 CoreDuet records = **2.0/s**, the idle band (storm ~2420/s). Bursty by construction; one window decides nothing. Not a status change. See [`baselines/release-26A428/`](../baselines/release-26A428/README.md). Prior: 🟡 **not storming during the beta8 `26A5425a` window** (2026-09-03) — 2,205 CoreDuet records = **3.7/s**, inside the ~2/s idle band (storm is ~2420/s). The issue is bursty by construction, so one window decides nothing — that is why `tools/mds-storm-watch.sh` exists. Not a status change. Prior: 🟡 **bursty; peak rate was badly underestimated, but it does still settle** (twice-corrected 2026-08-12, beta5 `26A5406e`). A 9 h 12 m watcher tripped its 300/s threshold **10 times, all inside one 2 h 23 m burst** (min 302, median 585, **max 5,976 lines/s**), then **0 times in the following 6 h 49 m** — so the original single-window reading (279/s) understated the peak by ~20×, while its "decays and settles" shape held. ⚠️ **Confound, stated plainly:** that burst coincided with heavy local repo/build/download activity, itself a normal Spotlight-indexing trigger, so this may be induced load rather than a defect. **Not re-tested on beta6.** Prior: 🔴 Open · confirmed on beta4 |
 | **macOS** | 27.0 beta4 `26A5388g` |
 | **Component** | Apple **Spotlight / `mds`** (`com.apple.metadata`) ↔ **CoreDuet** (`CoreDuetContext`, `contextstored`) |
 | **Hardware** | `Mac15,11`, M3 Max, 36 GB, single internal display |
@@ -300,4 +300,24 @@ not predicted by uptime; a quiet window is not evidence of a fix.
 **Not a status change.**
 
 2026-10-07 27.2 beta3 `26B5101f` 复测:开机后 10 分钟窗口 CoreDuet **4.2 条/秒**,属空闲水平,未起风暴。
+阵发性问题,单个窗口不说明任何事。状态不变。
+
+## Re-verification 2026-10-14 — 27.2 beta4 `26B5112a` — a quiet window, which decides nothing
+
+> **Clock position.** macOS 27.2 beta4 `26B5112a` was installed **2026-10-14 10:16:02 +0800**
+> (`InstallHistory.plist`) and booted at 10:14:00. The window is **T+33m → T+43m** (10:47–10:57),
+> 23 apps running, post-update reindex active — matched to no earlier window. Kernel
+> `xnu-13432.41.4~3` (27.2 b3: `xnu-13432.40.177.0.3~56`). Raw capture:
+> [`baselines/27.2-beta4-26B5112a/`](../baselines/27.2-beta4-26B5112a/README.md).
+
+`mds` logged 2,303 records in the window (10:47–10:57, T+33m), **1,928** of them naming CoreDuet =
+**3.2/s**; bounded predicate cross-check 1,928. The idle band (27.2 b3 4.2/s), three orders of
+magnitude below the storm (~2,420/s). `mds` measured **2.9%** over a 120 s cumulative sample at
+T+48m, with `mds_stores` at 12.2% from the post-update reindex.
+
+The storm is intermittent and not predicted by uptime; a quiet window is not evidence of a fix.
+
+**Not a status change.**
+
+2026-10-14 27.2 beta4 `26B5112a` 复测:10 分钟窗口 CoreDuet **3.2 条/秒**,属空闲水平,未起风暴。
 阵发性问题,单个窗口不说明任何事。状态不变。
