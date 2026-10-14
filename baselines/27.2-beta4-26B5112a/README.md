@@ -65,8 +65,8 @@ diff:** the daemon binary lives outside the dyld cache and was never archived.
 
 All 12 sources carried over, all 7 non-zero ones up, none reset. `Could not fetch group for
 change type`: **9,254 since boot** from 39 processes (27.2 b3: 3,908 from 33, all in the first six
-minutes). This time it is **not front-loaded** — 0 in the 10:40 bucket, then 2,111 more from
-T+36m. contactsd read **40.1%** over 120 s at T+48m and **0.0%** in three 30 s samples right
+minutes). This time it is **not front-loaded** — none from 10:40 to 10:56, then 2,111 more from
+10:56:31 (T+42m), the same minute as contactsd's own burst. contactsd read **40.1%** over 120 s at T+48m and **0.0%** in three 30 s samples right
 after: bursty, not sustained; 34,192 of its 35,228 window records fell in the single minute 10:56.
 
 ### #19 imagent — 🔴 **the profile is byte-identical to 27.2 beta3**

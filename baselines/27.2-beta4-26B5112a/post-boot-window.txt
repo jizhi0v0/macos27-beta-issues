@@ -23,7 +23,8 @@ in window: ecosystemd 1 record, SecTrustCopyAppleTrustAnchors from ecosystemd 0
 "Could not fetch group for change type", since boot to 11:00, process `log` excluded: 9,254
    from 39 processes (27.2 b3: 3,908 from 33, all in the first 6 min)
    per 10-min bucket: 10:10 1,104 | 10:20 5,095 | 10:30 944 | 10:40 0 | 10:50 2,111 ; last 10:57:09
-   -> NOT front-loaded this time: it resumed at T+36m after a quiet 10:40 bucket.
+   -> NOT front-loaded this time: none 10:40-10:56, then it resumed at 10:56:31 (T+42m31s),
+      the same minute as contactsd's 34,192-record burst.
 contactsd records in window: 35,228 (34,192 of them in the single minute 10:56; 26,275 are
    xpc connection lines, 3,873 to com.apple.tccd)
 contactsd CPU: 40.1% over 120 s at 11:01:38-11:03:38, then 0.0 / 0.0 / 0.0% in three 30 s
