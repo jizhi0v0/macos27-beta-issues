@@ -1,7 +1,7 @@
 # App Store "Get" sheet shows only Cancel — no Touch ID, no password — because an invisible window covers it
 # App Store 获取/购买弹窗只有「取消」、不弹指纹也不弹密码——被一个看不见的窗口挡住了
 
-> 🔗 **Track / 关注此问题:** [#30 — watch & discuss on GitHub](https://github.com/jizhi0v0/macos27-beta-issues/issues/30)
+> 🔗 **Track / 关注此问题:** [#33 — watch & discuss on GitHub](https://github.com/jizhi0v0/macos27-beta-issues/issues/33)
 
 | | |
 |---|---|
