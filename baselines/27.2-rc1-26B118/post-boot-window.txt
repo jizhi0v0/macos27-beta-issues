@@ -1,0 +1,58 @@
+=== macOS 27.2 RC1 26B118 — since-boot queries at T+40m ===
+build installed: 2026-10-20 02:34:48 UTC = 10:34:48 +0800  (/Library/Receipts/InstallHistory.plist, "macOS 27.2")
+boot:            2026-10-20 10:31:56 +0800  (kern.boottime)
+   ⚠️ the receipt is dated ~3 min AFTER kern.boottime (27.2 b4: 2 min after). Recorded, not explained.
+query span:      2026-10-20 10:31:56 -> 11:11:59, 40m03s = T+0 -> T+40m
+kernel:          xnu-13432.41.4~25   (27.2 beta4: xnu-13432.41.4~3)
+
+⚠️ NO 10-minute window this time: every count below is since boot, one predicate per signature,
+   so nothing here is a matched pair with 27.2 b4's T+33m window. NOT quiesced: load 42.6 (15-min)
+   / 14.3 (1-min) at 11:11, 32 /Applications bundles running.
+CAPTURE: /usr/bin/log show --start "2026-10-20 10:31:56" --end "2026-10-20 11:11:59" --style compact
+   --predicate <below>, counted with grep -c '^20'. Unscoped predicates exclude process `log`.
+
+--- #23 ecosystemd --- see eco-replicate.txt
+'process == "ecosystemd"': 477 records; anchors 0, EIO 0
+
+--- #18 contactsd --- see contactsd-backlog.txt: 125,914 -> 128,836, none reset.
+'process != "log" AND eventMessage CONTAINS "Could not fetch group for change type"': 7,780 from 44 processes
+   (27.2 b4: 9,254 from 39 in 46 min)
+   per 10-min bucket: 10:30 3,931 | 10:40 1,193 | 10:50 0 | 11:00 2,656
+   first 10:35:41, quiet after 10:44:12, resumed 11:04:48 (T+32m52s), last 11:06:36
+   -> the same shape as 27.2 b4: an early burst, a gap, then a resumption
+
+--- #19 imagent x ContactsAccountsService ---
+profile com.apple.imagent.sb: 405 lines, 0 mentions, 26 siblings name it,
+   diff against the 27.2 b4 archive: NO OUTPUT -- byte-identical (2 profiles differ overall:
+   com.apple.managedappdistributionagent.sb, com.apple.managedappdistributiond.sb)
+'process == "imagent" AND eventMessage CONTAINS "ContactsAccountsService"': 6,881 (E 5,164 / Df 1,717)
+'process == "imagent" AND eventMessage CONTAINS "error 159 - Sandbox restriction"': 5,167
+   per 10-min bucket: 10:30 3,886 | 10:40 1,235 | 10:50 0 | 11:00 1,760
+   peak second 308 at 10:35:41. Quiet after 10:43:49, resumed 11:04:49 -- the same second as #18's
+   resumption.
+
+--- #2 Shortcuts/Siri ToolKit storm ---
+'process == "BackgroundShortcutRunner" OR process == "siriactionsd"': 454,793
+   (BSR 380,071 / siriactionsd 74,722; A 301,716 / Df 135,195 / E 15,676 / F 2,191 / Sd 15)
+   first record 10:35:06. peak 15,952/s at 10:36:16 (T+4m20s); 13,159 at 10:41:46; 12,172 at 10:36:18
+   seconds >= 500/s: 205. per 10-min: 10:30 225,406 | 10:40 228,997 | 10:50 187 | 11:00 203
+   (27.2 b4: 244,437 in 46 min, peak 14,824/s, 107 s >= 500/s)
+
+--- #1 CoreMedia fpSupport_GetVideoRange --- 47 = DingTalk 32, Surge 6, Safari 3, Mail 2, Spotify 2,
+   WeType 2. Measures the app mix.
+--- #24 mds CoreDuet --- 'process == "mds" AND eventMessage CONTAINS "CoreDuet"': 62,266
+   per 10-min: 10:30 3,650 | 10:40 0 | 10:50 51,052 | 11:00 7,034 | 11:10 530
+   peak 1,088/s at 10:56:48. A burst, below the ~2,420/s storm level; an mds_stores .diag was written
+   at 10:47 (post-update reindex likely -- not verified).
+--- #15 appstoreagent Code=8 --- 'process == "appstoreagent" AND eventMessage CONTAINS "Code=8"': 0.
+   Unscoped "BGSystemTaskSchedulerErrorDomain": 24 records, 2 with Code=8 -- corespeechd 10:35:13
+   (On-Device ASR task) and siriactionsd 10:36:49 (scheduleReindex), the same two one-shots as 27.2 b4.
+--- #13 --- "insert ranking attr at NSNotFound": 3,205 since boot (the line is benign since beta3).
+--- #3 Invalid window --- WindowServer "Invalid window": 17,395 since boot; window count uncontrolled.
+
+--- crash / diagnostic inventory, since boot ---
+/Library/Logs/DiagnosticReports: JetsamEvent 10:35, ExcUserFault_iconservicesd 10:32, lsd .diag 10:42,
+   WindowServer .cpu_resource.diag 10:46, mds_stores .diag 10:47, ANECompilerService .diag 11:07
+~/Library/Logs/DiagnosticReports: nothing after the boot
+   -> 0 reports for modelmanagerd (#16), ViewBridge/NSRemoteView (#17), NotificationCenter (#29),
+      OrbStack (#5), Chrome (#6), Codex (#8), WeChat (#10).

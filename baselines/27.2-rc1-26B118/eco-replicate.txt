@@ -1,0 +1,53 @@
+=== #23 replicated ecosystemd measurement, 27.2 RC1 26B118 — raw tools/eco-replicate.sh output ===
+command: LEAD=0 REPS=3 bash tools/eco-replicate.sh   (T+40m on the 2026-10-20 10:31:56 boot; apps NOT quit)
+
+build: 27.2 26B118
+reps=3 window=60s  pid=8930
+start: Tue Oct 20 11:11:59 CST 2026
+
+baseline for comparison — beta4 26A5388g:
+  SecTrustCopyAppleTrustAnchors ~68-85/s | 15,885 lines/60s | 1,227 EIO | CPU 26-57%
+
+--- all running /Applications bundles at measurement start ---
+Alcove.app AweSun.app Backdrop.app BaiduNetdisk_mac.app ChatGPT.app Claude.app ClaudeUsageMenuBar.app DingTalk.app DuoLaunch.app DuoShot.app DuoTerminal.app DuoTranslator.app DuoUpdater.app Fork.app Google Chrome.app Keka.app KeyRemap.app Klack.app Macs Fan Control.app NotchBadge.app Parallels Desktop.app Pearcleaner.app RustDesk.app Spotify.app Surge.app TablePlus.app Tailscale.app Telegram.app ToDesk.app UURemote.app WeChat.app Xcode.app 
+
+rep      eco%  anchors/s    lines/win      EIO
+1         0.0        0.0            1        0
+2         0.0        0.0            1        0
+3         0.0        0.0            1        0
+
+ecosystemd CPU: mean=0.0%  min=0.0%  max=0.0%  sd=0.0
+
+HOW TO READ:
+  The loop is confirmed still present by the anchors/s and EIO columns
+  regardless of CPU — those are not load-sensitive. CPU is the open
+  question: beta4 recorded 26-57%, and beta5 spot-checks disagreed with
+  each other (12.2% then 4.7%) under heavy load.
+  A tight spread here settles it; a wide one means the state is still
+  uncontrolled and something else is varying.
+done: Tue Oct 20 11:15:07 CST 2026
+
+--- since boot, predicate 'process == "ecosystemd"', 10:31:56 -> 11:11:59 ---
+ecosystemd pid 8930 started 10:36:55 (T+4m59s); cumulative CPU 0:00.29 at ~11:16
+records:      477 | SecTrustCopyAppleTrustAnchors: 0 | UNIX error exception: 5: 0
+   (separate predicates: 'process == "ecosystemd" AND eventMessage CONTAINS "SecTrustCopyAppleTrustAnchors"' -> 0,
+    '... CONTAINS "UNIX error exception: 5"' -> 0)
+
+--- the 27.2 beta4 uptime, read back from the log store after the upgrade ---
+predicate 'process == "ecosystemd" OR process == "ecosystemanalyticsd"', --start 2026-10-14 10:14:00 --end 2026-10-20 10:31:00
+the store's oldest retained record for these processes is 2026-10-14 13:35:30 (T+3h21m on the b4 boot);
+   10:14 -> 13:35 had rotated out and is covered only by the 2026-10-14 capture in ../27.2-beta4-26B5112a/
+records: 7,244 | SecTrustCopyAppleTrustAnchors: 0 | UNIX error exception: 5: 0
+last record 2026-10-20 10:01:59 (ecosystemd pid 53270 -- not b4's 13064, so the daemon restarted at least once)
+per day:
+    55 2026-10-14
+   210 2026-10-15
+   981 2026-10-16
+  1416 2026-10-17
+  1791 2026-10-18
+  2580 2026-10-19
+   211 2026-10-20
+levels:
+  2453 Df
+   103 E
+  4688 F
