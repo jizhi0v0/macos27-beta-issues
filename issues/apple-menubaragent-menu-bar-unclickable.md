@@ -52,17 +52,28 @@ Only WindowServer's `Menubar` window and MenuBarAgent's own window sit over the 
 
 `sample 1369 2`: the main thread spent all 1,299 samples blocked in `mach_msg` under `-[NSApplication run]` → `_DPSNextEvent`, i.e. idle, waiting for events. A hang would show the main thread busy somewhere else.
 
-### 3. Event taps — found two oddities, neither explains it / 事件拦截：发现两个异常，都解释不了
+### 3. Event taps — nothing slow, and not touched by the fix / 事件拦截：没有真实延迟，修复也没动它们
 
 `CGGetEventTapList`, enabled taps only:
 
-| Tapper | Tap | Events | Avg latency |
+| Tapper | Tap | Events | `avgUsecLatency` field |
 |---|---|---|---|
-| WeType 3.0.0 (pid 1735, input method) | **active** (`options 0`), HID level | mouse-down (left/right/other), key down/up, flags | **4,378,446 → 1,709,717 → 1,271,546 µs** across three reads |
-| Klack (pid 7609) | | keys | 0 |
-| ViewBridgeAuxiliary, universalaccessd | | | 0 |
+| WeType 3.0.0 (pid 1735, input method) | **active** (`options 0`), HID level | mouse-down (left/right/other), key down/up, flags | 4,378,446 → 1,709,717 → 1,271,546 µs across three reads — **not a real delay, see below** |
+| Klack (pid 7609) | listen-only, two taps | mouse buttons; keys and flags | 0 |
+| ViewBridgeAuxiliary, universalaccessd | listen-only | | 0 |
 
-A 1–4 s active tap on mouse-down is remarkable, but it **is not the cause**: it sits in front of every click on the system, yet only the menu bar failed; and the fix did not touch WeType. WeType's own main thread was idle when sampled.
+WeType's tap is not the cause: the fix did not touch it, it is still installed with the same mask, and the menu bar works.
+
+**The seconds-scale "latency" is not delay that events experience.** An earlier version of this write-up called it a 1–4 s tap; that was wrong. The header only says `Average latency in microseconds` (`CGEventTypes.h`); what is measured is undocumented. Measured on 2026-10-23 after the fix, with WeType running, using a listen-only tap at `kCGAnnotatedSessionEventTap` (after WeType's HID tap) that compares each event's `timestamp` with its arrival time:
+
+| Event | n | avg | max |
+|---|---|---|---|
+| key down | 328 | 0.61 ms | 5.18 ms |
+| key up | 320 | 0.37 ms | 2.48 ms |
+| mouse down | 2 | 4.01 ms | 6.80 ms |
+| all | 654 | p50 0.33 ms, p99 2.40 ms | |
+
+Over the same 40 s, the field read 0–5 ms (once 62 ms) while typing was going on, then climbed to 730 → 1,811 → 8,688 ms once typing stopped, and later showed 17 s on an idle machine. Min, avg and max are always identical. It grows with idle time, so it is not per-event latency. A control run without WeType was not clean: macOS relaunched WeType 6 s in, because it was still an enabled input source.
 
 KeyRemap's daemon (`/Library/Application Support/KeyRemap/KeyRemap.app --daemon`) spawns `hidutil` about **80 times a minute** — 800 per 10 minutes, steady from at least 04:00 to 10:00. It was not new, and the fix did not touch it either.
 
