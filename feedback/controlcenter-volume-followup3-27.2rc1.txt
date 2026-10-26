@@ -1,0 +1,15 @@
+Still reproducible on macOS 27.2 RC1 (26B118), which is newer than Beta 4 (26B5112a), on MacBook Pro Mac15,11 with Alcove 1.7.9 (build 203) from tryalcove.com.
+
+Reproduced 2026-10-26 at 18:44:05 local time (+0800).
+
+How it was reproduced: this is a deliberate reproduction, not a contrived scenario. We have run into this runaway repeatedly in normal use, typically right after the output device changes (e.g. putting AirPods on). To trigger it on demand for this report, I used a small script that switches the default output device programmatically (kAudioHardwarePropertyDefaultOutputDevice; the script never writes the volume) between the built-in speakers and AirPods every 8 s, while I pressed the volume keys as one naturally does after a device change. Alcove running, AirPods connected, no audio playing. On the second round the volume ran away to 0%.
+
+What happened:
+- From 18:44:05, ControlCenter logged "set system volume: 0.000000 -> 0.000000" (and SoundSettings setLevel 0.000000) about 30 times per second, with the volume already at 0.
+- Any volume increase was pulled back to 0 within about one second (see the attached screen recording, 18:44:53-18:45:12).
+- Control without any input: at 18:48:18 the machine had received no keyboard or mouse input for 21 s, and ControlCenter still logged 437 such writes in the preceding 15 s (~29/s). So the 30 Hz writing continues without any user input, the same signature as in the original report.
+
+Attached:
+- sysdiagnose started at 18:45:23, while the runaway was still in progress
+- screen recording, 18:44:53-18:45:12
+- text excerpt of the relevant ControlCenter log lines, the device-switch timestamps and the no-input measurement
