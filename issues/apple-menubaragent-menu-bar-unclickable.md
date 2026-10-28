@@ -5,11 +5,11 @@
 
 | | |
 |---|---|
-| **Status** | 🟡 **Workaround works, cause unknown** (2026-10-23). Seen **once**. Restarting `MenuBarAgent` fixed it immediately. We could not tell whether clicks were reaching MenuBarAgent, because the Info-level logs that would show it had already aged out |
-| **macOS** | 27.2 RC1 `26B118`, uptime 2 d 23 h (booted 2026-10-20 10:34) |
+| **Status** | 🟡 **Workaround works, cause unknown; clicks do not reach MenuBarAgent** (2026-10-28). Seen **twice**. The second time (`26B123`) was captured before the restart: MenuBarAgent logged **0** `AppKit:Gestures` lines while the menu bar was clicked, against 25–50 per click when it works. WindowServer was logging `Corrupt tree` ~6,500/min, which stopped when MenuBarAgent was restarted. See [Second occurrence](#second-occurrence-2026-10-28-26b123--第二次复现) |
+| **macOS** | 27.2 RC1 `26B118`, uptime 2 d 23 h (booted 2026-10-20 10:34); again on 27.2 `26B123`, uptime ~29 h (booted 2026-10-27 11:38) |
 | **Component** | Apple `MenuBarAgent` (`/System/Library/CoreServices/MenuBarAgent.app`) ↔ WindowServer |
 | **Hardware** | MacBook Pro `Mac15,11` (M3 Max), built-in display only (3456 × 2234); MenuBarAgent's own log reports the menu bar mode as `alwaysVisible` (not auto-hidden) |
-| **Report** | Not filed with Apple yet — there is nothing actionable without a capture from the broken state (see [Capture](#if-you-hit-this-capture-before-restarting--复现时先取证再重启)) |
+| **Report** | **[FB25347429](https://feedbackassistant.apple.com/feedback/25347429)**, filed 2026-10-28 with the broken-state capture ([draft](../feedback/menubaragent.md)). The attached sysdiagnose is from the healthy state, about 20 minutes after the restart |
 
 ## Symptom / 症状
 
@@ -120,7 +120,49 @@ The capture below tells these apart.
 
 WindowServer used **68–88% CPU** while broken and 44–58% at 10:13 after the fix. The window count was not controlled between the two readings, and an uncontrolled window count has produced a false WindowServer CPU regression in this repo before (see [#3](apple-windowserver-invalid-window.md)), so do not read this as a cause or a fix.
 
+## Second occurrence 2026-10-28 (`26B123`) / 第二次复现
+
+Noticed at 16:26 +0800; the onset time is unknown. Same symptom: every menu and status item dead, no hover, everything else fine. This time the capture was taken **before** `killall MenuBarAgent` (16:33:07, pid 1388 → 11444).
+
+### Clicks did not reach MenuBarAgent — question 6 answered: A
+
+On `26B123`, MenuBarAgent no longer logs a `_mouseDown` line for a click, even when the menu bar works. Use the whole `com.apple.AppKit:Gestures` category instead (gesture recognizer phases, `Delaying event`, `_resetGestureRecognizer`).
+
+| State | What was clicked | Stream | `AppKit:Gestures` lines |
+|---|---|---|---|
+| **Broken** (16:26:40–16:28:11) | OrbStack and DuoUpdater status items, clicked and hovered repeatedly | 227 lines | **0** |
+| Healthy (after restart) | File and Edit app menus, one click each | 321 lines | **50** |
+| Healthy (after restart) | Control Center status item, one click | 149 lines | **25** |
+
+A stream started a minute after the restart also showed 0 `AppKit:Gestures` lines. The menu bar had already been confirmed working at that point, so the user's test clicks were probably made before the stream started. That run is therefore not counted as a control.
+
+### MenuBarAgent idle again
+
+`sample MenuBarAgent 5`: the main thread is in `mach_msg` under `-[NSApplication run]` → `_DPSNextEvent` for 3,100 of 3,177 samples.
+
+### WindowServer: `Corrupt tree` flood, gone after the restart
+
+```
+I  WindowServer[625:1538] [com.apple.SkyLight:default] WSIDTreeConnectInitializedNodes: unable to resolve bindings parent. Corrupt tree.
+```
+
+| Window | Count |
+|---|---|
+| 3 minutes up to ~16:30 (all WindowServer Info lines: 22,051) | **17,403** |
+| 60 s before `killall MenuBarAgent` | **6,563** |
+| 55 s after it | **0** |
+
+The message is Info level. `log show --info` only reached back to 16:29, so when it started, and whether it also ran on 2026-10-23, is unknown. One before/after pair is a correlation, not a cause.
+
+WindowServer CPU was 71.4% before and 76.6% after the restart, so CPU does not follow this bug. The `[SetMenuBars]: ignoring menu bars` errors were present since at least 10:28 (1,916 in 6 h), so they are background noise here too.
+
+### Not captured / 没采到
+
+No sysdiagnose from the broken state. Raw logs and the sample went to Apple only. They are not in this repo, because they contain device names and the list of running apps.
+
 ## If you hit this: capture before restarting / 复现时先取证再重启
+
+> **Updated 2026-10-28:** on `26B123` the `_mouseDown` lines below no longer appear. Count `AppKit:Gestures` instead: `grep -c 'AppKit:Gestures' ~/Desktop/mba-stream.log` (0 = A, ≥ 1 = B). Also run `sudo sysdiagnose` before step 4, and count `Corrupt tree` in WindowServer: `log show --info --last 1m --predicate 'process == "WindowServer" AND eventMessage CONTAINS "Corrupt tree"' | wc -l`.
 
 Restarting MenuBarAgent destroys the evidence. Before you do it:
 
