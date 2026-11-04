@@ -1,0 +1,24 @@
+=== UNDVerify/v5 ===
+os=Version 27.3 (Build 26C5035r)
+bundle=com.example.undverify
+startup ok, requesting authorization…
+initial authorizationStatus=2 (0=notDetermined 1=denied 2=authorized 3=provisional 4=ephemeral)
+already authorized — starting trials
+settings auth=2 alertStyle=1 alertSetting=2
+A trial 1 addMs=2.35  0@0.0/0.7:N(n=0) 5@6.3/6.9:N(n=0) 10@11.1/12.3:N(n=0) 15@16.0/19.4:Y(n=1) 25@26.5/27.9:Y(n=1) 50@51.8/52.7:Y(n=1) 100@106.4/108.0:Y(n=1) 250@264.2/271.7:Y(n=1)
+A trial 2 addMs=3.06  0@0.0/0.3:N(n=0) 5@6.1/17.0:Y(n=1) 10@10.1/17.1:Y(n=1) 15@16.1/17.2:Y(n=1) 25@25.7/30.7:Y(n=1) 50@53.4/57.9:Y(n=1) 100@105.6/106.4:Y(n=1) 250@265.6/269.3:Y(n=1)
+A trial 3 addMs=1.21  0@0.0/0.4:N(n=0) 5@6.0/13.8:Y(n=1) 10@10.6/13.8:Y(n=1) 15@16.6/24.0:Y(n=1) 25@26.8/35.5:Y(n=1) 50@54.4/59.4:Y(n=1) 100@106.4/112.7:Y(n=1) 250@266.4/271.3:Y(n=1)
+A trial 4 addMs=1.55  0@0.0/0.6:N(n=0) 5@5.3/6.0:N(n=0) 10@11.4/12.4:N(n=0) 15@15.7/17.5:Y(n=1) 25@26.8/29.5:Y(n=1) 50@53.2/57.0:Y(n=1) 100@106.8/107.6:Y(n=1) 250@265.7/274.4:Y(n=1)
+A trial 5 addMs=8.48  0@0.0/0.4:N(n=0) 5@5.8/13.8:Y(n=1) 10@10.5/13.9:Y(n=1) 15@15.9/24.1:Y(n=1) 25@26.5/35.2:Y(n=1) 50@51.9/58.6:Y(n=1) 100@106.6/110.7:Y(n=1) 250@266.5/272.2:Y(n=1)
+A trial 6 addMs=8.96  0@0.0/1.3:N(n=0) 5@5.9/12.4:Y(n=1) 10@11.1/12.6:Y(n=1) 15@16.3/22.7:Y(n=1) 25@26.7/33.2:Y(n=1) 50@52.3/57.4:Y(n=1) 100@106.4/108.5:Y(n=1) 250@266.3/267.3:Y(n=1)
+A trial 7 addMs=3.02  0@0.0/0.4:N(n=0) 5@5.8/15.1:Y(n=1) 10@10.9/15.2:Y(n=1) 15@16.0/17.4:Y(n=1) 25@25.8/27.0:Y(n=1) 50@52.4/60.8:Y(n=1) 100@106.1/106.9:Y(n=1) 250@265.9/267.1:Y(n=1)
+A trial 8 addMs=3.50  0@0.0/3.8:N(n=0) 5@5.2/8.2:N(n=0) 10@10.8/13.4:Y(n=1) 15@16.8/18.5:Y(n=1) 25@25.8/30.1:Y(n=1) 50@53.3/54.2:Y(n=1) 100@106.6/107.4:Y(n=1) 250@266.4/269.2:Y(n=1)
+B trial 1 addMs=7.76 firstPollIssued=0.01ms polls=17 VISIBLE issued=6.78ms replied=16.26ms lastMiss(issued=6.49 replied=6.77) n=1
+B trial 2 addMs=12.70 firstPollIssued=0.01ms polls=29 VISIBLE issued=7.35ms replied=16.54ms lastMiss(issued=7.13 replied=7.35) n=1
+B trial 3 addMs=1.74 firstPollIssued=0.01ms polls=9 VISIBLE issued=3.18ms replied=13.87ms lastMiss(issued=2.62 replied=3.17) n=1
+B trial 4 addMs=1.16 firstPollIssued=0.01ms polls=28 VISIBLE issued=13.48ms replied=14.96ms lastMiss(issued=13.22 replied=13.47) n=1
+B trial 5 addMs=6.33 firstPollIssued=0.01ms polls=27 VISIBLE issued=7.60ms replied=17.34ms lastMiss(issued=7.35 replied=7.60) n=1
+B trial 6 addMs=5.43 firstPollIssued=0.01ms polls=22 VISIBLE issued=5.74ms replied=16.54ms lastMiss(issued=5.36 replied=5.73) n=1
+B trial 7 addMs=1.06 firstPollIssued=0.01ms polls=5 VISIBLE issued=11.16ms replied=13.14ms lastMiss(issued=10.58 replied=11.15) n=1
+B trial 8 addMs=8.89 firstPollIssued=0.03ms polls=4 VISIBLE issued=1.48ms replied=12.64ms lastMiss(issued=1.22 replied=1.47) n=1
+ALL DONE

@@ -1,0 +1,9 @@
+MBXAppKit pid 5020, trusted true
+ AXPress #1 at (688.0, 4.5): result 0, opened after 0.00 s: ["#5098 layer 25 9x5"]
+   closed by AXPress
+ AXPress #2 at (688.0, 4.5): result 0, opened after 0.01 s: ["#5098 layer 25 113x65"]
+   closed by AXPress
+ AXPress #3 at (688.0, 4.5): result 0, opened after 0.00 s: ["#5098 layer 25 115x66"]
+   closed by AXPress
+ click REFUSED at (700.0, 16.5): topmost is Alcove
+ overflow collapsed

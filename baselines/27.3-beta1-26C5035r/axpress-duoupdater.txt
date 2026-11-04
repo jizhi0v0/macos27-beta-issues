@@ -1,0 +1,3 @@
+DuoUpdater pid 63514, trusted true
+item title=Optional(Number Six In A Filled Circle) role=Optional(AXMenuBarItem) frame=(1184.0, 4.5, 33.5, 24.0)
+AXPress result 0, opened after 0.13 s: ["#4593 layer 101 370x449"]

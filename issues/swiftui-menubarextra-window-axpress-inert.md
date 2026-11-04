@@ -5,8 +5,8 @@
 
 | | |
 |---|---|
-| **Status** | 🔴 **Confirmed on 27.2 RC1 `26B118`, clean on 26.7 `25G229`** (2026-10-21). The status button of a `.window`-style `MenuBarExtra` has **no target and no action** on 27.2 RC1 (`toggleWindow:` on `WindowMenuBarExtraBehavior` on 26.7), so an accessibility press has nothing to invoke. A real click still opens the panel. `.menu` style and AppKit `NSStatusItem` are not affected. Third-party reports place it on **27.0 `26A428`** and **27.0.1** as well (not re-tested here) |
-| **macOS** | Affected: 27.2 RC1 `26B118`. Control: 26.7 `25G229` |
+| **Status** | 🟢 **AXPress works on 27.3 beta `26C5035r`; still broken in a 27.2 release `26B123` VM** (2026-11-04). Existing minimal `.window` app opens/closes 5/5 usable trials; DuoUpdater 0.5.21 opens through AXPress in 0.13 s on host. In the VM, DuoUpdater 0.5.21 opens 0/3 repeated AXPress trials, then opens with a mouse click. VoiceOver itself not tested; earliest fixed build unknown. See [27.3 baseline](../baselines/27.3-beta1-26C5035r/README.md). Prior: 🔴 **Confirmed on 27.2 RC1 `26B118`, clean on 26.7 `25G229`** (2026-10-21). The status button of a `.window`-style `MenuBarExtra` has **no target and no action** on 27.2 RC1 (`toggleWindow:` on `WindowMenuBarExtraBehavior` on 26.7), so an accessibility press has nothing to invoke. A real click still opens the panel. `.menu` style and AppKit `NSStatusItem` are not affected. Third-party reports place it on **27.0 `26A428`** and **27.0.1** as well (not re-tested here) |
+| **macOS** | Working: 27.3 beta `26C5035r`. Affected: 27.2 release `26B123` (VMPal guest), 27.2 RC1 `26B118`. Earlier clean control: 26.7 `25G229` |
 | **Component** | Apple SwiftUI `MenuBarExtra` with `.menuBarExtraStyle(.window)` ↔ AppKit `NSStatusBarButton` accessibility |
 | **Hardware** | MacBook Pro `Mac15,11` (27.2 RC1); Mac mini `Mac16,10` (26.7) |
 | **Report** | **[FB25269767](https://feedbackassistant.apple.com/feedback/25269767)** (filed 2026-10-21, with a sysdiagnose and the repro zip) — text in [`feedback/swiftui-menubarextra-window-axpress.md`](../feedback/swiftui-menubarextra-window-axpress.md) |
@@ -91,3 +91,35 @@ Unknown — [FB25269767](https://feedbackassistant.apple.com/feedback/25269767) 
 ## Side note: overflowed items leave the AX tree / 附：被收进溢出的项不在 AX 树里
 
 On macOS 27, a status item that does not fit is collapsed behind the menu bar's overflow button and is then **absent from its app's `AXExtrasMenuBar` entirely**, not just off screen. Pressing `MenuBarAgent`'s `AXButton` (`AXIdentifier` `menu-bar-overflow-indicator`, `…-expanded` while open) brings the items back into their apps' AX trees; the expanded items are drawn in a `MenuBarAgent` window. Not a bug as far as this log is concerned, but any test of a status item on 27 has to account for it.
+
+## Re-verification 2026-11-04 — AXPress works on 27.3 beta, fails on 27.2 release guest
+
+The existing MBXWindow test app opened and closed through AXPress in **5/5 usable
+trials** on host 27.3 beta `26C5035r`. Two successes came from the pre-existing
+probe executable; a fresh compilation of the checked-in probe supplied three more.
+One third attempt in the first run lost the icon from the AX tree, and a header-only
+run supplied no measurement; neither is counted. The fresh probe observed the app's
+194×96 on-screen panel at layer 101. Its mouse-click control refused to click through
+Alcove's overlay, so the successes cannot be attributed to that control.
+
+At the user's request, a separate one-shot AXPress targeted **DuoUpdater 0.5.21**
+itself: its 370×449 panel appeared in **0.13 s**. No mouse click was issued.
+
+A **27.2 release `26B123` VMPal guest** supplies a contemporary negative control:
+authorized guest Terminal/System Events located DuoUpdater 0.5.21's menu bar item,
+then one single AXPress and **three repeated AXPress attempts** completed but opened
+nothing (window count remained zero). A mouse click on the same icon opened its panel.
+Both installations report the same marketing version; guest binary checksum/build
+number and hardware are not controlled, and the AX client differs. This supports a
+fix on the tested host build, without a strict binary-identical A/B or a claim about
+which intermediate build first fixed it. VoiceOver itself was not tested.
+
+**Mechanism correction:** the in-process `mbxdiag` still prints nil target/action
+and an empty `accessibilityActionNames` array on 27.3, while the externally obtained
+menu bar AX item now opens/closes the panel. Therefore the old missing target/action
+observation is not sufficient to explain the earlier failure. The earlier wording
+“has nothing to invoke” is an inference, superseded by this result; the implementation
+path has not been identified through binary analysis.
+
+Raw host output, guest command transcript, and limits are in the
+[27.3 baseline](../baselines/27.3-beta1-26C5035r/README.md).

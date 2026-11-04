@@ -1,0 +1,9 @@
+MBXWindow pid 98611, trusted true
+ AXPress #1 at (718.0, 4.5): result 0, opened after 0.06 s: ["#5028 layer 101 194x96"]
+   closed by AXPress
+ AXPress #2 at (718.0, 4.5): result 0, opened after 0.06 s: ["#5028 layer 101 194x96"]
+   closed by AXPress
+ AXPress #3 at (718.0, 4.5): result 0, opened after 0.06 s: ["#5028 layer 101 194x96"]
+   closed by AXPress
+ click REFUSED at (734.75, 16.5): topmost is Alcove
+ overflow collapsed

@@ -1,0 +1,4 @@
+window NSStatusBarWindow button NSStatusBarButton
+  target: nil
+  action: nil
+  accessibilityActionNames: []
