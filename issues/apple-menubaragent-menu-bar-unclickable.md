@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Status** | 🟡 **Workaround works, cause unknown; clicks do not reach MenuBarAgent** (2026-10-28). Seen **twice**. The second time (`26B123`) was captured before the restart: MenuBarAgent logged **0** `AppKit:Gestures` lines while the menu bar was clicked, against 25–50 per click when it works. WindowServer was logging `Corrupt tree` ~6,500/min, which stopped when MenuBarAgent was restarted. See [Second occurrence](#second-occurrence-2026-10-28-26b123--第二次复现) |
+| **Status** | 🟡 **not reproduced during the 27.3 beta `26C5035r` capture; remains unresolved** (2026-11-04) — 0 WindowServer Corrupt tree messages across T+0→T+5h57m. No controlled trigger was exercised; absence of the prior correlation signature does not establish a fix. See [27.3 baseline](../baselines/27.3-beta1-26C5035r/README.md). Prior: 🟡 **Workaround works, cause unknown; clicks do not reach MenuBarAgent** (2026-10-28). Seen **twice**. The second time (`26B123`) was captured before the restart: MenuBarAgent logged **0** `AppKit:Gestures` lines while the menu bar was clicked, against 25–50 per click when it works. WindowServer was logging `Corrupt tree` ~6,500/min, which stopped when MenuBarAgent was restarted. See [Second occurrence](#second-occurrence-2026-10-28-26b123--第二次复现) |
 | **macOS** | 27.2 RC1 `26B118`, uptime 2 d 23 h (booted 2026-10-20 10:34); again on 27.2 `26B123`, uptime ~29 h (booted 2026-10-27 11:38) |
 | **Component** | Apple `MenuBarAgent` (`/System/Library/CoreServices/MenuBarAgent.app`) ↔ WindowServer |
 | **Hardware** | MacBook Pro `Mac15,11` (M3 Max), built-in display only (3456 × 2234); MenuBarAgent's own log reports the menu bar mode as `alwaysVisible` (not auto-hidden) |
@@ -197,3 +197,10 @@ Please comment on [#35](https://github.com/jizhi0v0/macos27-beta-issues/issues/3
 - [#12](apple-menubaragent-idle-cpu.md), [#20](https://github.com/jizhi0v0/macos27-beta-issues/issues/20) — MenuBarAgent CPU.
 - [Apple Community (de) 256360385](https://communities.apple.com/de/thread/256360385) — on 27.0, Notification Center and *some* menu bar icons stop responding to clicks; survived a reboot and a reinstall, then went away by itself. Partial, not the whole bar, and no MenuBarAgent restart was tried.
 - [Apple Developer Forums 851315](https://developer.apple.com/forums/thread/851315) — on 27, an *open* native menu stops responding after a mouse sequence in TextEdit. Different scope; no replies.
+
+## Re-verification 2026-11-04 — 27.3 beta `26C5035r`
+
+🟡 **not reproduced during the 27.3 beta `26C5035r` capture; remains unresolved** (2026-11-04) — 0 WindowServer Corrupt tree messages across T+0→T+5h57m. No controlled trigger was exercised; absence of the prior correlation signature does not establish a fix. See [27.3 baseline](../baselines/27.3-beta1-26C5035r/README.md).
+
+The host was in normal use. Log scope is default persisted levels; the capture
+completed successfully. Counts are not matched pairs with previous builds.
