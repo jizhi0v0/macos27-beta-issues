@@ -1,0 +1,15 @@
+{
+  "recorded_at": "2026-11-13T00:12:15.362319+08:00",
+  "system_duoshot_switch": "1",
+  "app_show_menu_bar_icon": "1",
+  "allow_command_line_capture": "1",
+  "original_process_preserved": 1096,
+  "original_editor_window_preserved": 5147,
+  "test_processes_remaining": [],
+  "temporary_applications_bundle_removed": true,
+  "original_source_worktrees_clean": [
+    "duo-shot",
+    "duo-paste",
+    "duo-sub"
+  ]
+}

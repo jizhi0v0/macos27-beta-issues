@@ -4,3 +4,4 @@ tools/webpush-repro/.dev.vars
 tools/webpush-repro/.wrangler/
 tools/webpush-repro/node_modules/
 tools/menubarextra-axpress/build/
+tools/menu-bar-visibility/build/

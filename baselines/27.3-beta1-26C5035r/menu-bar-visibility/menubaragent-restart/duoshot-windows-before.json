@@ -1,0 +1,44 @@
+{
+  "current_space_id": 1,
+  "windows": [
+    {
+      "app_name": "DuoShot",
+      "bounds": {
+        "height": 953.0,
+        "width": 649.0,
+        "x": 539.0,
+        "y": 99.0
+      },
+      "current_space_id": 1,
+      "is_on_screen": true,
+      "layer": 0,
+      "on_current_space": true,
+      "pid": 1096,
+      "space_ids": [
+        1
+      ],
+      "window_id": 5147,
+      "z_index": 1
+    },
+    {
+      "app_name": "DuoShot",
+      "bounds": {
+        "height": 655.0,
+        "width": 480.0,
+        "x": 614.0,
+        "y": 158.0
+      },
+      "current_space_id": 1,
+      "is_on_screen": true,
+      "layer": 0,
+      "on_current_space": true,
+      "pid": 1096,
+      "space_ids": [
+        1
+      ],
+      "title": "DuoShot Settings",
+      "window_id": 6772,
+      "z_index": 0
+    }
+  ]
+}

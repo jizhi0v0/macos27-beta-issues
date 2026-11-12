@@ -1,0 +1,65 @@
+[
+  {
+    "applicationClass": "NSApplication",
+    "autosaveName": "Item-0",
+    "behavior": 0,
+    "bundleID": "dev.local.menubarvisibility.MBHShot",
+    "buttonClass": "NSStatusBarButton",
+    "event": "launch",
+    "frame": "{{0, 0}, {62, 0}}",
+    "isVisible": true,
+    "mode": "MBHShot",
+    "pid": 90215,
+    "samples": 0,
+    "sharingType": 1,
+    "subviews": [
+      "main.DropView"
+    ],
+    "timestamp": "2026-11-12T15:28:41Z",
+    "uptime": 32170.643903,
+    "windowIsVisible": true,
+    "windowNumber": 4294967296
+  },
+  {
+    "applicationClass": "NSApplication",
+    "autosaveName": "Item-0",
+    "behavior": 0,
+    "bundleID": "dev.local.menubarvisibility.MBHShot",
+    "buttonClass": "NSStatusBarButton",
+    "event": "sharing-none",
+    "frame": "{{547, 1084}, {62, 33}}",
+    "isVisible": true,
+    "mode": "MBHShot",
+    "pid": 90215,
+    "samples": 4,
+    "sharingType": 1,
+    "subviews": [
+      "main.DropView"
+    ],
+    "timestamp": "2026-11-12T15:28:42Z",
+    "uptime": 32171.650784875,
+    "windowIsVisible": true,
+    "windowNumber": 4294967296
+  },
+  {
+    "applicationClass": "NSApplication",
+    "autosaveName": "Item-0",
+    "behavior": 0,
+    "bundleID": "dev.local.menubarvisibility.MBHShot",
+    "buttonClass": "NSStatusBarButton",
+    "event": "sharing-readOnly",
+    "frame": "{{547, 1084}, {62, 33}}",
+    "isVisible": true,
+    "mode": "MBHShot",
+    "pid": 90215,
+    "samples": 8,
+    "sharingType": 1,
+    "subviews": [
+      "main.DropView"
+    ],
+    "timestamp": "2026-11-12T15:28:43Z",
+    "uptime": 32172.743801875004,
+    "windowIsVisible": true,
+    "windowNumber": 4294967296
+  }
+]

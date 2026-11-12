@@ -1,0 +1,461 @@
+{
+  "stage": "3-item-recreated",
+  "timestamp": 1794497560.86586,
+  "system_switch": {
+    "actions": [
+      "AXPress"
+    ],
+    "depth": 1,
+    "element_index": 31,
+    "element_token": "s00000187:31",
+    "enabled": true,
+    "frame": {
+      "h": 16.0,
+      "w": 36.0,
+      "x": 736.0,
+      "y": -2194.5
+    },
+    "parent_index": 0,
+    "role": "AXCheckBox",
+    "selected": false,
+    "subrole": "AXSwitch",
+    "value": "0"
+  },
+  "preferences": {
+    "app_name": "DuoShot",
+    "element_count": 20,
+    "elements": [
+      {
+        "actions": [
+          "AXRaise"
+        ],
+        "depth": 0,
+        "element_index": 0,
+        "element_token": "s00000188:0",
+        "frame": {
+          "h": 655.0,
+          "w": 480.0,
+          "x": 614.0,
+          "y": 158.0
+        },
+        "label": "DuoShot Settings",
+        "role": "AXWindow",
+        "subrole": "AXStandardWindow",
+        "title": "DuoShot Settings"
+      },
+      {
+        "actions": [
+          "AXPress"
+        ],
+        "depth": 1,
+        "element_index": 1,
+        "element_token": "s00000188:1",
+        "enabled": true,
+        "frame": {
+          "h": 16.0,
+          "w": 36.0,
+          "x": 1028.0,
+          "y": 277.0
+        },
+        "parent_index": 0,
+        "role": "AXCheckBox",
+        "selected": true,
+        "subrole": "AXSwitch",
+        "value": "1"
+      },
+      {
+        "actions": [
+          "AXPress"
+        ],
+        "depth": 1,
+        "element_index": 2,
+        "element_token": "s00000188:2",
+        "enabled": true,
+        "frame": {
+          "h": 16.0,
+          "w": 36.0,
+          "x": 1028.0,
+          "y": 314.5
+        },
+        "parent_index": 0,
+        "role": "AXCheckBox",
+        "selected": true,
+        "subrole": "AXSwitch",
+        "value": "1"
+      },
+      {
+        "actions": [
+          "AXPress"
+        ],
+        "depth": 1,
+        "element_index": 3,
+        "element_token": "s00000188:3",
+        "enabled": true,
+        "frame": {
+          "h": 16.0,
+          "w": 36.0,
+          "x": 1028.0,
+          "y": 404.0
+        },
+        "parent_index": 0,
+        "role": "AXCheckBox",
+        "selected": true,
+        "subrole": "AXSwitch",
+        "value": "1"
+      },
+      {
+        "actions": [
+          "AXPress"
+        ],
+        "depth": 1,
+        "element_index": 4,
+        "element_token": "s00000188:4",
+        "enabled": true,
+        "frame": {
+          "h": 16.0,
+          "w": 36.0,
+          "x": 1028.0,
+          "y": 532.5
+        },
+        "parent_index": 0,
+        "role": "AXCheckBox",
+        "selected": true,
+        "subrole": "AXSwitch",
+        "value": "1"
+      },
+      {
+        "actions": [
+          "AXPress"
+        ],
+        "depth": 1,
+        "description": "Allow command-line capture",
+        "element_index": 5,
+        "element_token": "s00000188:5",
+        "enabled": true,
+        "frame": {
+          "h": 16.0,
+          "w": 36.0,
+          "x": 1028.0,
+          "y": 700.0
+        },
+        "label": "Allow command-line capture",
+        "parent_index": 0,
+        "role": "AXCheckBox",
+        "selected": false,
+        "subrole": "AXSwitch",
+        "value": "0"
+      },
+      {
+        "actions": [
+          "AXShowMenu"
+        ],
+        "depth": 1,
+        "element_index": 6,
+        "element_token": "s00000188:6",
+        "frame": {
+          "h": 56.0,
+          "w": 480.0,
+          "x": 614.0,
+          "y": 190.0
+        },
+        "parent_index": 0,
+        "role": "AXToolbar"
+      },
+      {
+        "actions": [
+          "AXPress",
+          "Name:Move next\nTarget:0x0\nSelector:(null)",
+          "Name:Remove from toolbar\nTarget:0x0\nSelector:(null)"
+        ],
+        "depth": 2,
+        "description": "General",
+        "element_index": 7,
+        "element_token": "s00000188:7",
+        "enabled": true,
+        "frame": {
+          "h": 56.0,
+          "w": 55.0,
+          "x": 649.5,
+          "y": 190.0
+        },
+        "label": "General",
+        "parent_index": 6,
+        "role": "AXButton",
+        "title": "General"
+      },
+      {
+        "actions": [
+          "AXPress",
+          "Name:Move previous\nTarget:0x0\nSelector:(null)",
+          "Name:Move next\nTarget:0x0\nSelector:(null)",
+          "Name:Remove from toolbar\nTarget:0x0\nSelector:(null)"
+        ],
+        "depth": 2,
+        "description": "Capture",
+        "element_index": 8,
+        "element_token": "s00000188:8",
+        "enabled": true,
+        "frame": {
+          "h": 56.0,
+          "w": 55.0,
+          "x": 705.5,
+          "y": 190.0
+        },
+        "label": "Capture",
+        "parent_index": 6,
+        "role": "AXButton",
+        "title": "Capture"
+      },
+      {
+        "actions": [
+          "AXPress",
+          "Name:Move previous\nTarget:0x0\nSelector:(null)",
+          "Name:Move next\nTarget:0x0\nSelector:(null)",
+          "Name:Remove from toolbar\nTarget:0x0\nSelector:(null)"
+        ],
+        "depth": 2,
+        "description": "Recording",
+        "element_index": 9,
+        "element_token": "s00000188:9",
+        "enabled": true,
+        "frame": {
+          "h": 56.0,
+          "w": 65.5,
+          "x": 761.5,
+          "y": 190.0
+        },
+        "label": "Recording",
+        "parent_index": 6,
+        "role": "AXButton",
+        "title": "Recording"
+      },
+      {
+        "actions": [
+          "AXPress",
+          "Name:Move previous\nTarget:0x0\nSelector:(null)",
+          "Name:Move next\nTarget:0x0\nSelector:(null)",
+          "Name:Remove from toolbar\nTarget:0x0\nSelector:(null)"
+        ],
+        "depth": 2,
+        "description": "Saving",
+        "element_index": 10,
+        "element_token": "s00000188:10",
+        "enabled": true,
+        "frame": {
+          "h": 56.0,
+          "w": 55.0,
+          "x": 828.0,
+          "y": 190.0
+        },
+        "label": "Saving",
+        "parent_index": 6,
+        "role": "AXButton",
+        "title": "Saving"
+      },
+      {
+        "actions": [
+          "AXPress",
+          "Name:Move previous\nTarget:0x0\nSelector:(null)",
+          "Name:Move next\nTarget:0x0\nSelector:(null)",
+          "Name:Remove from toolbar\nTarget:0x0\nSelector:(null)"
+        ],
+        "depth": 2,
+        "description": "Preview",
+        "element_index": 11,
+        "element_token": "s00000188:11",
+        "enabled": true,
+        "frame": {
+          "h": 56.0,
+          "w": 55.0,
+          "x": 884.0,
+          "y": 190.0
+        },
+        "label": "Preview",
+        "parent_index": 6,
+        "role": "AXButton",
+        "title": "Preview"
+      },
+      {
+        "actions": [
+          "AXPress",
+          "Name:Move previous\nTarget:0x0\nSelector:(null)",
+          "Name:Move next\nTarget:0x0\nSelector:(null)",
+          "Name:Remove from toolbar\nTarget:0x0\nSelector:(null)"
+        ],
+        "depth": 2,
+        "description": "Share",
+        "element_index": 12,
+        "element_token": "s00000188:12",
+        "enabled": true,
+        "frame": {
+          "h": 56.0,
+          "w": 55.0,
+          "x": 940.0,
+          "y": 190.0
+        },
+        "label": "Share",
+        "parent_index": 6,
+        "role": "AXButton",
+        "title": "Share"
+      },
+      {
+        "actions": [
+          "AXPress",
+          "Name:Move previous\nTarget:0x0\nSelector:(null)",
+          "Name:Remove from toolbar\nTarget:0x0\nSelector:(null)"
+        ],
+        "depth": 2,
+        "description": "Shortcuts",
+        "element_index": 13,
+        "element_token": "s00000188:13",
+        "enabled": true,
+        "frame": {
+          "h": 56.0,
+          "w": 63.0,
+          "x": 996.0,
+          "y": 190.0
+        },
+        "label": "Shortcuts",
+        "parent_index": 6,
+        "role": "AXButton",
+        "title": "Shortcuts"
+      },
+      {
+        "actions": [
+          "AXPress"
+        ],
+        "depth": 1,
+        "element_index": 14,
+        "element_token": "s00000188:14",
+        "enabled": true,
+        "frame": {
+          "h": 16.0,
+          "w": 16.0,
+          "x": 622.0,
+          "y": 166.0
+        },
+        "parent_index": 0,
+        "role": "AXButton",
+        "subrole": "AXCloseButton"
+      },
+      {
+        "actions": [
+          "AXPress",
+          "AXShowMenu"
+        ],
+        "depth": 1,
+        "element_index": 15,
+        "element_token": "s00000188:15",
+        "enabled": false,
+        "frame": {
+          "h": 16.0,
+          "w": 16.0,
+          "x": 668.0,
+          "y": 166.0
+        },
+        "parent_index": 0,
+        "role": "AXButton",
+        "subrole": "AXZoomButton"
+      },
+      {
+        "actions": [
+          "AXPress"
+        ],
+        "depth": 1,
+        "element_index": 16,
+        "element_token": "s00000188:16",
+        "enabled": true,
+        "frame": {
+          "h": 16.0,
+          "w": 16.0,
+          "x": 645.0,
+          "y": 166.0
+        },
+        "parent_index": 0,
+        "role": "AXButton",
+        "subrole": "AXMinimizeButton"
+      },
+      {
+        "actions": [
+          "AXCancel"
+        ],
+        "depth": 0,
+        "element_index": 17,
+        "element_token": "s00000188:17",
+        "enabled": true,
+        "frame": {
+          "h": 33.0,
+          "w": 1728.0,
+          "x": 0.0,
+          "y": 0.0
+        },
+        "role": "AXMenuBar",
+        "selected": false
+      },
+      {
+        "actions": [
+          "AXCancel",
+          "AXPress",
+          "AXPick"
+        ],
+        "depth": 1,
+        "element_index": 18,
+        "element_token": "s00000188:18",
+        "enabled": true,
+        "label": "Apple",
+        "parent_index": 17,
+        "role": "AXMenuBarItem",
+        "selected": false,
+        "title": "Apple"
+      },
+      {
+        "actions": [
+          "AXCancel",
+          "AXPress",
+          "AXPick"
+        ],
+        "depth": 1,
+        "element_index": 19,
+        "element_token": "s00000188:19",
+        "enabled": true,
+        "label": "Edit",
+        "parent_index": 17,
+        "role": "AXMenuBarItem",
+        "selected": false,
+        "title": "Edit"
+      }
+    ],
+    "elements_complete": false,
+    "invalidated_snapshot_ids": [
+      "s00000186"
+    ],
+    "pid": 1096,
+    "returned_element_count": 20,
+    "snapshot_id": "s00000188",
+    "timeout_ms": 3000,
+    "total_element_count": 20,
+    "tree_format": "both",
+    "tree_markdown": "- [0] AXWindow \"DuoShot Settings\" [actions=[raise]]\n  - AXStaticText = \"Show menu bar icon\"\n  - [1] AXCheckBox [actions=[press]]\n  - AXStaticText = \"Launch at login\"\n  - [2] AXCheckBox [actions=[press]]\n  - AXStaticText = \"DuoShot starts automatically when you log in.\"\n  - AXStaticText = \"Play shutter sound\"\n  - [3] AXCheckBox [actions=[press]]\n  - AXStaticText = \"DuoShot has no Dock icon. With the menu bar icon hidden, the keyboard shortcuts are the only way to reach it.\"\n  - AXHeading (Screen sharing)\n  - AXStaticText = \"Show the selection UI to screen sharing\"\n  - [4] AXCheckBox [actions=[press]]\n  - AXStaticText = \"Off, the dimming, the selection outline and the recording toolbar are invisible to every kind of screen capture \u2014 including the one a remote-desktop app uses to send you the screen, which leaves you selecting an area you cannot see.\n\nOn, they become visible to it, and to anything else recording your screen. DuoShot's own screenshots still leave them out. They are hidden again for the length of a recording, where they could not be excluded from the video.\"\n  - AXStaticText = \"Allow command-line capture\"\n  - [5] AXCheckBox (Allow command-line capture) [actions=[press]]\n  - AXStaticText = \"While on, any program run by this user can capture the screen through DuoShot (the duoshot command-line tool), without a Screen Recording permission of its own. Stays on until you turn it off.\"\n  - [6] AXToolbar\n    - [7] AXButton \"General\" [actions=[press,name:move next\ntarget:0x0\nselector:(null),name:remove from toolbar\ntarget:0x0\nselector:(null)]]\n    - [8] AXButton \"Capture\" [actions=[press,name:move previous\ntarget:0x0\nselector:(null),name:move next\ntarget:0x0\nselector:(null),name:remove from toolbar\ntarget:0x0\nselector:(null)]]\n    - [9] AXButton \"Recording\" [actions=[press,name:move previous\ntarget:0x0\nselector:(null),name:move next\ntarget:0x0\nselector:(null),name:remove from toolbar\ntarget:0x0\nselector:(null)]]\n    - [10] AXButton \"Saving\" [actions=[press,name:move previous\ntarget:0x0\nselector:(null),name:move next\ntarget:0x0\nselector:(null),name:remove from toolbar\ntarget:0x0\nselector:(null)]]\n    - [11] AXButton \"Preview\" [actions=[press,name:move previous\ntarget:0x0\nselector:(null),name:move next\ntarget:0x0\nselector:(null),name:remove from toolbar\ntarget:0x0\nselector:(null)]]\n    - [12] AXButton \"Share\" [actions=[press,name:move previous\ntarget:0x0\nselector:(null),name:move next\ntarget:0x0\nselector:(null),name:remove from toolbar\ntarget:0x0\nselector:(null)]]\n    - [13] AXButton \"Shortcuts\" [actions=[press,name:move previous\ntarget:0x0\nselector:(null),name:remove from toolbar\ntarget:0x0\nselector:(null)]]\n  - [14] AXButton [actions=[press]]\n  - [15] AXButton [enabled=false actions=[press]]\n  - [16] AXButton [actions=[press]]\n- [17] AXMenuBar [actions=[cancel]] (menus collapsed: run an item with invoke_menu path, or pass query to search menu items)\n  - [18] AXMenuBarItem \"Apple\" [actions=[cancel,press,pick]]\n  - [19] AXMenuBarItem \"Edit\" [actions=[cancel,press,pick]]\n",
+    "truncated": false,
+    "window_id": 6772,
+    "window_title": "DuoShot Settings"
+  },
+  "menu_bar": {
+    "app_name": "MenuBarAgent",
+    "element_count": 36,
+    "elements": [],
+    "elements_complete": false,
+    "filtered_element_count": 0,
+    "invalidated_snapshot_ids": [
+      "s00000185"
+    ],
+    "pid": 762,
+    "returned_element_count": 0,
+    "snapshot_id": "s00000189",
+    "timeout_ms": 3000,
+    "total_element_count": 36,
+    "tree_format": "elements",
+    "truncated": false,
+    "window_id": 21
+  }
+}

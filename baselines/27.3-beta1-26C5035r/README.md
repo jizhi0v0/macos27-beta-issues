@@ -61,3 +61,12 @@ capture does not establish a fix.
 [`vm-27.2-axpress.md`](vm-27.2-axpress.md) records the VMPal 27.2 release `26B123` control.
 Both guest and host DuoUpdater report version 0.5.21. Guest AXPress fails while
 mouse input opens the panel; host AXPress opens it.
+
+## Later investigation, 2026-11-12–13
+
+[#36 — DuoShot ignores the system menu-bar visibility switch](https://github.com/jizhi0v0/macos27-beta-issues/issues/36)
+was tested separately from the November 4 capture above. The unchanged installed
+bundle obeys the switch when copied to the repository test directory (3/3 and
+2/2 rounds), while fresh instances from two `/Applications` paths fail (0/2
+each). Exact system association fault and first affected build unknown.
+[Experiment ledger, switch readbacks, screenshots, and bundle comparison](menu-bar-visibility/README.md).

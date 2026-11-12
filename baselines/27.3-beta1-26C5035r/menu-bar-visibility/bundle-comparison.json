@@ -1,0 +1,28 @@
+{
+  "os": "ProductName:\t\tmacOS\nProductVersion:\t\t27.3\nBuildVersion:\t\t26C5035r\n",
+  "original_path": "/Applications/DuoShot.app",
+  "bundle_id": "com.boli.duoshot",
+  "team_id": "RS59HDH7Y3",
+  "file_list": [
+    "Contents/Info.plist",
+    "Contents/MacOS/DuoShot",
+    "Contents/PkgInfo",
+    "Contents/_CodeSignature/CodeResources"
+  ],
+  "copies": [
+    {
+      "path": "tools/menu-bar-visibility/build/FullDuoShot.app",
+      "all_bundle_files_byte_identical": true,
+      "different_files": [],
+      "cdhash": "9fc8a401747faa0718aa28391c13e725456866f4"
+    },
+    {
+      "path": "tools/menu-bar-visibility/build/DuoShot.app",
+      "all_bundle_files_byte_identical": true,
+      "different_files": [],
+      "cdhash": "9fc8a401747faa0718aa28391c13e725456866f4"
+    }
+  ],
+  "original_signature": "Executable=/Applications/DuoShot.app/Contents/MacOS/DuoShot\nIdentifier=com.boli.duoshot\nFormat=app bundle with Mach-O thin (arm64)\nCodeDirectory v=20500 size=17244 flags=0x10000(runtime) hashes=528+7 location=embedded\nVersionPlatform=1\nVersionMin=1703936\nVersionSDK=1703936\nHash type=sha256 size=32\nCandidateCDHash sha256=9fc8a401747faa0718aa28391c13e725456866f4\nCandidateCDHashFull sha256=9fc8a401747faa0718aa28391c13e725456866f4413585474a17b50c5bc59c4c\nHash choices=sha256\nCMSDigest=9fc8a401747faa0718aa28391c13e725456866f4413585474a17b50c5bc59c4c\nCMSDigestType=2\nExecutable Segment base=0\nExecutable Segment limit=4505600\nExecutable Segment flags=0x1\nPage size=16384\nCDHash=9fc8a401747faa0718aa28391c13e725456866f4\nSignature size=4652\nAuthority=Developer ID Application: BO LI (RS59HDH7Y3)\nAuthority=Developer ID Certification Authority\nAuthority=Apple Root CA\nSigned Time=Oct 22, 2026 at 3:58:33\u202fPM\nInfo.plist entries=18\nTeamIdentifier=RS59HDH7Y3\nRuntime Version=26.0.0\nSealed Resources version=2 rules=13 files=0\nInternal requirements count=1 size=176\nTotal signatures=1\nChosen signature=1\n",
+  "executable_sha256": "d3968da3ef424be8bf2553a3c58b9fbb758c9df436289d275f8aff0fcf6ea81d"
+}

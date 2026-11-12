@@ -1,0 +1,12 @@
+{
+  "bundle_id": "com.boli.duoshot",
+  "launch_state": {
+    "process_running": true,
+    "requested": true,
+    "window_ready": false
+  },
+  "name": "DuoShot",
+  "pid": 2472,
+  "self_activation_suppressed": true,
+  "windows": []
+}
